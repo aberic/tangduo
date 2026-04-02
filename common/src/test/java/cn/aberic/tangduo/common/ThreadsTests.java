@@ -12,7 +12,7 @@
  * limitations under the License.
  */
 
-package cn.aberic.tangduo.common.file;
+package cn.aberic.tangduo.common;
 
 import org.junit.jupiter.api.Test;
 

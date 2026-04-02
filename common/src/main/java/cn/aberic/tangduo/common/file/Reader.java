@@ -25,11 +25,11 @@ public class Reader {
         throw new IllegalStateException("Reader class");
     }
 
-    public static byte[] readBytes(String filepath) throws IOException {
+    public static byte[] read(String filepath) throws IOException {
         return Files.readAllBytes(Path.of(filepath));
     }
 
-    public static byte[] readBytes(String filepath, long seek, int length) throws IOException {
+    public static byte[] read(String filepath, long seek, int length) throws IOException {
         try (RandomAccessFile file = new RandomAccessFile(filepath, "r")) {
             file.seek(seek); // 移动到指定位置
             byte[] buffer = new byte[length];
@@ -45,6 +45,6 @@ public class Reader {
     }
 
     public static String readString(String filepath, long seek, int length) throws IOException {
-        return new String(readBytes(filepath, seek, length));
+        return new String(read(filepath, seek, length));
     }
 }

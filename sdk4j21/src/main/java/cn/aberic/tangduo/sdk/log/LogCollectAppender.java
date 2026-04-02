@@ -1,0 +1,120 @@
+/*
+ * Copyright (c) 2026. Aberic - All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package cn.aberic.tangduo.sdk.log;
+
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.spi.IThrowableProxy;
+import ch.qos.logback.classic.spi.StackTraceElementProxy;
+import ch.qos.logback.core.UnsynchronizedAppenderBase;
+import org.slf4j.MDC;
+
+import java.net.InetAddress;
+import java.util.Date;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
+
+    private static final int BATCH_SIZE = 100;
+    private static final long FLUSH_INTERVAL_MS = 1000;
+
+    private final LinkedBlockingQueue<LogEntity> queue = new LinkedBlockingQueue<>(5000);
+    private final AtomicBoolean started = new AtomicBoolean(true);
+    private final String localIp;
+
+    public LogCollectAppender() {
+        this.localIp = getLocalIp();
+        startFlushThread();
+    }
+
+    private String getLocalIp() {
+        try {
+            return InetAddress.getLocalHost().getHostAddress();
+        } catch (Exception e) {
+            return "unknown";
+        }
+    }
+
+    @Override
+    protected void append(ILoggingEvent event) {
+        if (!started.get()) return;
+
+        try {
+            LogEntity log = new LogEntity();
+            log.setTraceId(MDC.get("traceId"));
+            log.setLevel(event.getLevel().toString());
+            log.setMessage(event.getFormattedMessage());
+            log.setThreadName(event.getThreadName());
+            log.setLoggerName(event.getLoggerName());
+            log.setTimestamp(event.getTimeStamp());
+            log.setCreateTime(new Date(event.getTimeStamp()));
+            log.setServerIp(localIp);
+
+            // ✅ 修复：兼容 logback 1.5.x 接口类型
+            IThrowableProxy throwableProxy = event.getThrowableProxy();
+            if (throwableProxy != null) {
+                String stackTrace = getStackTrace(throwableProxy);
+                log.setException(stackTrace);
+            }
+
+            queue.offer(log);
+        } catch (Exception ignore) {}
+    }
+
+    // ✅ 修复：参数类型改为 IThrowableProxy，完全兼容 1.5.x
+    private String getStackTrace(IThrowableProxy throwableProxy) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(throwableProxy.getClassName()).append(": ").append(throwableProxy.getMessage()).append("\n");
+
+        for (StackTraceElementProxy step : throwableProxy.getStackTraceElementProxyArray()) {
+            sb.append("\tat ").append(step.getStackTraceElement()).append("\n");
+        }
+
+        // 递归拼接 cause 堆栈
+        IThrowableProxy cause = throwableProxy.getCause();
+        while (cause != null) {
+            sb.append("\nCaused by: ").append(cause.getClassName()).append(": ").append(cause.getMessage()).append("\n");
+            for (StackTraceElementProxy step : cause.getStackTraceElementProxyArray()) {
+                sb.append("\tat ").append(step.getStackTraceElement()).append("\n");
+            }
+            cause = cause.getCause();
+        }
+        return sb.toString();
+    }
+
+    private void startFlushThread() {
+        Thread thread = new Thread(() -> {
+            while (started.get()) {
+                try {
+                    boolean send = LogBatchSender.sendBatch(queue, BATCH_SIZE);
+                    if (!send) {
+                        TimeUnit.MILLISECONDS.sleep(FLUSH_INTERVAL_MS);
+                    }
+                } catch (Exception e) {
+                    // 吞异常，保证采集线程不死
+                }
+            }
+        }, "log-collect-flush");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    @Override
+    public void stop() {
+        started.set(false);
+        super.stop();
+    }
+}

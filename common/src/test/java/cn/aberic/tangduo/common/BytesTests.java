@@ -12,9 +12,8 @@
  * limitations under the License.
  */
 
-package cn.aberic.tangduo.common.file;
+package cn.aberic.tangduo.common;
 
-import cn.aberic.tangduo.common.Bytes;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;

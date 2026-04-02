@@ -72,9 +72,9 @@ public class FileTests {
         System.out.println(Writer.appendForce(filepath, 1));
         System.out.println(Writer.appendForce(filepath, 999999999999L));
         System.out.println(Writer.appendForce(filepath, 999999999999999999L));
-        System.out.println(Bytes.toLong(Reader.readBytes(filepath, 0, 8)));
-        System.out.println(Bytes.toLong(Reader.readBytes(filepath, 8, 8)));
-        System.out.println(Bytes.toLong(Reader.readBytes(filepath, 16, 8)));
+        System.out.println(Bytes.toLong(Reader.read(filepath, 0, 8)));
+        System.out.println(Bytes.toLong(Reader.read(filepath, 8, 8)));
+        System.out.println(Bytes.toLong(Reader.read(filepath, 16, 8)));
     }
 
     @Test

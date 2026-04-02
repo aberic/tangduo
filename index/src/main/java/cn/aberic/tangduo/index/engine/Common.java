@@ -15,9 +15,9 @@
 package cn.aberic.tangduo.index.engine;
 
 import cn.aberic.tangduo.common.file.Filer;
+import cn.aberic.tangduo.common.file.Writer;
 
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -71,29 +71,8 @@ public class Common {
      *
      * @return 数据文件名
      */
-    public static Path dataFilepath(String rootPath, String indexName, int dataFileVersion) {
-        return Path.of(rootPath, UNITY_PATH, indexName, "data." + dataFileVersion + ".td");
-    }
-
-    /**
-     * 根据数据文件版本号查找数据文件名，如当前传入为1，经查验文件大小已超过阈值，若更新，则版本号++
-     *
-     * @param rootPath        数据根路径
-     * @param dataFileVersion 数据文件版本号，如 1，与索引版本号结合使用，如1.1，区分相同索引下的不同数据文件，如"tmp/unity.1.td"
-     * @param fileMaxSize     数据文件大小阈值，单位byte
-     *
-     * @return 数据文件名
-     */
-    public static Path dataFilepath(String rootPath, String indexName, int dataFileVersion, long fileMaxSize) throws IOException {
-        Path dataFilepath = dataFilepath(rootPath, indexName, dataFileVersion);
-        long filesize = Files.size(dataFilepath);
-        if (filesize >= fileMaxSize) {
-            dataFilepath = dataFilepath(rootPath, indexName, ++dataFileVersion);
-            if (!Files.exists(dataFilepath)) {
-                try {Files.createFile(dataFilepath);} catch (FileAlreadyExistsException ignored) {}
-            }
-        }
-        return dataFilepath;
+    public static Path dataFilepath(String rootPath, int dataFileVersion) {
+        return Path.of(rootPath, "data." + dataFileVersion + ".td");
     }
 
     /**
@@ -105,15 +84,16 @@ public class Common {
      *
      * @return 数据文件名
      */
-    public static int dataFileVersion(String rootPath, String indexName, int dataFileVersion, long fileMaxSize) throws IOException {
-        Path dataFilepath = dataFilepath(rootPath, indexName, dataFileVersion);
-        long filesize;
+    public static int dataFileVersion(String rootPath, int dataFileVersion, long fileMaxSize) throws IOException {
+        Path dataFilepath = dataFilepath(rootPath, dataFileVersion);
+        long fileSize;
         if (!Files.exists(dataFilepath)) {
             Filer.createFile(dataFilepath);
+            Writer.append(dataFilepath.toString(), Datum.startBytes);
         } else {
-            filesize = Files.size(dataFilepath);
-            if (filesize >= fileMaxSize) {
-                return dataFileVersion(rootPath, indexName, ++dataFileVersion, fileMaxSize);
+            fileSize = Files.size(dataFilepath);
+            if (fileSize >= fileMaxSize) {
+                return dataFileVersion(rootPath, ++dataFileVersion, fileMaxSize);
             }
         }
         return dataFileVersion;

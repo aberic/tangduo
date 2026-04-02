@@ -16,10 +16,15 @@ package cn.aberic.tangduo.index;
 
 import cn.aberic.tangduo.common.file.Channel;
 import cn.aberic.tangduo.common.file.Filer;
+import cn.aberic.tangduo.common.file.Writer;
 import cn.aberic.tangduo.index.engine.Common;
+import cn.aberic.tangduo.index.engine.Datum;
 import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.skip.Skip;
 import cn.aberic.tangduo.index.engine.unity.Unity;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
 import javax.management.InstanceAlreadyExistsException;
@@ -28,59 +33,43 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.rmi.UnexpectedException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * 索引接口<p>
  * 暴露索引相关使用接口
  */
+@Slf4j
 public class Index {
 
-    private final Map<String, IEngine> engineMap = new HashMap<>();
+    /** 索引集合，索引名+索引引擎 */
+    private final Map<String, IEngine> indexMap = new ConcurrentHashMap<>();
 
     private static final String blockSkip = "##@@##";
     private static final String indexSkip = "@#@";
 
-    /** 数据文件大小阈值，单位byte，默认10GB */
-    private static final long DATA_FILE_MAX_SIZE = 10737418240L;
+    /** 数据文件大小阈值，单位byte，默认1MB */
+    private static final long DATA_FILE_DEFAULT_SIZE = 1048576L;
 
-    /** 数据根路径 */
+    /** 数据库索引所在根路径 */
     String rootPath;
     /** 数据文件大小阈值，单位byte */
     long dataFileMaxSize;
 
-    private static final Lock lock = new ReentrantLock();
-    private static Index instance;
-
-    public static Index getInstance(String rootPath) throws IOException, NoSuchFieldException {
-        return getInstance(rootPath, DATA_FILE_MAX_SIZE);
-    }
-
-    public static Index getInstance(String rootPath, long dataFileMaxSize) throws IOException, NoSuchFieldException {
-        if (instance == null) {
-            lock.lock(); // 加锁
-            try {
-                if (instance == null) {
-                    instance = new Index(rootPath, dataFileMaxSize);
-                }
-            } finally {
-                lock.unlock(); // 释放锁
-            }
-        }
-        return instance;
-    }
-
     private Index() {}
 
-    private Index(String rootPath, long dataFileMaxSize) throws IOException, NoSuchFieldException {
+    public Index(String rootPath) throws IOException, NoSuchFieldException {
+        this(rootPath, DATA_FILE_DEFAULT_SIZE);
+    }
+
+    public Index(String rootPath, long dataFileMaxSize) throws IOException, NoSuchFieldException {
         this();
         this.rootPath = rootPath;
-        this.dataFileMaxSize = Math.max(dataFileMaxSize, DATA_FILE_MAX_SIZE);
+        this.dataFileMaxSize = Math.max(dataFileMaxSize, DATA_FILE_DEFAULT_SIZE);
         init();
     }
 
@@ -105,14 +94,14 @@ public class Index {
             String[] indexArr = block.split(indexSkip);
             int indexEngine = Integer.parseInt(indexArr[0]);
             String indexName = indexArr[1];
-            engineMap.put(indexName, engine(indexEngine, indexName));
+            indexMap.put(indexName, engine(indexEngine, indexName));
         }
     }
 
     private IEngine engine(int indexEngine, String indexName) throws NoSuchFieldException {
         switch (indexEngine) {
             case IEngine.UNITY -> {
-                return new Unity(rootPath, indexName, dataFileMaxSize, 200);
+                return new Unity(rootPath, indexName, dataFileMaxSize);
             }
             case IEngine.SKIP -> {
                 return new Skip();
@@ -122,61 +111,58 @@ public class Index {
     }
 
     /**
-     * 创建索引
-     *
-     * @param engine    引擎，在 Engine.UNITY、Engine.SKIP 等中选值，或传入对应的整型值
-     * @param version   版本号
-     * @param indexName 索引名称
-     * @param primary   是否主键，主键也是唯一索引
-     * @param unique    是否唯一索引
-     * @param nullable  是否允许为空
-     */
-    public void createIndex(int engine, int version, String indexName, boolean primary, boolean unique, boolean nullable, int capacity) throws NoSuchMethodException, IOException, InstanceAlreadyExistsException {
-        switch (engine) {
-            case IEngine.UNITY -> createUnityIndex(version, indexName, primary, unique, nullable, capacity);
-            case IEngine.SKIP -> throw new NoSuchMethodException("方法未实现");
-            default -> throw new UnexpectedException("传参未匹配");
-        }
-    }
-
-    /**
      * 创建索引和文件等关联信息<p>
      * 文件内容类似：
-     * 索引引擎@#@索引名称@#@索引文件地址@#@索引文件版本号##@@##索引引擎@#@索引名称@#@索引文件地址@#@索引文件版本号
+     * 索引引擎@#@索引名称@#@索引文件地址@#@索引文件版本号@#@索引创建时间##@@##索引引擎@#@索引名称@#@索引文件地址@#@索引文件版本号@#@索引创建时间
      *
-     * @param version   版本号
-     * @param indexName 索引名称
-     * @param primary   是否主键，主键也是唯一索引
-     * @param unique    是否唯一索引
-     * @param nullable  是否允许为空
+     * @param engine 引擎，在 Engine.UNITY、Engine.SKIP 等中选值，或传入对应的整型值
+     * @param info   索引信息
      */
-    private synchronized void createUnityIndex(int version, String indexName, boolean primary, boolean unique, boolean nullable, int capacity) throws InstanceAlreadyExistsException, IOException {
+    public synchronized void createIndex(int engine, Info info) throws InstanceAlreadyExistsException, IOException, NoSuchMethodException {
         // 遍历确认没有重复名称的索引
-        for (Map.Entry<String, IEngine> engineEntry : engineMap.entrySet()) {
-            if (indexName.equals(engineEntry.getKey())) {
+        for (Map.Entry<String, IEngine> engineEntry : indexMap.entrySet()) {
+            if (info.name.equals(engineEntry.getKey())) {
                 throw new InstanceAlreadyExistsException("索引实例已存在");
             }
         }
-        Unity unity = new Unity(rootPath, 1, 1, dataFileMaxSize, version, indexName, primary, unique, nullable, capacity);
-        engineMap.put(indexName, unity);
+        int dataFileVersion = 1;
+        // 新建数据文件
+        Path dataFilepath = Common.dataFilepath(rootPath, dataFileVersion);
+        if (!Files.exists(dataFilepath)) {
+            Files.createFile(dataFilepath);
+            Writer.append(dataFilepath.toString(), Datum.startBytes);
+        }
+        switch (engine) {
+            case IEngine.UNITY ->
+                    indexMap.put(info.name, new Unity(rootPath, 1, dataFileVersion, dataFileMaxSize, info.version, info.name, info.primary, info.unique, info.nullable));
+            case IEngine.SKIP -> throw new NoSuchMethodException("方法未实现");
+            default -> throw new UnexpectedException("传参未匹配");
+        }
         Path recordPath = Common.recordFilepath(rootPath); // 如"tmp/record.rd"
         String format;
         if (Files.size(recordPath) == 0) {
-            format = String.format("%s@#@%s", IEngine.UNITY, indexName);
+            format = String.format("%s%s%s", engine, indexSkip, info.name);
         } else {
-            format = String.format("##@@##%s@#@%s", IEngine.UNITY, indexName);
+            format = String.format("%s%s%s%s", blockSkip, engine, indexSkip, info.name);
         }
         Channel.append(recordPath.toString(), format.getBytes(StandardCharsets.UTF_8));
     }
 
     /** 刷盘 */
     public void force(long degree, String indexName) throws IOException {
-        engineMap.get(indexName).force(degree, indexName);
+        indexMap.get(indexName).force(degree, indexName);
     }
 
     /** Node插入数据data */
-    public void set(IEngine.Content content) throws IOException {
-        engineMap.get(content.getIndexName()).set(content);
+    public void put(IEngine.Content content) throws IOException {
+        if (!indexMap.containsKey(content.getIndexName())) {
+            try {
+                createIndex(IEngine.UNITY, new Info(content.getIndexName()));
+            } catch (InstanceAlreadyExistsException ignore) {} catch (NoSuchMethodException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        indexMap.get(content.getIndexName()).put(content);
         content.getLock().lock();
         try {
             while (!content.getIsNotified().get()) {
@@ -186,6 +172,42 @@ public class Index {
             Thread.currentThread().interrupt();
         } finally {
             content.getLock().unlock();
+        }
+        if (!content.getItems().isEmpty()) {
+            CountDownLatch latch = new CountDownLatch(content.getItems().size()); // 计数3
+            for (IEngine.Content.Item item : content.getItems()) {
+                Thread.startVirtualThread(() -> {
+                    String indexName = item.getIndexName();
+                    if (!indexMap.containsKey(indexName)) {
+                        try {
+                            createIndex(IEngine.UNITY, new Info(indexName));
+                        } catch (InstanceAlreadyExistsException | IOException ignore) {} catch (NoSuchMethodException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                    try {
+                        indexMap.get(indexName).put(content);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    content.getLock(indexName).lock();
+                    try {
+                        while (!content.getIsNotified(indexName).get()) {
+                            content.getCondition(indexName).await();
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    } finally {
+                        content.getLock(indexName).unlock();
+                        latch.countDown();
+                    }
+                });
+            }
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
         content.getTransaction().execute();
     }
@@ -197,8 +219,26 @@ public class Index {
      * @param degree    主键
      * @param key       原始key
      */
-    public byte[] get(String indexName, long degree, String key) throws IOException {
-        return engineMap.get(indexName).get(indexName, degree, key);
+    public byte[] getFirst(String indexName, long degree, String key) throws IOException {
+        List<byte[]> bytesList = get(indexName, degree, key);
+        if (Objects.nonNull(bytesList) && !bytesList.isEmpty()) {
+            return bytesList.getFirst();
+        }
+        return null;
+    }
+
+    /**
+     * Node获取数据data
+     *
+     * @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+     * @param degree    主键
+     * @param key       原始key
+     */
+    public List<byte[]> get(String indexName, long degree, String key) throws IOException {
+        if (indexMap.containsKey(indexName)) {
+            return indexMap.get(indexName).get(indexName, degree, key);
+        }
+        return null;
     }
 
     /**
@@ -209,17 +249,59 @@ public class Index {
      * @param key       原始key
      */
     public void remove(String indexName, long degree, String key) throws IOException {
-        engineMap.get(indexName).remove(indexName, degree, key);
+        indexMap.get(indexName).remove(indexName, degree, key);
     }
 
     /** 查询集合 */
     public List<byte[]> select(IEngine.Search search) throws IOException {
-        return engineMap.get(search.getIndexName()).select(search);
+        String indexName = search.getIndexName();
+        if (indexMap.containsKey(indexName)) {
+            return indexMap.get(indexName).select(search);
+        } else {
+            log.info("select indexMap.get(indexName) is null, indexName = {}", indexName);
+            return null;
+        }
     }
 
     /** 删除集合 */
     public List<byte[]> delete(IEngine.Search search) throws IOException {
-        return engineMap.get(search.getIndexName()).delete(search);
+        String indexName = search.getIndexName();
+        if (indexMap.containsKey(indexName)) {
+            return indexMap.get(indexName).delete(search);
+        } else {
+            log.info("delete indexMap.get(indexName) is null, indexName = {}", indexName);
+            return null;
+        }
+    }
+
+    @NoArgsConstructor
+    @Data
+    public static class Info {
+        /** 版本号，4个字节 */
+        int version = 1;
+        /** 索引名称 */
+        String name;
+        /** 是否主键，主键也是唯一索引，1个字节 */
+        boolean primary = false;
+        /** 是否唯一索引，1个字节 */
+        boolean unique = false;
+        /** 是否允许为空，1个字节 */
+        boolean nullable = true;
+
+        public Info(String name) {
+            this.name = name;
+        }
+
+        public Info(int version, String name, boolean primary, boolean unique, boolean nullable) {
+            if (name.contains(".")) {
+                throw new IllegalArgumentException("name cannot contain .");
+            }
+            this.version = version;
+            this.name = name;
+            this.primary = primary;
+            this.unique = unique;
+            this.nullable = nullable;
+        }
     }
 
 }

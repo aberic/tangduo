@@ -9,12 +9,15 @@
     <version>1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>TangDuo</name>
+    <name>tangduo</name>
     <url>http://www.aberic.cn</url>
     <modules>
         <module>index</module>
         <module>common</module>
         <module>db</module>
+        <module>search</module>
+        <module>sdk4j8</module>
+        <module>sdk4j21</module>
     </modules>
 
     <properties>
@@ -25,6 +28,12 @@
         <logback.version>1.5.25</logback.version>
         <gson.version>2.11.0</gson.version>
         <commons-lang3.version>3.19.0</commons-lang3.version>
+        <ikanalyzer.version>2012_u6</ikanalyzer.version>
+        <hanlp.version>portable-1.8.6</hanlp.version>
+        <junit.version>4.13.2</junit.version>
+        <jupiter.version>6.0.2</jupiter.version>
+        <jackson.version>2.19.2</jackson.version>
+        <tools.jackson.version>3.1.1</tools.jackson.version>
 
         <common.version>1.0-SNAPSHOT</common.version>
     </properties>
@@ -45,11 +54,6 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter-web</artifactId>
-                <version>${spring-boot.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
                 <version>${lombok.version}</version>
@@ -58,6 +62,51 @@
                 <groupId>cn.aberic.tangduo</groupId>
                 <artifactId>common</artifactId>
                 <version>${common.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>cn.aberic.tangduo</groupId>
+                <artifactId>index</artifactId>
+                <version>${common.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>cn.aberic.tangduo</groupId>
+                <artifactId>db</artifactId>
+                <version>${common.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>cn.aberic.tangduo</groupId>
+                <artifactId>sdk4j8</artifactId>
+                <version>${common.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>cn.aberic.tangduo</groupId>
+                <artifactId>sdk4j21</artifactId>
+                <version>${common.version}</version>
+            </dependency>
+            <dependency> <!-- Spring Boot 启动核心（包含 @SpringBootApplication） -->
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter</artifactId>
+                <version>${spring-boot.version}</version>
+            </dependency>
+            <dependency> <!--web-->
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-web</artifactId>
+                <version>${spring-boot.version}</version>
+            </dependency>
+            <dependency> <!-- Actuator 监控 -->
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-actuator</artifactId>
+                <version>${spring-boot.version}</version>
+            </dependency>
+            <dependency> <!-- AOP 耗时统计 -->
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-aspectj</artifactId>
+                <version>${spring-boot.version}</version>
+            </dependency>
+            <dependency> <!-- Actuator 安全认证（生产必加） -->
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-security</artifactId>
+                <version>${spring-boot.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.google.code.gson</groupId>
@@ -73,6 +122,36 @@
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-lang3</artifactId>
                 <version>${commons-lang3.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>junit</groupId>
+                <artifactId>junit</artifactId>
+                <version>${junit.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${jupiter.version}</version>
+            </dependency>
+            <dependency><!-- IK 分词 -->
+                <groupId>com.janeluo</groupId>
+                <artifactId>ikanalyzer</artifactId>
+                <version>${ikanalyzer.version}</version>
+            </dependency>
+            <dependency><!-- HanLP 标准版 → 本地模型，不联网、速度快 -->
+                <groupId>com.hankcs</groupId>
+                <artifactId>hanlp</artifactId>
+                <version>${hanlp.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>${jackson.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true">
+    <!-- 过滤日志路径 -->
+    <logger name="org.jboss.logging" level="OFF"/>
+    <!--定义日志文件的存储地址 勿在 LogBack 的配置中使用相对路径-->
+    <!-- 直接使用 Spring Boot 内置变量，不用自己读配置 -->
+    <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="search/tmp/log"/>
+
+
+    <!-- 控制台输出 -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <Pattern>
+                %d{yyyy-MM-dd HH:mm:ss} [%thread] [traceId: %X{traceId}] %-5level %logger{36} - %msg%n
+            </Pattern>
+        </layout>
+    </appender>
+    <!-- 按时间、文件大小和log名称生成日志分类1 -->
+    <appender name="DEBUG" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>DEBUG</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <append>true</append>
+        <!-- 日志名称 -->
+        <file>${LOG_PATH}/search-debug.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/logs/search-debug.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <!-- 日志文件过大会使的编辑器打开非常慢，因此设置日志最大50MB -->
+            <maxFileSize>${LOG_MAX_FILE_SIZE:-100MB}</maxFileSize>
+            <!-- 保存10天 -->
+            <maxHistory>${LOG_MAX_HISTORY:-10}</maxHistory>
+            <!-- 总日志大小 -->
+            <totalSizeCap>${LOG_TOTAL_SIZE_CAP:-1GB}</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <!--格式化输出：%d表示日期，%thread表示线程名，%-5level：级别从左显示5个字符宽度%msg：日志消息，%n是换行符-->
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId: %X{traceId}] %-5level %logger{50} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <!-- 按时间、文件大小和log名称生成日志分类2 -->
+    <appender name="INFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!-- 过滤掉 TRACE 和 DEBUG 级别的日志 -->
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+        <append>true</append>
+        <file>${LOG_PATH}/search-info.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/logs/search-info.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>${LOG_MAX_FILE_SIZE:-100MB}</maxFileSize>
+            <maxHistory>${LOG_MAX_HISTORY:-180}</maxHistory>
+            <totalSizeCap>${LOG_TOTAL_SIZE_CAP:-10GB}</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId: %X{traceId}] %-5level %logger{50} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <!-- 按照每天生成日志文件分类3 -->
+    <appender name="WARN" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>WARN</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <append>true</append>
+        <file>${LOG_PATH}/search-warn.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/logs/search-warn.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>${LOG_MAX_FILE_SIZE:-100MB}</maxFileSize>
+            <maxHistory>${LOG_MAX_HISTORY:-180}</maxHistory>
+            <totalSizeCap>${LOG_TOTAL_SIZE_CAP:-10GB}</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId: %X{traceId}] %-5level %logger{50} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <!-- 按照每天生成日志文件分类4 -->
+    <appender name="ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <append>true</append>
+        <file>${LOG_PATH}/search-error.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/logs/search-error.%d{yyyy-MM-dd}.%i.log.zip</fileNamePattern>
+            <maxFileSize>${LOG_MAX_FILE_SIZE:-100MB}</maxFileSize>
+            <maxHistory>${LOG_MAX_HISTORY:-180}</maxHistory>
+            <totalSizeCap>${LOG_TOTAL_SIZE_CAP:-10GB}</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId: %X{traceId}] %-5level %logger{50} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <!-- 日志采集追加器 -->
+    <appender name="LOG_COLLECT" class="cn.aberic.tangduo.sdk.log.LogCollectAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+
+    <logger name="org.apache.http" level="INFO" additivity="false"  />
+    <logger name="org.springframework" level="INFO" additivity="false"  />
+    <logger name="com.zaxxer" level="INFO" additivity="false"  />
+    <logger name="net.devh" level="INFO" additivity="false"  />
+    <logger name="io.netty" level="INFO" additivity="false"  />
+    <logger name="io.lettuce" level="INFO" additivity="false"  />
+    <logger name="reactor.util" level="INFO" additivity="false"  />
+    <logger name="ch.qos.logback" level="INFO" additivity="false"  />
+
+    <!-- 日志输出级别 -->
+    <root level="${LOG_LEVEL:-DEBUG}">
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="DEBUG"/>
+        <appender-ref ref="INFO"/>
+        <appender-ref ref="WARN"/>
+        <appender-ref ref="ERROR"/>
+        <!-- 打开下面这行 → 自动无感上传到MongoDB -->
+        <appender-ref ref="LOG_COLLECT"/>
+    </root>
+</configuration>

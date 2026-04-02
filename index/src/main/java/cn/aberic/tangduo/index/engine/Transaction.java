@@ -23,16 +23,22 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** 事务，用于存储每条完整命令的写入计划，待验证完成后一次执行，或全部失败，或全部成功 */
 @Slf4j
 @Data
 public class Transaction {
 
+    final AtomicLong atomicLong = new AtomicLong(0);
     /** 事务号，长整型自增 */
     long number;
     /** 待执行任务集合 */
     Map<String, List<Task>> taskListMap = new HashMap<>();
+
+    public Transaction() {
+        this.number = atomicLong.addAndGet(1);
+    }
 
     public Transaction(long number) {
         this.number = number;

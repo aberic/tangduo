@@ -11,7 +11,7 @@
     <artifactId>db</artifactId>
     <packaging>jar</packaging>
 
-    <name>db jar</name>
+    <name>db</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -21,19 +21,29 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.13.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>6.0.2</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>cn.aberic.tangduo</groupId>
-            <artifactId>common</artifactId>
+            <artifactId>index</artifactId>
+        </dependency>
+        <dependency><!-- IK 分词 -->
+            <groupId>com.janeluo</groupId>
+            <artifactId>ikanalyzer</artifactId>
+        </dependency>
+        <dependency><!-- HanLP 标准版 → 本地模型，不联网、速度快 -->
+            <groupId>com.hankcs</groupId>
+            <artifactId>hanlp</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
         </dependency>
     </dependencies>
 

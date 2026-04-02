@@ -16,8 +16,9 @@ package cn.aberic.tangduo.index.engine.unity.entity;
 
 import cn.aberic.tangduo.common.Bytes;
 import cn.aberic.tangduo.common.file.Channel;
+import cn.aberic.tangduo.common.file.Reader;
+import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.INode;
-import cn.aberic.tangduo.index.engine.Transaction;
 import cn.aberic.tangduo.index.engine.unity.Unity;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -131,11 +132,13 @@ public class Node implements INode {
      * @param indexFilepath 索引文件，如"tmp/unity.1.idx"
      * @param seek          当前节点在文件中的起始偏移量
      */
-    public Node(String indexFilepath, long seek) throws IOException {
+    public Node(String indexFilepath, long seek, boolean get) throws IOException {
         this.indexFilepath = indexFilepath;
-        byte[] bytes = Channel.read(indexFilepath, seek, Node.NODE_LENGTH);
-        if (bytes.length != NODE_LENGTH) {
-            throw new UnexpectedException("解析bytes与Node所需长度不匹配！");
+        byte[] bytes;
+        if (get) {
+            bytes = Reader.read(indexFilepath, seek, Node.NODE_LENGTH);
+        } else {
+            bytes = Channel.read(indexFilepath, seek, Node.NODE_LENGTH);
         }
         if (bytes[0] != startBytes[0] || bytes[1] != startBytes[1] || bytes[NODE_LENGTH - 2] != endBytes[0] || bytes[NODE_LENGTH - 1] != endBytes[1]) {
             throw new UnexpectedException("解析bytes与Node所需首尾默认值不匹配！");
@@ -147,27 +150,17 @@ public class Node implements INode {
     /**
      * 从指定文件中的指定起始位置开始写入/更新数据坐标数据
      *
-     * @param transaction     事务
      * @param rootPath        数据根路径
      * @param position        数据坐标在节点字节数组中的位置
      * @param dataFileVersion 数据文件版本号，如 1，与索引版本号结合使用，如1.1，区分相同索引下的不同数据文件
      * @param dataFileMaxSize 数据文件大小阈值，单位byte
-     * @param key             原始key
-     * @param value           数据
      */
-    public void set(Transaction transaction, Unity.ChildIndex childIndex, String rootPath, long position, long leafMateSeek,
-                    int dataFileVersion, long dataFileMaxSize, String indexName, String key, byte[] value) throws IOException {
+    public void put(IEngine.Content content, Unity.ChildIndex childIndex, String rootPath, String indexName, long position, long leafMateSeek,
+                    int dataFileVersion, long dataFileMaxSize) throws IOException {
         long leafSeek = Bytes.toLong(Bytes.read(data, position * 8, 8)); // Leaf在索引文件中的起始偏移量
-        Leaf leaf;
-        if (leafSeek <= 0) { // 新建
-            leaf = new Leaf(rootPath, childIndex, indexFilepath, dataFileVersion, dataFileMaxSize);
-            leafSeek = leaf.seek;
-            Channel.write(indexFilepath, leafMateSeek, Bytes.fromLong(leafSeek)); // 更新下一节点在本节点的持久化数据
-        } else { // 更新
-            leaf = new Leaf(indexFilepath, leafSeek);
-        }
+        Leaf leaf = new Leaf(childIndex, indexFilepath, leafSeek);
         // 更新 indexDataSeek
-        leaf.set(transaction, indexName, rootPath, key, value);
+        leaf.put(content, rootPath, indexName, leafMateSeek, dataFileVersion, dataFileMaxSize);
     }
 
     /**
@@ -177,24 +170,29 @@ public class Node implements INode {
      * @param position 数据坐标在节点字节数组中的位置
      * @param key      原始key
      */
-    public byte[] get(String rootPath, long position, String indexName, String key) throws IOException {
+    public List<byte[]> get(String rootPath, long position, String key) throws IOException {
         long leafSeek = Bytes.toLong(Bytes.read(data, position * 8, 8)); // Leaf在索引文件中的起始偏移量
         if (leafSeek <= 0) {
             return null;
         } else {
             Leaf leaf = new Leaf(indexFilepath, leafSeek);
-            return leaf.get(indexName, rootPath, key);
+            return leaf.get(rootPath, key);
         }
     }
 
     /**
      * 从指定文件中的指定起始位置开始删除数据坐标数据
      *
+     * @param rootPath 数据根路径
      * @param position 数据坐标在节点字节数组中的位置
+     * @param key      原始key
      */
-    public void delete(long position) throws IOException {
-        long leafMateSeek = seek + 2 + position * 8;
-        Channel.write(indexFilepath, leafMateSeek, new byte[8]);
+    public void delete(String rootPath, long position, String key) throws IOException {
+        long leafSeek = Bytes.toLong(Bytes.read(data, position * 8, 8)); // Leaf在索引文件中的起始偏移量
+        if (leafSeek > 0) {
+            Leaf leaf = new Leaf(indexFilepath, leafSeek);
+            leaf.delete(rootPath, key);
+        }
     }
 
     /**
@@ -203,13 +201,13 @@ public class Node implements INode {
      * @param rootPath 数据根路径
      * @param position 数据坐标在节点字节数组中的位置
      */
-    public List<byte[]> get(String rootPath, long position, String indexName) throws IOException {
+    public List<byte[]> select(String rootPath, long position) throws IOException {
         long leafSeek = Bytes.toLong(Bytes.read(data, position * 8, 8)); // Leaf在索引文件中的起始偏移量
         if (leafSeek <= 0) {
             return new ArrayList<>();
         } else {
             Leaf leaf = new Leaf(indexFilepath, leafSeek);
-            return leaf.get(indexName, rootPath);
+            return leaf.select(rootPath);
         }
     }
 

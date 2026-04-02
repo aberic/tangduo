@@ -46,7 +46,7 @@ public class Skip extends IEngine {
      * Node插入数据data
      */
     @Override
-    public void set(Content content) throws IOException {
+    public void put(Content content) throws IOException {
         set(content.getTransaction(), node, nodeSeek, content.getDegree(), content.getIndexName(), content.getKey(), content.getValue());
     }
 
@@ -130,7 +130,7 @@ public class Skip extends IEngine {
                 matchNodePositionInFile = appendIndex(indexFilepath, matchNode.toBytes()); // 匹配上的节点在文件中写入后的起始坐标
                 Writer.write(indexFilepath, matchNodePositionInThisNodePositionWithFile, matchNodePositionInFile); // 更新节点后续节点数据
             } else {
-                matchNode = new Node(Reader.readBytes(indexFilepath, matchNodePosition, node.getLength()));
+                matchNode = new Node(Reader.read(indexFilepath, matchNodePosition, node.getLength()));
                 matchNodePositionInFile = matchNodePosition;
             }
             set(transaction, matchNode, matchNodePositionInFile, degree - base, indexName, key, data);
@@ -138,7 +138,7 @@ public class Skip extends IEngine {
     }
 
     @Override
-    public byte[] get(String indexName, long degree, String key) throws IOException {
+    public List<byte[]> get(String indexName, long degree, String key) throws IOException {
         return null;
     }
 

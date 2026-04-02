@@ -16,20 +16,23 @@ package cn.aberic.tangduo.index.engine.unity.entity;
 
 import cn.aberic.tangduo.common.Bytes;
 import cn.aberic.tangduo.common.file.Channel;
+import cn.aberic.tangduo.common.file.Reader;
 import cn.aberic.tangduo.index.engine.Common;
 import cn.aberic.tangduo.index.engine.Datum;
-import cn.aberic.tangduo.index.engine.Transaction;
+import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.unity.Unity;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.rmi.UnexpectedException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Btree联合索引的数据坐标数据<p>
- * 包含【默认声明2字节、4字节数据文件版本号、8字节数据坐标、默认收尾2字节】<p>
+ * 包含【默认声明2字节、4字节数据文件版本号、8字节数据坐标、8字节下一碰撞key坐标（8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组）、4字节key字节数组长度、key字节数组、默认收尾2字节】<p>
  */
 @Slf4j
 @Data
@@ -40,7 +43,9 @@ public class Leaf {
     public static byte[] startBytes = {0x00, 0x7C};
     /** 4字节数据文件版本号 */
     byte[] dataFileVersionBytes = new byte[4];
-    /** 8字节数据坐标 */
+    /// 8字节下一碰撞key坐标
+    byte[] nextKeySeekBytes = new byte[8];
+    /// 8字节数据坐标
     byte[] dataSeekBytes = new byte[8];
     /** 节点默认收尾，值非默认即异常 */
     public static byte[] endBytes = {0x00, 0x7C};
@@ -57,93 +62,276 @@ public class Leaf {
         this.seek = seek;
     }
 
-    public Leaf(String rootPath, Unity.ChildIndex childIndex, int dataFileVersion, long fileMaxSize) throws IOException {
-        this.childIndex = childIndex;
-        dataFileVersionBytes = Bytes.fromInt(Common.dataFileVersion(rootPath, childIndex.getName(), dataFileVersion, fileMaxSize));
-    }
-
-    public Leaf(String rootPath, Unity.ChildIndex childIndex, String indexFilepath, int dataFileVersion, long fileMaxSize) throws IOException {
+    /// 写入构造函数
+    public Leaf(Unity.ChildIndex childIndex, String indexFilepath, long seek) {
         this.childIndex = childIndex;
         this.indexFilepath = indexFilepath;
-        dataFileVersionBytes = Bytes.fromInt(Common.dataFileVersion(rootPath, childIndex.getName(), dataFileVersion, fileMaxSize));
-        seek = Channel.append(indexFilepath, toBytes());
+        this.seek = seek;
     }
 
-    private Datum getDatum(String indexName, String rootPath) throws IOException {
-        byte[] bytes = Channel.read(indexFilepath, seek, 16); // 读取 默认声明2字节、4字节数据文件版本号、8字节数据坐标、默认收尾2字节
+    /**
+     * 新增/更新数据
+     * 默认声明2字节、4字节数据文件版本号、8字节数据坐标、
+     * 8字节下一碰撞key坐标（8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组）、
+     * 4字节key字节数组长度、key字节数组、默认收尾2字节
+     *
+     * @param rootPath 数据根路径
+     */
+    public void put(IEngine.Content content, String rootPath, String indexName, long leafMateSeek, int dataFileVersion, long fileMaxSize) throws IOException {
+        long dataMateSeek = -1;
+        if (seek <= 0) { // 新写入
+            if (Objects.nonNull(content.getDataFileVersionBytes())) { // 复用data
+                dataSeekBytes = content.getDataSeekBytes();
+                dataFileVersionBytes = content.getDataFileVersionBytes();
+                byte[] keyBytes = Bytes.fromString(content.getKey(indexName));
+                seek = Channel.append(indexFilepath, Bytes.join(startBytes, dataFileVersionBytes, dataSeekBytes, nextKeySeekBytes, Bytes.fromInt(keyBytes.length), keyBytes, endBytes));
+                content.getTransaction().addTask(indexFilepath, leafMateSeek, Bytes.fromLong(seek), new byte[8]); // 更新下一节点在本节点的持久化数据
+                return;
+            }
+            dataFileVersionBytes = Bytes.fromInt(Common.dataFileVersion(rootPath, dataFileVersion, fileMaxSize));
+            // 默认声明2字节、4字节数据文件版本号、8字节数据坐标、
+            // 8字节下一碰撞key坐标（8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组）、
+            // 4字节key字节数组长度、key字节数组、默认收尾2字节
+            byte[] keyBytes = Bytes.fromString(content.getKey(indexName));
+            seek = Channel.append(indexFilepath, Bytes.join(startBytes, dataFileVersionBytes, dataSeekBytes, nextKeySeekBytes, Bytes.fromInt(keyBytes.length), keyBytes, endBytes));
+            Channel.write(indexFilepath, leafMateSeek, Bytes.fromLong(seek)); // 更新下一节点在本节点的持久化数据
+            dataMateSeek = seek + 6;
+        } else { // 更新
+            // 默认声明2字节、4字节数据文件版本号、8字节数据坐标、
+            // 8字节下一碰撞key坐标（8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组）、
+            // 4字节key字节数组长度、key字节数组、默认收尾2字节
+            byte[] bytes = Reader.read(indexFilepath, seek, 26);
+            byte[] start = Bytes.read(bytes, 0, 2);
+            if (start[0] != startBytes[0] || start[1] != startBytes[1]) {
+                throw new UnexpectedException("解析bytes与Node所需首默认值不匹配！");
+            }
+            dataFileVersionBytes = Bytes.read(bytes, 2, 4); // 4字节数据文件版本号
+            dataSeekBytes = Bytes.read(bytes, 6, 8); // 8字节数据坐标
+            nextKeySeekBytes = Bytes.read(bytes, 14, 8); // 8字节下一碰撞key坐标
+            int keyLength = Bytes.toInt(Bytes.read(bytes, 22, 4)); // 4字节key字节数组长度
+            byte[] keyBytesAndEndBytes = Reader.read(indexFilepath, seek + 26, keyLength + 2);
+            byte[] end = Bytes.read(keyBytesAndEndBytes, keyLength, 2);
+            if (end[0] != endBytes[0] || end[1] != endBytes[1]) {
+                throw new UnexpectedException("解析bytes与Node所需尾默认值不匹配！");
+            }
+            String key = Bytes.toString(Bytes.read(keyBytesAndEndBytes, 0, keyLength));
+            if (key.equals(content.getKey(indexName))) {
+                dataMateSeek = seek + 6;
+            } else {
+                // 默认声明2字节、4字节数据文件版本号、8字节数据坐标、
+                // 8字节下一碰撞key坐标（8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组）、
+                // 4字节key字节数组长度、key字节数组、默认收尾2字节
+                long nextKeyMateSeek = seek + 14;
+                long nextKeySeekTmp;
+                // 8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组
+                while ((nextKeySeekTmp = Bytes.toLong(nextKeySeekBytes)) != 0) {
+                    byte[] nextKeyPreBytes = Reader.read(indexFilepath, nextKeySeekTmp, 24);
+                    nextKeySeekBytes = Bytes.read(nextKeyPreBytes, 0, 8);
+                    if (!childIndex.isPrimary() && !childIndex.isUnique()) {
+                        nextKeyMateSeek = nextKeySeekTmp;
+                        continue;
+                    }
+                    dataFileVersionBytes = Bytes.read(nextKeyPreBytes, 8, 4);
+                    keyLength = Bytes.toInt(Bytes.read(nextKeyPreBytes, 20, 4));
+                    key = Bytes.toString(Reader.read(indexFilepath, nextKeySeekTmp + 24, keyLength));
+                    if (key.equals(content.getKey(indexName))) {
+                        dataMateSeek = nextKeySeekTmp + 12;
+                        break;
+                    }
+                    nextKeyMateSeek = nextKeySeekTmp;
+                }
+                if (dataMateSeek == -1) { // 8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组
+                    byte[] keyBytes = Bytes.fromString(content.getKey(indexName));
+                    byte[] keyLengthBytes = Bytes.fromInt(keyBytes.length);
+                    byte[] nextKeyDataBytes = Bytes.join(new byte[8], dataFileVersionBytes, new byte[8], keyLengthBytes, keyBytes);
+                    long keySeek = Channel.append(indexFilepath, nextKeyDataBytes);
+                    Channel.write(indexFilepath, nextKeyMateSeek, Bytes.fromLong(keySeek));
+                    dataMateSeek = keySeek + 12;
+                }
+            }
+            if (Objects.nonNull(content.getDataFileVersionBytes())) { // 复用data
+                // 默认声明2字节、4字节数据文件版本号、8字节数据坐标、
+                // 8字节下一碰撞key坐标（8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组）、
+                // 4字节key字节数组长度、key字节数组、默认收尾2字节
+                byte[] bytesNew = Bytes.join(content.getDataFileVersionBytes(), content.getDataSeekBytes());
+                byte[] bytesOld = Bytes.join(dataFileVersionBytes, dataSeekBytes);
+                content.getTransaction().addTask(indexFilepath, dataMateSeek - 4, bytesNew, bytesOld); // 更新下一节点在本节点的持久化数据
+                return;
+            }
+        }
+        // 新写入流程
+        content.setDataFileVersionBytes(dataFileVersionBytes);
+        String dataFilepath = Common.dataFilepath(rootPath, Bytes.toInt(dataFileVersionBytes)).toString(); // 数据文件地址，数据将写入该文件中
+        Datum datum = new Datum(dataFilepath, 0);
+        datum.writeOrUpdate(content, indexFilepath, dataMateSeek);
+    }
+
+    /**
+     * 读取数据
+     *
+     * @param rootPath  数据根路径
+     * @param key       原始key
+     */
+    public List<byte[]> get(String rootPath, String key) throws IOException {
+        List<byte[]> bytesList = new ArrayList<>();
+        // 读取 默认声明2字节、4字节数据文件版本号、8字节数据坐标、
+        // 8字节下一碰撞key坐标（8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组）、
+        // 4字节key字节数组长度、key字节数组、默认收尾2字节
+        byte[] bytes = Reader.read(indexFilepath, seek, 26);
         byte[] start = Bytes.read(bytes, 0, 2);
         if (start[0] != startBytes[0] || start[1] != startBytes[1]) {
             throw new UnexpectedException("解析bytes与Node所需首默认值不匹配！");
         }
-        byte[] end = Bytes.read(bytes, 14, 2);
+        dataFileVersionBytes = Bytes.read(bytes, 2, 4); // 4字节数据文件版本号
+        dataSeekBytes = Bytes.read(bytes, 6, 8); // 8字节数据坐标
+        nextKeySeekBytes = Bytes.read(bytes, 14, 8); // 8字节下一碰撞key坐标
+        int keyLength = Bytes.toInt(Bytes.read(bytes, 22, 4)); // 4字节key字节数组长度
+        byte[] keyBytesAndEndBytes = Reader.read(indexFilepath, seek + 26, keyLength + 2);
+        byte[] end = Bytes.read(keyBytesAndEndBytes, keyLength, 2);
         if (end[0] != endBytes[0] || end[1] != endBytes[1]) {
             throw new UnexpectedException("解析bytes与Node所需尾默认值不匹配！");
         }
-        byte[] dataFileVersionBytes = Bytes.read(bytes, 2, 4); // 4字节数据文件版本号
-        long dataSeek = Bytes.toLong(Bytes.read(bytes, 6, 8)); // 8字节数据坐标
-        String dataFilepath = Common.dataFilepath(rootPath, indexName, Bytes.toInt(dataFileVersionBytes)).toString(); // 数据文件地址，数据将写入该文件中
-        return new Datum(dataFilepath, dataSeek);
-    }
-
-    /**
-     * 读取数据
-     *
-     * @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-     * @param rootPath  数据根路径
-     * @param key       原始key
-     */
-    public byte[] get(String indexName, String rootPath, String key) throws IOException {
-        Datum datum = getDatum(indexName, rootPath);
-        return datum.read(indexName, key);
-    }
-
-    /**
-     * 读取数据
-     *
-     * @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-     * @param rootPath  数据根路径
-     */
-    public List<byte[]> get(String indexName, String rootPath) throws IOException {
-        Datum datum = getDatum(indexName, rootPath);
-        return datum.read(indexName);
-    }
-
-    /**
-     * 新增/更新数据
-     *
-     * @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-     * @param rootPath  数据根路径
-     * @param value     数据
-     */
-    public void set(Transaction transaction, String indexName, String rootPath, String key, byte[] value) throws IOException {
-        Datum datum = getDatum(indexName, rootPath);
-        long datumMateSeek = seek + 6;
-        if (datum.getSeek() == 0) {
-            datum.write(transaction, indexFilepath, datumMateSeek, indexName, key, value);
-        } else {
-            datum.update(transaction, datumMateSeek, indexName, key, value);
+        String keyRead = Bytes.toString(Bytes.read(keyBytesAndEndBytes, 0, keyLength));
+        if (keyRead.equals(key)) {
+            long dataSeek = Bytes.toLong(dataSeekBytes);
+            if (dataSeek > 0) {
+                String dataFilepath = Common.dataFilepath(rootPath, Bytes.toInt(dataFileVersionBytes)).toString(); // 数据文件地址，数据将写入该文件中
+                Datum datum = new Datum(dataFilepath, dataSeek);
+                bytesList.add(datum.read());
+            }
         }
+        // 默认声明2字节、4字节数据文件版本号、8字节数据坐标、
+        // 8字节下一碰撞key坐标（8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组）、
+        // 4字节key字节数组长度、key字节数组、默认收尾2字节
+        long nextKeySeekTmp;
+        // 8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组
+        while ((nextKeySeekTmp = Bytes.toLong(nextKeySeekBytes)) != 0) {
+            byte[] nextKeyPreBytes = Reader.read(indexFilepath, nextKeySeekTmp, 24);
+            nextKeySeekBytes = Bytes.read(nextKeyPreBytes, 0, 8);
+            dataFileVersionBytes = Bytes.read(nextKeyPreBytes, 8, 4);
+            keyLength = Bytes.toInt(Bytes.read(nextKeyPreBytes, 20, 4));
+            keyRead = Bytes.toString(Reader.read(indexFilepath, nextKeySeekTmp + 24, keyLength));
+            if (keyRead.equals(key)) {
+                long dataSeek = Bytes.toLong(Bytes.read(nextKeyPreBytes, 12, 8));
+                if (dataSeek > 0) {
+                    String dataFilepath = Common.dataFilepath(rootPath, Bytes.toInt(dataFileVersionBytes)).toString(); // 数据文件地址，数据将写入该文件中
+                    Datum datum = new Datum(dataFilepath, dataSeek);
+                    bytesList.add(datum.read());
+                }
+            }
+        }
+        return bytesList;
+    }
+
+    /**
+     * 读取数据
+     *
+     * @param rootPath  数据根路径
+     */
+    public List<byte[]> select(String rootPath) throws IOException {
+        List<byte[]>  bytesList = new ArrayList<>();
+        // 读取 默认声明2字节、4字节数据文件版本号、8字节数据坐标、
+        // 8字节下一碰撞key坐标（8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组）、
+        // 4字节key字节数组长度、key字节数组、默认收尾2字节
+        byte[] bytes = Reader.read(indexFilepath, seek, 26);
+        byte[] start = Bytes.read(bytes, 0, 2);
+        if (start[0] != startBytes[0] || start[1] != startBytes[1]) {
+            throw new UnexpectedException("解析bytes与Node所需首默认值不匹配！");
+        }
+        dataFileVersionBytes = Bytes.read(bytes, 2, 4); // 4字节数据文件版本号
+        dataSeekBytes = Bytes.read(bytes, 6, 8); // 8字节数据坐标
+        nextKeySeekBytes = Bytes.read(bytes, 14, 8); // 8字节下一碰撞key坐标
+        int keyLength = Bytes.toInt(Bytes.read(bytes, 22, 4)); // 4字节key字节数组长度
+        byte[] keyBytesAndEndBytes = Reader.read(indexFilepath, seek + 26, keyLength + 2);
+        byte[] end = Bytes.read(keyBytesAndEndBytes, keyLength, 2);
+        if (end[0] != endBytes[0] || end[1] != endBytes[1]) {
+            throw new UnexpectedException("解析bytes与Node所需尾默认值不匹配！");
+        }
+        long dataSeek = Bytes.toLong(dataSeekBytes);
+        if (dataSeek > 0) {
+            String dataFilepath = Common.dataFilepath(rootPath, Bytes.toInt(dataFileVersionBytes)).toString(); // 数据文件地址，数据将写入该文件中
+            Datum datum = new Datum(dataFilepath, dataSeek);
+            bytesList.add(datum.read());
+        }
+        // 默认声明2字节、4字节数据文件版本号、8字节数据坐标、
+        // 8字节下一碰撞key坐标（8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组）、
+        // 4字节key字节数组长度、key字节数组、默认收尾2字节
+        long nextKeySeekTmp;
+        // 8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组
+        while ((nextKeySeekTmp = Bytes.toLong(nextKeySeekBytes)) != 0) {
+            byte[] nextKeyPreBytes = Reader.read(indexFilepath, nextKeySeekTmp, 24);
+            nextKeySeekBytes = Bytes.read(nextKeyPreBytes, 0, 8);
+            dataFileVersionBytes = Bytes.read(nextKeyPreBytes, 8, 4);
+            dataSeekBytes = Bytes.read(bytes, 12, 8); // 8字节数据坐标
+            dataSeek = Bytes.toLong(dataSeekBytes);
+            if (dataSeek > 0) {
+                String dataFilepath = Common.dataFilepath(rootPath, Bytes.toInt(dataFileVersionBytes)).toString(); // 数据文件地址，数据将写入该文件中
+                Datum datum = new Datum(dataFilepath, dataSeek);
+                bytesList.add(datum.read());
+            }
+        }
+        return bytesList;
     }
 
     /**
      * 新增/更新数据
+     * 默认声明2字节、4字节数据文件版本号、8字节数据坐标、
+     * 8字节下一碰撞key坐标（8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组）、
+     * 4字节key字节数组长度、key字节数组、默认收尾2字节
      *
-     * @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-     * @param rootPath  数据根路径
-     * @param value     数据
+     * @param rootPath 数据根路径
      */
-    public void set(Transaction transaction, String indexName, String rootPath, String indexFilepath, long leafMateSeek, String key, byte[] value) throws IOException {
-        seek = Channel.append(indexFilepath, toBytes());
-        Channel.write(indexFilepath, leafMateSeek, Bytes.fromLong(seek)); // 更新下一节点在本节点的持久化数据
-        long datumMateSeek = seek + 6; // 默认声明2字节、4字节数据文件版本号、8字节数据坐标、默认收尾2字节
-        String dataFilepath = Common.dataFilepath(rootPath, indexName, Bytes.toInt(dataFileVersionBytes)).toString(); // 数据文件地址，数据将写入该文件中
-        Datum datum = new Datum(dataFilepath, 0);
-        datum.write(transaction, indexFilepath, datumMateSeek, indexName, key, value);
-    }
-
-    /** 默认声明2字节、4字节数据文件版本号、8字节数据坐标、默认收尾2字节 */
-    public byte[] toBytes() throws IOException {
-        return Bytes.join(startBytes, dataFileVersionBytes, dataSeekBytes, endBytes);
+    public void delete(String rootPath, String key) throws IOException {
+        if (seek <= 0) {
+            return;
+        }
+        // 默认声明2字节、4字节数据文件版本号、8字节数据坐标、
+        // 8字节下一碰撞key坐标（8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组）、
+        // 4字节key字节数组长度、key字节数组、默认收尾2字节
+        byte[] bytes = Reader.read(indexFilepath, seek, 26);
+        byte[] start = Bytes.read(bytes, 0, 2);
+        if (start[0] != startBytes[0] || start[1] != startBytes[1]) {
+            throw new UnexpectedException("解析bytes与Node所需首默认值不匹配！");
+        }
+        dataFileVersionBytes = Bytes.read(bytes, 2, 4); // 4字节数据文件版本号
+        dataSeekBytes = Bytes.read(bytes, 6, 8); // 8字节数据坐标
+        nextKeySeekBytes = Bytes.read(bytes, 14, 8); // 8字节下一碰撞key坐标
+        int keyLength = Bytes.toInt(Bytes.read(bytes, 22, 4)); // 4字节key字节数组长度
+        byte[] keyBytesAndEndBytes = Reader.read(indexFilepath, seek + 26, keyLength + 2);
+        byte[] end = Bytes.read(keyBytesAndEndBytes, keyLength, 2);
+        if (end[0] != endBytes[0] || end[1] != endBytes[1]) {
+            throw new UnexpectedException("解析bytes与Node所需尾默认值不匹配！");
+        }
+        String keyFromRead = Bytes.toString(Bytes.read(keyBytesAndEndBytes, 0, keyLength));
+        if (keyFromRead.equals(key)) {
+            long dataSeek = Bytes.toLong(dataSeekBytes);
+            if (dataSeek > 0) {
+                String dataFilepath = Common.dataFilepath(rootPath, Bytes.toInt(dataFileVersionBytes)).toString(); // 数据文件地址，数据将写入该文件中
+                Datum datum = new Datum(dataFilepath, dataSeek);
+                datum.delete();
+            }
+        }
+        // 默认声明2字节、4字节数据文件版本号、8字节数据坐标、
+        // 8字节下一碰撞key坐标（8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组）、
+        // 4字节key字节数组长度、key字节数组、默认收尾2字节
+        long nextKeySeekTmp;
+        // 8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组
+        while ((nextKeySeekTmp = Bytes.toLong(nextKeySeekBytes)) != 0) {
+            byte[] nextKeyPreBytes = Reader.read(indexFilepath, nextKeySeekTmp, 24);
+            nextKeySeekBytes = Bytes.read(nextKeyPreBytes, 0, 8);
+            dataFileVersionBytes = Bytes.read(nextKeyPreBytes, 8, 4);
+            dataSeekBytes = Bytes.read(nextKeyPreBytes, 12, 8); // 8字节数据坐标
+            keyLength = Bytes.toInt(Bytes.read(nextKeyPreBytes, 20, 4));
+            keyFromRead = Bytes.toString(Reader.read(indexFilepath, nextKeySeekTmp + 24, keyLength));
+            if (keyFromRead.equals(key)) {
+                long dataSeek = Bytes.toLong(dataSeekBytes);
+                if (dataSeek > 0) {
+                    String dataFilepath = Common.dataFilepath(rootPath, Bytes.toInt(dataFileVersionBytes)).toString(); // 数据文件地址，数据将写入该文件中
+                    Datum datum = new Datum(dataFilepath, dataSeek);
+                    datum.delete();
+                }
+            }
+        }
     }
 
 }

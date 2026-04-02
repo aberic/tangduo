@@ -14,12 +14,14 @@
 
 package cn.aberic.tangduo.index.engine;
 
+import cn.aberic.tangduo.common.Bytes;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -31,6 +33,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * 1、跳表引擎<p>
  * 2、Btree引擎<p>
  */
+@Slf4j
 public abstract class IEngine extends Number {
 
     /** Btree联合引擎 */
@@ -43,7 +46,7 @@ public abstract class IEngine extends Number {
     /**
      * Node插入数据data
      */
-    public abstract void set(Content content) throws IOException;
+    public abstract void put(Content content) throws IOException;
 
     /**
      * 从Node中获取数据
@@ -54,7 +57,7 @@ public abstract class IEngine extends Number {
      *
      * @return 数据
      */
-    public abstract byte[] get(String indexName, long degree, String key) throws IOException;
+    public abstract List<byte[]> get(String indexName, long degree, String key) throws IOException;
 
     /**
      * 从Node中删除数据
@@ -98,6 +101,15 @@ public abstract class IEngine extends Number {
         /** 数据 */
         byte[] value;
 
+        /** 同一索引允许多个kv */
+        List<Item> items = new ArrayList<>();
+
+        // 存储结束后的内容
+        /** 数据文件版本号 */
+        byte[] dataFileVersionBytes;
+        /** 数据偏移量 */
+        byte[] dataSeekBytes;
+
         Lock lock = new ReentrantLock();
         Condition condition = lock.newCondition();
         AtomicBoolean isNotified = new AtomicBoolean(false);
@@ -108,6 +120,71 @@ public abstract class IEngine extends Number {
             this.degree = degree;
             this.key = key;
             this.value = value;
+        }
+
+        public void addItem(String indexName, long degree, String key) {
+            items.add(new Item(indexName, degree, key));
+        }
+
+        public long getDegree(String indexName) {
+            if (this.indexName.equals(indexName)) {
+                return degree;
+            }
+            return Objects.requireNonNull(items.stream().filter(item -> item.indexName.equals(indexName)).findFirst().orElse(null)).degree;
+        }
+
+        public String getKey(String indexName) {
+            if (this.indexName.equals(indexName)) {
+                return key;
+            }
+            return Objects.requireNonNull(items.stream().filter(item -> item.indexName.equals(indexName)).findFirst().orElse(null)).key;
+        }
+
+        public Lock getLock(String indexName) {
+            if (this.indexName.equals(indexName)) {
+                return lock;
+            }
+            return Objects.requireNonNull(items.stream().filter(item -> item.indexName.equals(indexName)).findFirst().orElse(null)).lock;
+        }
+
+        public AtomicBoolean getIsNotified(String indexName) {
+            if (this.indexName.equals(indexName)) {
+                return isNotified;
+            }
+            return Objects.requireNonNull(items.stream().filter(item -> item.indexName.equals(indexName)).findFirst().orElse(null)).isNotified;
+        }
+
+        public Condition getCondition(String indexName) {
+            if (this.indexName.equals(indexName)) {
+                return condition;
+            }
+            return Objects.requireNonNull(items.stream().filter(item -> item.indexName.equals(indexName)).findFirst().orElse(null)).condition;
+        }
+
+        public String toString() {
+            return String.format("WriteDataFileVersionAndDatumSeek - transactionId = %s, indexName = %s, degree = %s, key = %s, dataFileVersion = %s, dataSeek = %s",
+                    transaction.number, indexName, degree, key,
+                    Bytes.toInt(Objects.isNull(dataFileVersionBytes) ? new byte[4] : dataFileVersionBytes),
+                    Bytes.toLong(Objects.isNull(dataSeekBytes) ? new byte[8] : dataSeekBytes));
+        }
+
+        @Data
+        public static class Item {
+            /** 索引名（全名组合确保唯一性，如：库名+表名+索引名） */
+            String indexName;
+            /** 主键（-9223372036854775807 —— 9223372036854775808） */
+            long degree;
+            /** 原始key */
+            String key;
+            Lock lock = new ReentrantLock();
+            Condition condition = lock.newCondition();
+            AtomicBoolean isNotified = new AtomicBoolean(false);
+
+            public Item(String indexName, long degree, String key) {
+                this.indexName = indexName;
+                this.degree = degree;
+                this.key = key;
+            }
         }
     }
 
@@ -131,6 +208,12 @@ public abstract class IEngine extends Number {
         boolean delete = false;
 
         SearchFilter searchFilter;
+
+        public Search(String indexName, Integer limit, boolean asc) {
+            this.indexName = indexName;
+            this.limit = limit;
+            this.asc = asc;
+        }
 
         public Search(String indexName, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, boolean asc) {
             this.indexName = indexName;

@@ -20,7 +20,6 @@ import cn.aberic.tangduo.common.file.Channel;
 import cn.aberic.tangduo.common.file.Filer;
 import cn.aberic.tangduo.index.engine.Common;
 import cn.aberic.tangduo.index.engine.IEngine;
-import cn.aberic.tangduo.index.engine.Transaction;
 import cn.aberic.tangduo.index.engine.unity.entity.Leaf;
 import cn.aberic.tangduo.index.engine.unity.entity.Node;
 import lombok.Data;
@@ -37,7 +36,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.function.ToLongFunction;
 import java.util.stream.Stream;
 
 /**
@@ -74,7 +72,7 @@ public class Unity extends IEngine {
     private final LinkedBlockingQueue<Content> queue;
 
     /** 新建索引文件内容 */
-    public Unity(String rootPath, long degree, int dataFileVersion, long dataFileMaxSize, int version, String indexName, boolean primary, boolean unique, boolean nullable, int capacity) throws IOException {
+    public Unity(String rootPath, long degree, int dataFileVersion, long dataFileMaxSize, int version, String indexName, boolean primary, boolean unique, boolean nullable) throws IOException {
         this.rootPath = rootPath;
         this.dataFileVersion = dataFileVersion;
         this.dataFileMaxSize = dataFileMaxSize;
@@ -83,9 +81,6 @@ public class Unity extends IEngine {
         String degreeInterval = getDegreeInterval(degree);
         String indexFilepath = Common.unityIndexFilepath(rootPath, indexName, degreeInterval).toString();
         Filer.createFile(indexFilepath); // tmp/setAndGetBatch/unity/test/1_4294967296.1.idx
-        // 新建数据文件
-        Path dataFilepath = Common.dataFilepath(rootPath, indexName, dataFileVersion);
-        Files.createFile(dataFilepath);
         // 初始化元数据 + 创世节点
         // 2字节节点默认声明、4个字节版本号、1个字节是否主键、1个字节是否唯一索引、1个字节是否允许为空、8个字节创建时间、1005个字节冗余、2字节节点默认收尾
         byte[] dataBytes = Bytes.join(startBytes, childIndexBytes, bakBytes, endBytes, new Node().toBytes());
@@ -100,7 +95,7 @@ public class Unity extends IEngine {
      * @param rootPath        数据根路径
      * @param dataFileMaxSize 数据文件大小阈值，单位byte
      */
-    public Unity(String rootPath, String indexName, long dataFileMaxSize, int capacity) {
+    public Unity(String rootPath, String indexName, long dataFileMaxSize) {
         this.rootPath = rootPath;
         this.dataFileMaxSize = dataFileMaxSize;
         queue = new LinkedBlockingQueue<>();
@@ -113,14 +108,14 @@ public class Unity extends IEngine {
             try {
                 while (true) {
                     Content content = queue.take(); // 阻塞取数据
-                    Path indexFilepath = getIndexFilepath(content.getDegree(), content.getIndexName());
-                    set(content.getTransaction(), indexFilepath.toString(), reDegree(content.getDegree()), content.getIndexName(), content.getKey(), content.getValue());
-                    content.getLock().lock();
+                    Path indexFilepath = getIndexFilepath(content.getDegree(indexName), indexName);
+                    put(content, indexName, indexFilepath.toString());
+                    content.getLock(indexName).lock();
                     try {
-                        content.getIsNotified().set(true);
-                        content.getCondition().signal();
+                        content.getIsNotified(indexName).set(true);
+                        content.getCondition(indexName).signal();
                     } finally {
-                        content.getLock().unlock();
+                        content.getLock(indexName).unlock();
                     }
                 }
             } catch (InterruptedException e) {
@@ -183,7 +178,7 @@ public class Unity extends IEngine {
      * Node插入数据data<p>
      */
     @Override
-    public void set(Content content) {
+    public void put(Content content) {
         queue.offer(content);
     }
 
@@ -199,28 +194,23 @@ public class Unity extends IEngine {
      * | 1…256 | … | 4294966940…4294967296       | 4层：16777216个节点，每个节点含256个数据坐标，总计4294967296个数据坐标<p>
      * -------------------------------------------------------------------------------------------------------------------------------------<p>
      * <p>
-     *
-     * @param transaction 本次操作的事务
-     * @param degree      主键（1 —— 4294967296）
-     * @param indexName   索引名（全名组合确保唯一性，如：库名+表名+索引名）
-     * @param key         原始key
-     * @param value       数据
      */
-    public void set(Transaction transaction, String indexFilepath, long degree, String indexName, String key, byte[] value) throws IOException {
+    public void put(IEngine.Content content, String indexName, String indexFilepath) throws IOException {
+        long degree = reDegree(content.getDegree(indexName));
         // 获取2层节点
         long nextPosition = Math.divideExact(degree, 16777216); // 度位置; degree=4294967056; nextPosition=255; 4294967296-4294967056=240
         long nextNodeMateSeek = ROOT_NODE_SEEK + 2 + nextPosition * 8; // 向下一节点的数据坐标值在索引文件中的起始偏移量
         if (!new File(indexFilepath).exists()) {
-            log.debug("transactionId = {}, indexFilepath not found!", transaction.getNumber());
-            fillNodeLeaf(transaction, indexFilepath, degree, indexName, key, value, nextPosition, 4, nextNodeMateSeek);
+            log.debug("transactionId = {}, indexFilepath {} not found!", content.getTransaction().getNumber(), indexFilepath);
+            fillNodeLeaf(content, indexName, indexFilepath, degree, nextPosition, 4, nextNodeMateSeek);
             return;
         }
         // 获取根节点
-        Node node = new Node(indexFilepath, ROOT_NODE_SEEK);
+        Node node = new Node(indexFilepath, ROOT_NODE_SEEK, false);
         // 获取2层节点
         long nextNodeSeek = Bytes.toLong(Bytes.read(node.getData(), nextPosition * 8, 8));
         if (nextNodeSeek <= 0) {
-            fillNodeLeaf(transaction, indexFilepath, degree, indexName, key, value, nextPosition, 3, nextNodeMateSeek);
+            fillNodeLeaf(content, indexName, indexFilepath, degree, nextPosition, 3, nextNodeMateSeek);
             return;
         }
         // 2层节点在索引文件中的起始偏移量
@@ -231,7 +221,7 @@ public class Unity extends IEngine {
         nextNodeMateSeek = nextNode.getSeek() + 2 + nextPosition * 8; // 向下一节点的数据坐标值在索引文件中的起始偏移量
         nextNodeSeek = Bytes.toLong(Bytes.read(nextNode.getData(), nextPosition * 8, 8));
         if (nextNodeSeek <= 0) {
-            fillNodeLeaf(transaction, indexFilepath, degree, indexName, key, value, nextPosition, 2, nextNodeMateSeek);
+            fillNodeLeaf(content, indexName, indexFilepath, degree, nextPosition, 2, nextNodeMateSeek);
             return;
         }
         // // 3层节点在索引文件中的起始偏移量
@@ -242,7 +232,7 @@ public class Unity extends IEngine {
         nextNodeMateSeek = nextNode.getSeek() + 2 + nextPosition * 8; // 向下一节点的数据坐标值在索引文件中的起始偏移量
         nextNodeSeek = Bytes.toLong(Bytes.read(nextNode.getData(), nextPosition * 8, 8));
         if (nextNodeSeek <= 0) {
-            fillNodeLeaf(transaction, indexFilepath, degree, indexName, key, value, nextPosition, 1, nextNodeMateSeek);
+            fillNodeLeaf(content, indexName, indexFilepath, degree, nextPosition, 1, nextNodeMateSeek);
             return;
         }
         // 4层节点在索引文件中的起始偏移量
@@ -251,46 +241,46 @@ public class Unity extends IEngine {
         degree = degree - nextPosition * 256; // degree=65296-255*256=65296-65280=16
         nextPosition = Math.divideExact(degree, 1); // degree=16; nextPosition=16; 256-16=240
         long leafMateSeek = nextNode.getSeek() + 2 + nextPosition * 8; // 向下一节点的数据坐标值在索引文件中的起始偏移量
-        nextNode.set(transaction, childIndex, rootPath, nextPosition, leafMateSeek, dataFileVersion, dataFileMaxSize, indexName, key, value);
+        nextNode.put(content, childIndex, rootPath, indexName, nextPosition, leafMateSeek, dataFileVersion, dataFileMaxSize);
     }
 
-    private void fillNodeLeaf(Transaction transaction, String indexFilepath, long degree, String indexName, String key, byte[] value, long nextPosition, int nodeCount, long nodeMateSeek) throws IOException {
+    private void fillNodeLeaf(IEngine.Content content, String indexName, String indexFilepath, long degree, long nextPosition, int nodeCount, long nodeMateSeek) throws IOException {
         byte[] data; // 待写入字节数组
         Node node = new Node(); // 单个节点
         byte[] nodeBytes = node.toBytes(); // 单个节点的字节数组
-        Leaf leaf = new Leaf(rootPath, childIndex, dataFileVersion, dataFileMaxSize); // 叶子节点
+        Leaf leaf = new Leaf(childIndex, indexFilepath, -1); // 叶子节点
         switch (nodeCount) {
             case 1 -> {
-                data = Bytes.join(nodeBytes, leaf.toBytes());
+                data = Bytes.join(nodeBytes);
                 long nodeSeek = Channel.append(indexFilepath, data);
                 Channel.write(indexFilepath, nodeMateSeek, Bytes.fromLong(nodeSeek)); // 更新下一节点在本节点的持久化数据
                 long leafMateSeek = getLeafMateSeek(indexFilepath, degree, nextPosition, 256, nodeSeek);
-                leaf.set(transaction, indexName, rootPath, indexFilepath, leafMateSeek, key, value);
+                leaf.put(content, rootPath, indexName, leafMateSeek, dataFileVersion, dataFileMaxSize);
             }
             case 2 -> {
-                data = Bytes.join(nodeBytes, nodeBytes, leaf.toBytes());
+                data = Bytes.join(nodeBytes, nodeBytes);
                 long nodeSeek = Channel.append(indexFilepath, data);
                 Channel.write(indexFilepath, nodeMateSeek, Bytes.fromLong(nodeSeek)); // 更新下一节点在本节点的持久化数据
                 long leafMateSeek = getLeafMateSeek(indexFilepath, degree, nextPosition, 65536, nodeSeek);
-                leaf.set(transaction, indexName, rootPath, indexFilepath, leafMateSeek, key, value);
+                leaf.put(content, rootPath, indexName, leafMateSeek, dataFileVersion, dataFileMaxSize);
             }
             case 3 -> {
-                data = Bytes.join(nodeBytes, nodeBytes, nodeBytes, leaf.toBytes());
+                data = Bytes.join(nodeBytes, nodeBytes, nodeBytes);
                 long nodeSeek = Channel.append(indexFilepath, data);
                 Channel.write(indexFilepath, nodeMateSeek, Bytes.fromLong(nodeSeek)); // 更新下一节点在本节点的持久化数据
                 long leafMateSeek = getLeafMateSeek(indexFilepath, degree, nextPosition, 16777216, nodeSeek);
-                leaf.set(transaction, indexName, rootPath, indexFilepath, leafMateSeek, key, value);
+                leaf.put(content, rootPath, indexName, leafMateSeek, dataFileVersion, dataFileMaxSize);
             }
             case 4 -> {
                 Filer.createFile(indexFilepath); // tmp/setAndGetBatch/unity/test/1_4294967296.1.idx
                 // 初始化元数据 + 创世节点 + 2层节点 + 3层节点 + 叶子节点
                 // 2字节节点默认声明、4个字节版本号、1个字节是否主键、1个字节是否唯一索引、1个字节是否允许为空、8个字节创建时间、1005个字节冗余、2字节节点默认收尾
-                data = Bytes.join(startBytes, childIndexBytes, bakBytes, endBytes, nodeBytes, nodeBytes, nodeBytes, nodeBytes, leaf.toBytes());
+                data = Bytes.join(startBytes, childIndexBytes, bakBytes, endBytes, nodeBytes, nodeBytes, nodeBytes, nodeBytes);
                 Channel.append(indexFilepath, data);
                 long nodeSeek = ROOT_NODE_SEEK + Node.NODE_LENGTH;
                 Channel.write(indexFilepath, nodeMateSeek, Bytes.fromLong(nodeSeek)); // 更新下一节点在本节点的持久化数据
                 long leafMateSeek = getLeafMateSeek(indexFilepath, degree, nextPosition, 16777216, nodeSeek);
-                leaf.set(transaction, indexName, rootPath, indexFilepath, leafMateSeek, key, value);
+                leaf.put(content, rootPath, indexName, leafMateSeek, dataFileVersion, dataFileMaxSize);
             }
             default -> throw new UnexpectedException("nodeCount超出预期");
         }
@@ -319,13 +309,13 @@ public class Unity extends IEngine {
      * @return 数据
      */
     @Override
-    public byte[] get(String indexName, long degree, String key) throws IOException {
-        return getOrDelete(getIndexFilepath(degree, indexName).toString(), reDegree(degree), indexName, key, false);
+    public List<byte[]> get(String indexName, long degree, String key) throws IOException {
+        return getOrDelete(getIndexFilepath(degree, indexName).toString(), reDegree(degree), key, false);
     }
 
     @Override
     public void remove(String indexName, long degree, String key) throws IOException {
-        getOrDelete(getIndexFilepath(degree, indexName).toString(), reDegree(degree), indexName, key, true);
+        getOrDelete(getIndexFilepath(degree, indexName).toString(), reDegree(degree), key, true);
     }
 
     /**
@@ -340,15 +330,14 @@ public class Unity extends IEngine {
      * | 1…65536 | … | 18446744073709486080…18446744073709551616  | 4层：281474976710656个节点，每个节点含65536个数据坐标，总计18446744073709551616个数据坐标<p>
      * -------------------------------------------------------------------------------------------------------------------------------------<p>
      *
-     * @param degree    主键（-9223372036854775807 —— 9223372036854775808）
-     * @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-     * @param key       原始key
+     * @param degree 主键（-9223372036854775807 —— 9223372036854775808）
+     * @param key    原始key
      *
      * @return 数据
      */
-    public byte[] getOrDelete(String indexFilepath, long degree, String indexName, String key, boolean delete) throws IOException {
+    public List<byte[]> getOrDelete(String indexFilepath, long degree, String key, boolean delete) throws IOException {
         // 获取根节点
-        Node node = new Node(indexFilepath, ROOT_NODE_SEEK);
+        Node node = new Node(indexFilepath, ROOT_NODE_SEEK, true);
         // 获取2层节点
         long nextPosition = Math.divideExact(degree, 16777216); // 度位置; degree=4294967056; nextPosition=255; 4294967296-4294967056=240
         long node2seek = Bytes.toLong(Bytes.read(node.getData(), nextPosition * 8, 8));
@@ -376,44 +365,19 @@ public class Unity extends IEngine {
         degree = degree - nextPosition * 256; // degree=65296-255*256=65296-65280=16
         nextPosition = Math.divideExact(degree, 1); // degree=16; nextPosition=16; 256-16=240
         if (delete) {
-            nextNode.delete(nextPosition);
+            nextNode.delete(rootPath, nextPosition, key);
             return null;
         }
-        return nextNode.get(rootPath, nextPosition, indexName, key);
+        return nextNode.get(rootPath, nextPosition, key);
     }
 
     @Override
     public List<byte[]> select(Search search) throws IOException {
-        if (search.getDegreeMin() > search.getDegreeMax()) {
-            return new ArrayList<>();
-        }
         search.setDelete(false);
         if (Objects.isNull(search.getLimit())) {
             search.setLimit(10);
         }
-        Path indexParentPath = Common.unityIndexFileParentPath(rootPath, search.getIndexName());
-        List<Path> pathList;
-        try (Stream<Path> pathStream = Files.list(indexParentPath)) {
-            pathList = pathStream
-                    .filter(Files::isRegularFile)
-                    .filter(path -> path.toString().endsWith(".idx"))
-                    .sorted(Comparator.comparingLong(new ToLongFunction<Path>() {
-                        @Override
-                        public long applyAsLong(Path path) {
-                            String[] nameSplitArr = path.getFileName().toString().split("_");
-                            if (nameSplitArr[0].equals("neg")) {
-                                return Long.parseLong(nameSplitArr[1]) - Long.MAX_VALUE;
-                            } else {
-                                return Integer.parseInt(nameSplitArr[0]);
-                            }
-                        }
-                    }))
-                    .toList();
-        } catch (IOException e) {
-            log.error("list File {} IOException, {}", search.getIndexName(), e.getMessage(), e);
-            return new ArrayList<>();
-        }
-        return list(search, pathList);
+        return selectOrDelete(search);
     }
 
     @Override
@@ -422,7 +386,33 @@ public class Unity extends IEngine {
         if (Objects.isNull(search.getLimit())) {
             search.setLimit(Integer.MAX_VALUE);
         }
-        return select(search);
+        return selectOrDelete(search);
+    }
+
+    public List<byte[]> selectOrDelete(Search search) throws IOException {
+        if (search.getDegreeMin() > search.getDegreeMax()) {
+            return new ArrayList<>();
+        }
+        Path indexParentPath = Common.unityIndexFileParentPath(rootPath, search.getIndexName());
+        List<Path> pathList;
+        try (Stream<Path> pathStream = Files.list(indexParentPath)) {
+            pathList = pathStream
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.toString().endsWith(".idx"))
+                    .sorted(Comparator.comparingLong(path -> {
+                        String[] nameSplitArr = path.getFileName().toString().split("_");
+                        if (nameSplitArr[0].equals("neg")) {
+                            return Long.parseLong(nameSplitArr[1]) - Long.MAX_VALUE;
+                        } else {
+                            return Long.parseLong(nameSplitArr[0]);
+                        }
+                    }))
+                    .toList();
+        } catch (IOException e) {
+            log.error("list File {} IOException, {}", search.getIndexName(), e.getMessage(), e);
+            return new ArrayList<>();
+        }
+        return list(search, pathList);
     }
 
     private List<byte[]> list(Search search, List<Path> pathList) throws IOException {
@@ -531,7 +521,7 @@ public class Unity extends IEngine {
                 return new ArrayList<>();
             }
         }
-        Node node = new Node(path.toString(), ROOT_NODE_SEEK);
+        Node node = new Node(path.toString(), ROOT_NODE_SEEK, true);
         if (asc) {
             return listAsc(search, path.toString(), degreeMin, degreeMax, includeMin, includeMax, node, 16777216);
         }
@@ -554,7 +544,7 @@ public class Unity extends IEngine {
                 return new ArrayList<>();
             } else if (compareDegreeMax <= baseMax) {
                 degreeMax = compareDegreeMax - baseMin;
-                includeMax =  search.isIncludeMax();
+                includeMax = search.isIncludeMax();
             } else { // compareDegreeMax > baseMax
                 degreeMax = 4294967295L;
             }
@@ -567,7 +557,7 @@ public class Unity extends IEngine {
                 degreeMin = 0;
                 if (compareDegreeMax <= baseMax) {
                     degreeMax = compareDegreeMax - baseMin;
-                    includeMax =  search.isIncludeMax();
+                    includeMax = search.isIncludeMax();
                 } else { // compareDegreeMax > baseMax
                     degreeMax = 4294967295L;
                 }
@@ -576,13 +566,13 @@ public class Unity extends IEngine {
                 includeMin = search.isIncludeMin();
                 if (compareDegreeMax <= baseMax) {
                     degreeMax = compareDegreeMax - baseMin;
-                    includeMax =  search.isIncludeMax();
+                    includeMax = search.isIncludeMax();
                 } else { // compareDegreeMax > baseMax
                     degreeMax = 4294967295L;
                 }
             }
         }
-        Node node = new Node(path.toString(), ROOT_NODE_SEEK);
+        Node node = new Node(path.toString(), ROOT_NODE_SEEK, true);
         if (asc) {
             return listAsc(search, path.toString(), degreeMin, degreeMax, includeMin, includeMax, node, 16777216);
         }
@@ -606,7 +596,7 @@ public class Unity extends IEngine {
             nextPositionMax = includeMax ? (nextPositionMax + 1) : nextPositionMax;
             while (nextPositionMin < nextPositionMax) {
                 long position = nextPositionMin;
-                List<byte[]> bytesListFromNode = node.get(rootPath, position, search.getIndexName());
+                List<byte[]> bytesListFromNode = node.select(rootPath, position);
                 nextPositionMin += 1;
                 if (bytesListFromNode.isEmpty()) {
                     continue;
@@ -633,7 +623,9 @@ public class Unity extends IEngine {
                 Node nextNode = getNode(indexFilepath, nodeSeek);
                 if (Objects.nonNull(nextNode)) {
                     degreeMin = degreeMin - nextPositionMin * nodeCount;
+                    degreeMin = Math.max(degreeMin, 0);
                     degreeMax = degreeMax - nextPositionMax * nodeCount;
+                    degreeMax = Math.min(degreeMax, nodeCount);
                     return listAsc(search, indexFilepath, degreeMin, degreeMax, includeMin, includeMax, nextNode, nodeCount / 256);
                 }
                 nextPositionMin += 1;
@@ -659,7 +651,7 @@ public class Unity extends IEngine {
             nextPositionMax = includeMax ? nextPositionMax : (nextPositionMax - 1);
             while (nextPositionMin <= nextPositionMax) {
                 long position = nextPositionMax;
-                List<byte[]> bytesListFromNode = node.get(rootPath, position, search.getIndexName());
+                List<byte[]> bytesListFromNode = node.select(rootPath, position);
                 nextPositionMax -= 1;
                 if (bytesListFromNode.isEmpty()) {
                     continue;
@@ -689,7 +681,9 @@ public class Unity extends IEngine {
                 Node nextNode = getNode(indexFilepath, nodeSeek);
                 if (Objects.nonNull(nextNode)) {
                     degreeMin = degreeMin - nextPositionMin * nodeCount;
+                    degreeMin = Math.max(degreeMin, 0);
                     degreeMax = degreeMax - nextPositionMax * nodeCount;
+                    degreeMax = Math.min(degreeMax, nodeCount);
                     return listDesc(search, indexFilepath, degreeMin, degreeMax, includeMin, includeMax, nextNode, nodeCount / 256);
                 }
                 nextPositionMax -= 1;
@@ -708,7 +702,7 @@ public class Unity extends IEngine {
         if (nodeSeek <= 0) { // 下一节点不存在，需要新建下一节点
             return null;
         } else {
-            nextNode = new Node(indexFilepath, nodeSeek); // 下层节点
+            nextNode = new Node(indexFilepath, nodeSeek, true); // 下层节点
         }
         return nextNode;
     }
