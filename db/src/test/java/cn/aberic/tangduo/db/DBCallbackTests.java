@@ -232,6 +232,14 @@ public class DBCallbackTests {
 
     @Test
     @Order(3)
+    void putTextAgain() throws IOException, NoSuchFieldException {
+        String dbName = "putTextDB";
+        DB db = DB.getInstance(rootpath, 10737418240L);
+        db.put(dbName, "text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1");
+    }
+
+    @Test
+    @Order(3)
     void searchText() throws IOException, NoSuchFieldException {
         String dbName = "putTextDB";
         DB db = DB.getInstance(rootpath, 10737418240L);

@@ -6,7 +6,6 @@
     <!-- 直接使用 Spring Boot 内置变量，不用自己读配置 -->
     <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="search/tmp/log"/>
 
-
     <!-- 控制台输出 -->
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <layout class="ch.qos.logback.classic.PatternLayout">
@@ -97,9 +96,12 @@
     </appender>
     <!-- 日志采集追加器 -->
     <appender name="LOG_COLLECT" class="cn.aberic.tangduo.sdk.log.LogCollectAppender">
-        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>INFO</level>
-        </filter>
+        <!-- 业务项目在这里传入服务器地址 -->
+        <serverUrl>http://127.0.0.1:19219/db/batch/test</serverUrl>
+        <appName>search-service</appName>
+        <appKey>your-app-key-123456</appKey>
+        <batchSize>30</batchSize>
+        <flushInterval>1000</flushInterval>
     </appender>
 
     <logger name="org.apache.http" level="INFO" additivity="false"  />
@@ -118,7 +120,6 @@
         <appender-ref ref="INFO"/>
         <appender-ref ref="WARN"/>
         <appender-ref ref="ERROR"/>
-        <!-- 打开下面这行 → 自动无感上传到MongoDB -->
-        <appender-ref ref="LOG_COLLECT"/>
+        <appender-ref ref="LOG_COLLECT"/> <!-- 新增日志收集，互不影响 -->
     </root>
 </configuration>

@@ -14,17 +14,20 @@
 
 package cn.aberic.tangduo.db;
 
-import cn.aberic.tangduo.common.Bytes;
-import cn.aberic.tangduo.common.Lists;
+import cn.aberic.tangduo.common.ByteTools;
+import cn.aberic.tangduo.common.ListTools;
 import cn.aberic.tangduo.common.SHA256Tools;
 import cn.aberic.tangduo.common.file.Channel;
 import cn.aberic.tangduo.common.file.Filer;
 import cn.aberic.tangduo.common.file.Writer;
 import cn.aberic.tangduo.db.common.*;
+import cn.aberic.tangduo.common.JsonTools;
 import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.Common;
 import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.Transaction;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
@@ -34,14 +37,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 @Slf4j
 public class DB {
@@ -303,17 +306,23 @@ public class DB {
         }
         long degree4datetime = System.currentTimeMillis();
         String key4datetime = String.valueOf(degree4datetime);
-        List<JsonTools.IndexName4KeyAndDegree> list = JsonTools.parseIndexName4KeyAndDegree(value);
+        List<IndexName4KeyAndDegree> list = parseIndexName4KeyAndDegree(value);
+        String valueTmp = value;
+        for (IndexName4KeyAndDegree indexName4KeyAndDegree : list) {
+            if (indexName4KeyAndDegree.hash) {
+                valueTmp = valueTmp.replace(indexName4KeyAndDegree.key, "");
+            }
+        }
         List<String> indexNameList;
         if (segIndex.seg.equals("ik")) {
-            indexNameList = IkTokenizerTools.tokenize(value);
+            indexNameList = IkTokenizerTools.tokenize(valueTmp);
         } else {
-            indexNameList = HanlpTools.segFilter(value);
+            indexNameList = HanlpTools.segFilter(valueTmp);
         }
         indexNameList.forEach(idxName -> {
             String indexName4datetime = CommonTools.indexName4datetime(idxName);
             if (list.stream().noneMatch(in4kd -> in4kd.indexName().equals(indexName4datetime))) {
-                list.add(new JsonTools.IndexName4KeyAndDegree(indexName4datetime, key4datetime, degree4datetime));
+                list.add(new IndexName4KeyAndDegree(indexName4datetime, key4datetime, degree4datetime, false));
             }
         });
         Index index = segIndex.index;
@@ -325,14 +334,57 @@ public class DB {
         return content;
     }
 
+    // 匹配 MD5 / SHA
+    private static final Pattern HASH_PATTERN = Pattern.compile("^[a-f0-9]{32}$|^[a-f0-9]{40}$|^[a-f0-9]{64}$|^[a-f0-9]{128}$|^[a-f0-9]{256}$|^[a-f0-9]{512}$|^[a-f0-9]{1024}$", Pattern.CASE_INSENSITIVE);
+    public record IndexName4KeyAndDegree(String indexName, String key, Long degree, boolean hash) {}
+    public static List<IndexName4KeyAndDegree> parseIndexName4KeyAndDegree(String str) throws JsonProcessingException {
+        List<IndexName4KeyAndDegree> list = new ArrayList<>();
+        if (Objects.isNull(str) || !JsonTools.isJson(str)) {
+            return list;
+        }
+        long degree = System.currentTimeMillis();
+        String key = String.valueOf(degree);
+        // 解析字符串
+        JsonNode node = JsonTools.OBJECT_MAPPER.readTree(str);
+        analysis(list, node, key, degree);
+        return list;
+    }
+    private static void analysis(List<IndexName4KeyAndDegree> list, JsonNode node, String key, long degree) {
+        if (node.isArray()) {
+            node.forEach(jsonNode -> analysis(list, jsonNode, key, degree));
+        }  else if (node.isObject()) {
+            node.forEachEntry((indexName, jsonNode) -> {
+                if (jsonNode.isTextual()) {
+                    if (HASH_PATTERN.matcher(jsonNode.asText()).matches()) {
+                        list.add(new IndexName4KeyAndDegree(CommonTools.indexName(indexName.toLowerCase()), jsonNode.asText(), KeyHashTools.toLongKey(jsonNode.asText()), false));
+                        list.add(new IndexName4KeyAndDegree(CommonTools.indexName4dhash(jsonNode.asText()), jsonNode.asText(), degree, true));
+                    }
+                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName4datetime(indexName.toLowerCase()), key, degree, false));
+                } else if (jsonNode.isLong() || jsonNode.isInt()) {
+                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName(indexName.toLowerCase()), jsonNode.asText(), jsonNode.asLong(), false));
+                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName4datetime(indexName.toLowerCase()), key, degree, false));
+                } else if (jsonNode.isDouble() || jsonNode.isFloat()) {
+                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName(indexName.toLowerCase()), jsonNode.asText(), KeyHashTools.toLongKey(jsonNode.asDouble()), false));
+                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName4datetime(indexName.toLowerCase()), key, degree, false));
+                } else if (jsonNode.isArray()) {
+                    node.forEach(jn -> analysis(list, jn, key, degree));
+                }  else if (jsonNode.isObject()) {
+                    analysis(list, jsonNode, key, degree);
+                } else {
+                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName4datetime(indexName.toLowerCase()), key, degree, false));
+                }
+            });
+        }
+    }
+
     private byte[] valueToBytes(String value, List<String> segList) {
-        return Bytes.fromString(SHA256Tools.sha256(value) + "###@@@###" + value + "###@@@###" + Lists.toString(segList));
+        return ByteTools.fromString(SHA256Tools.sha256(value) + "###@@@###" + value + "###@@@###" + ListTools.toString(segList));
     }
 
     private Bm25Tools.DocItem bytesToDocItem(byte[] value) {
-        String valueStr = Bytes.toString(value);
+        String valueStr = ByteTools.toString(value);
         String[] segList = valueStr.split("###@@@###");
-        return new Bm25Tools.DocItem(segList[0], segList[1], Lists.fromString(segList[2]));
+        return new Bm25Tools.DocItem(segList[0], segList[1], ListTools.fromString(segList[2]));
     }
 
     /** Node插入数据data，此方法无分词插入处理 */
@@ -407,6 +459,9 @@ public class DB {
             indexNameList = IkTokenizerTools.seg(query);
         } else {
             indexNameList = HanlpTools.seg(query);
+        }
+        if (HASH_PATTERN.matcher(query).matches()) {
+            indexNameList.add(CommonTools.indexName4dhash(query));
         }
         Map<String, Bm25Tools.DocItem> valueWithSegMap = new ConcurrentHashMap<>();
         if (StringUtils.isEmpty(indexName)) {

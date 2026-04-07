@@ -18,9 +18,9 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 
-public class Dates {
+public class DateTools {
 
-    private Dates() {
+    private DateTools() {
         throw new IllegalStateException("Dates class");
     }
 

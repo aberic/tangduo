@@ -14,30 +14,62 @@
 
 package cn.aberic.tangduo.sdk.log;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.classic.spi.StackTraceElementProxy;
 import ch.qos.logback.core.UnsynchronizedAppenderBase;
+import cn.aberic.tangduo.common.JsonTools;
 import org.slf4j.MDC;
 
 import java.net.InetAddress;
 import java.util.Date;
+import java.util.Objects;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
 
+    /// 日志服务器地址，可配置项
+    private String serverUrl;
+    private String appName;
+    private String appKey;
+    private int    batchSize = 20;
+    private long   flushInterval = 1000;
     private static final int BATCH_SIZE = 100;
     private static final long FLUSH_INTERVAL_MS = 1000;
 
-    private final LinkedBlockingQueue<LogEntity> queue = new LinkedBlockingQueue<>(5000);
-    private final AtomicBoolean started = new AtomicBoolean(true);
-    private final String localIp;
+    private final LinkedBlockingQueue<String> queue = new LinkedBlockingQueue<>(5000);
+    private final AtomicBoolean running = new AtomicBoolean(true);
+    private String localIp;
+    private SenderConfig config;
+
+    /**
+     * 业务项目在 logback.xml 中配置：
+     * <serverUrl>http://127.0.0.1:8080/log/receive</serverUrl>
+     */
+    public void setServerUrl(String serverUrl) {
+        this.serverUrl = serverUrl;
+    }
+    public void setAppName(String appName) {this.appName = appName;}
+    public void setAppKey(String appKey) {this.appKey = appKey;}
+    public void setBatchSize(int batchSize) {this.batchSize = batchSize;}
+    public void setFlushInterval(long flushInterval) {this.flushInterval = flushInterval;}
 
     public LogCollectAppender() {
         this.localIp = getLocalIp();
         startFlushThread();
+    }
+
+    @Override
+    public void start() {
+        super.start();
+        localIp = getLocalIp();
+        config = new SenderConfig();
+        config.setServerUrl(serverUrl);
+        config.setAppName(appName);
+        config.setAppKey(appKey);
     }
 
     private String getLocalIp() {
@@ -50,7 +82,8 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
 
     @Override
     protected void append(ILoggingEvent event) {
-        if (!started.get()) return;
+        if (!isStarted() || !running.get()) return;
+        if (event.getLevel() == Level.DEBUG) return;
 
         try {
             LogEntity log = new LogEntity();
@@ -70,7 +103,7 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
                 log.setException(stackTrace);
             }
 
-            queue.offer(log);
+            queue.offer(Objects.requireNonNull(JsonTools.toJson(log)));
         } catch (Exception ignore) {}
     }
 
@@ -96,25 +129,21 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
     }
 
     private void startFlushThread() {
-        Thread thread = new Thread(() -> {
-            while (started.get()) {
+        Thread t = new Thread(() -> {
+            while (running.get()) {
                 try {
-                    boolean send = LogBatchSender.sendBatch(queue, BATCH_SIZE);
-                    if (!send) {
-                        TimeUnit.MILLISECONDS.sleep(FLUSH_INTERVAL_MS);
-                    }
-                } catch (Exception e) {
-                    // 吞异常，保证采集线程不死
-                }
+                    LogBatchSender.sendBatch(config, queue, batchSize);
+                    TimeUnit.MILLISECONDS.sleep(flushInterval);
+                } catch (Exception ignored) {}
             }
-        }, "log-collect-flush");
-        thread.setDaemon(true);
-        thread.start();
+        }, "log-collect");
+        t.setDaemon(true);
+        t.start();
     }
 
     @Override
     public void stop() {
-        started.set(false);
+        running.set(false);
         super.stop();
     }
 }

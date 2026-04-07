@@ -19,26 +19,33 @@ import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.classic.spi.StackTraceElementProxy;
 import ch.qos.logback.core.UnsynchronizedAppenderBase;
 import org.slf4j.MDC;
-import org.springframework.stereotype.Component;
+
 import java.net.InetAddress;
 import java.util.Date;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-@Component
 public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
 
+    /// 日志服务器地址，可配置项
+    private String serverUrl;
     private static final int BATCH_SIZE = 100;
     private static final long FLUSH_INTERVAL_MS = 1000;
 
-    private final LogBatchSender logBatchSender;
     private final LinkedBlockingQueue<LogEntity> queue = new LinkedBlockingQueue<>(5000);
     private final AtomicBoolean started = new AtomicBoolean(true);
     private final String localIp;
 
-    public LogCollectAppender(LogBatchSender logBatchSender) {
-        this.logBatchSender = logBatchSender;
+    /**
+     * 业务项目在 logback.xml 中配置：
+     * <serverUrl>http://127.0.0.1:8080/log/receive</serverUrl>
+     */
+    public void setServerUrl(String serverUrl) {
+        this.serverUrl = serverUrl;
+    }
+
+    public LogCollectAppender() {
         this.localIp = getLocalIp();
         startFlushThread();
     }
@@ -102,7 +109,7 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
         Thread thread = new Thread(() -> {
             while (started.get()) {
                 try {
-                    boolean send = logBatchSender.sendBatch(queue, BATCH_SIZE);
+                    boolean send = LogBatchSender.sendBatch(serverUrl, queue, BATCH_SIZE);
                     if (!send) {
                         TimeUnit.MILLISECONDS.sleep(FLUSH_INTERVAL_MS);
                     }

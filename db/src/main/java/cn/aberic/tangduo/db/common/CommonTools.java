@@ -67,6 +67,10 @@ public class CommonTools {
         return indexName(indexName, "datetime");
     }
 
+    public static String indexName4dhash(String value) {
+        return indexName(String.valueOf(value.length()), "datetime");
+    }
+
     public static String indexName(String indexName, String fieldName) {
         return indexName("default", indexName, fieldName);
     }

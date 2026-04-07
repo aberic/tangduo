@@ -19,9 +19,17 @@ import com.hankcs.hanlp.seg.common.Term;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class HanlpTools {
+
+    // 无意义英文正则：连续重复字母（aa, bb, aaa, abab）、纯2字母以内乱码英文
+    private static final Pattern MEANINGLESS_EN = Pattern.compile("^([a-z])\\1{1,}$|^[a-z]{1,2}$");    // 特殊符号正则（全覆盖 - * # 等）
+    private static final Pattern SPECIAL_SYMBOL = Pattern.compile("[^a-zA-Z0-9\\u4e00-\\u9fa5]");
+
 
     /// 标准分词，过滤数字、空格、空串、标点，并去重
     public static List<String> segNormal(String text) {
@@ -47,7 +55,51 @@ public class HanlpTools {
     }
 
     /// 标准分词，过滤无意义词（标点 + 助词 + 介词 + 连词 + 副词），并去重
+    public static List<Term> segFilterWithNature(String text) {
+        // ====================== 【第一步：全局过滤特殊符号】 ======================
+        text = SPECIAL_SYMBOL.matcher(text).replaceAll(" "); // 把符号全部换成空格
+        text = text.replaceAll("\\s+", " ").trim(); // 多空格变单空格
+        List<Term> termList = HanLP.segment(text);
+        return termList.stream()
+                .filter(term -> {
+                    // 过滤：w, u, p, c, d, r, m, q, f, s, t, b, e, y, o
+                    return !(term.nature.startsWith("w") ||
+                            term.nature.startsWith("u") ||
+                            term.nature.startsWith("p") ||
+                            term.nature.startsWith("c") ||
+                            term.nature.startsWith("d") ||
+                            term.nature.startsWith("r") ||
+                            term.nature.startsWith("m") ||
+                            term.nature.startsWith("q") ||
+                            "f".equals(term.nature.toString()) ||
+                            "s".equals(term.nature.toString()) ||
+                            "t".equals(term.nature.toString()) ||
+                            "b".equals(term.nature.toString()) ||
+                            "e".equals(term.nature.toString()) ||
+                            "y".equals(term.nature.toString()) ||
+                            "o".equals(term.nature.toString()));
+                })
+                .filter(term -> CommonTools.unSingleChinese(term.word))
+                .filter(term -> CommonTools.unSingleLetter(term.word))
+                .filter(term -> (!MEANINGLESS_EN.matcher(term.word.toLowerCase()).matches()))
+                .filter(term -> {
+                    if (term.word.isBlank()) return false;
+                    try {
+                        new BigDecimal(term.word.trim());
+                        return false;
+                    } catch (NumberFormatException e) {
+                        return true;
+                    }
+                })
+                .distinct()                       // 去重
+                .collect(Collectors.toList());
+    }
+
+    /// 标准分词，过滤无意义词（标点 + 助词 + 介词 + 连词 + 副词），并去重
     public static List<String> segFilter(String text) {
+        // ====================== 【第一步：全局过滤特殊符号】 ======================
+        text = SPECIAL_SYMBOL.matcher(text).replaceAll(" "); // 把符号全部换成空格
+        text = text.replaceAll("\\s+", " ").trim(); // 多空格变单空格
         List<Term> termList = HanLP.segment(text);
         return termList.stream()
                 .filter(term -> {
@@ -71,6 +123,7 @@ public class HanlpTools {
                 .map(term -> term.word.trim())
                 .filter(CommonTools::unSingleChinese)
                 .filter(CommonTools::unSingleLetter)
+                .filter(s -> (!MEANINGLESS_EN.matcher(s.toLowerCase()).matches()))
                 .filter(s -> {
                     if (s.isBlank()) return false;
                     try {
@@ -81,6 +134,7 @@ public class HanlpTools {
                     }
                 })                                // 去掉数字
                 .map(String::trim)                // 去空格
+                .map(String::toLowerCase)
                 .filter(s -> !s.isBlank())  // 去掉空串
                 .distinct()                       // 去重
                 .collect(Collectors.toList());
@@ -93,6 +147,9 @@ public class HanlpTools {
 
     /// 标准分词，过滤无意义词（标点 + 助词 + 介词 + 连词 + 副词），并去重
     public static List<String> segFilter4datetimeKey(String text) {
+        // ====================== 【第一步：全局过滤特殊符号】 ======================
+        text = SPECIAL_SYMBOL.matcher(text).replaceAll(" "); // 把符号全部换成空格
+        text = text.replaceAll("\\s+", " ").trim(); // 多空格变单空格
         List<Term> termList = HanLP.segment(text);
         return termList.stream()
                 .filter(term -> {
@@ -116,6 +173,7 @@ public class HanlpTools {
                 .map(term -> term.word.trim())
                 .filter(CommonTools::unSingleChinese)
                 .filter(CommonTools::unSingleLetter)
+                .filter(s -> (!MEANINGLESS_EN.matcher(s.toLowerCase()).matches()))
                 .map(s -> CommonTools.indexName4datetime(s.trim())) // 去空格同时转时间戳key
                 .filter(s -> {
                     if (s.isBlank()) return false;

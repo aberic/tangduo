@@ -16,9 +16,9 @@
     </properties>
 
     <dependencies>
-        <dependency> <!-- Spring Boot 启动核心（包含 @SpringBootApplication） -->
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
+        <dependency>
+            <groupId>cn.aberic.tangduo</groupId>
+            <artifactId>common</artifactId>
         </dependency>
     </dependencies>
 

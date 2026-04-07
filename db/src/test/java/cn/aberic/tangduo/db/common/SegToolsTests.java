@@ -14,7 +14,12 @@
 
 package cn.aberic.tangduo.db.common;
 
+import cn.aberic.tangduo.common.JsonTools;
+import cn.aberic.tangduo.db.DB;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 public class SegToolsTests {
 
@@ -92,6 +97,39 @@ public class SegToolsTests {
     @Test
     void hanlpSummary() {
         System.out.println(HanlpTools.summary(text));
+    }
+
+    @Test
+    void hanlp() throws JsonProcessingException {
+        String text = """
+                {
+                    "code":200,
+                    "data":[
+                        {
+                            "content":{
+                                "id":null,
+                                "traceId":"84a65d2d6b244cecb94787219958cc95",
+                                "level":"INFO",
+                                "message":"GET db/test 从数据库 test 中获取数据，获取依据问题：include",
+                                "threadName":"http-nio-19219-exec-3",
+                                "loggerName":"cn.aberic.tangduo.search.controller.DBController",
+                                "timestamp":1775207726094,
+                                "createTime":1775207726094,
+                                "exception":null,
+                                "serverIp":"192.168.0.2"
+                            },
+                            "id":"7d11c192a975f7d44229146a84ee51a33a4b644841d701b823de7bc654d74639",
+                            "score":0.5753641449035617
+                        }
+                    ]
+                }
+                """;
+        List<DB.IndexName4KeyAndDegree> indexName4KeyAndDegreeList = DB.parseIndexName4KeyAndDegree(text);
+        System.out.println(indexName4KeyAndDegreeList);
+        System.out.println();
+        System.out.println(JsonTools.toJson(indexName4KeyAndDegreeList));
+        System.out.println();
+        System.out.println(HanlpTools.segFilterWithNature(text));
     }
 
 }

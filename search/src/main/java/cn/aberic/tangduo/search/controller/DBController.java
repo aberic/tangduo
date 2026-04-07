@@ -63,7 +63,7 @@ public class DBController {
     }
 
     @PutMapping({"batch/{dbName}"})
-    public Response putDs(@PathVariable("dbName") String dbName, @RequestBody List<String> dataList) {
+    public Response putBD(@PathVariable("dbName") String dbName, @RequestBody List<String> dataList) {
         log.info("PUT db/batch/{} 向数据库 {} 中批量插入数据，数据量 {}}", dbName, dbName, dataList.size());
         try {
             DB db = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount);
@@ -101,11 +101,21 @@ public class DBController {
         }
     }
 
-    @GetMapping({"{dbName}"})
-    public Response getD(@PathVariable("dbName") String dbName, @RequestBody String query) {
+    @GetMapping({"{dbName}/{query}"})
+    public Response getD(@PathVariable("dbName") String dbName, @PathVariable("query") String query) {
         log.info("GET db/{} 从数据库 {} 中获取数据，获取依据问题：{}", dbName, dbName, query);
         try {
             return Response.success(DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount).get(dbName, query));
+        } catch (IOException | NoSuchFieldException e) {
+            return Response.failed(e);
+        }
+    }
+
+    @GetMapping({"{dbName}/{query}/{size}"})
+    public Response getD(@PathVariable("dbName") String dbName, @PathVariable("query") String query, @PathVariable("size") int size) {
+        log.info("GET db/{} 从数据库 {} 中获取数据，获取依据问题：{}", dbName, dbName, query);
+        try {
+            return Response.success(DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount).get(dbName, query, size));
         } catch (IOException | NoSuchFieldException e) {
             return Response.failed(e);
         }

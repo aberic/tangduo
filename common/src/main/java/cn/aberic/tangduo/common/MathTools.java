@@ -14,21 +14,26 @@
 
 package cn.aberic.tangduo.common;
 
-import java.util.Arrays;
-import java.util.List;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
-public class Lists {
+public class MathTools {
 
-    private Lists() {
-        throw new IllegalStateException("Lists class");
+    private MathTools() {
+        throw new IllegalStateException("Maths class");
     }
 
-    public static String toString(List<String> list) {
-        return String.join(",", list);
-    }
-
-    public static List<String> fromString(String str) {
-        return Arrays.asList(str.split(","));
+    /**
+     * 进行整数除法并得到浮点数结果，同时保留两位小数
+     *
+     * @param dividend 被除数
+     * @param divisor  除数
+     *
+     * @return 保留两位小数的结果
+     */
+    public static double divide(long dividend, long divisor) {
+        // 创建BigDecimal对象
+        return new BigDecimal(dividend).divide(new BigDecimal(divisor), 2, RoundingMode.HALF_UP).doubleValue();
     }
 
 }

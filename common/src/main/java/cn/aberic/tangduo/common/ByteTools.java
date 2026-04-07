@@ -19,9 +19,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-public class Bytes {
+public class ByteTools {
 
-    private Bytes() {
+    private ByteTools() {
         throw new IllegalStateException("Bytes class");
     }
 
@@ -63,15 +63,21 @@ public class Bytes {
     }
 
     public static long toLong(byte[] bytes) {
-        if (bytes.length != 8) {
-            throw new RuntimeException(String.format("trans bytes 2 u64 out of bounds, except eq 8, but receive %s", bytes.length));
-        } else {
-            long result = 0;
-            for (int i = 0; i < bytes.length; i++) {
-                result |= ((long) bytes[i] & 0xFF) << (8 * (7 - i));
-            }
-            return result;
+        if (bytes.length > 8) {
+            throw new RuntimeException(String.format("trans bytes 2 u64 out of bounds, except le 8, but receive %s", bytes.length));
         }
+        if (bytes.length < 8) {
+            try {
+                bytes = join(new byte[8 - bytes.length], bytes);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        long result = 0;
+        for (int i = 0; i < bytes.length; i++) {
+            result |= ((long) bytes[i] & 0xFF) << (8 * (7 - i));
+        }
+        return result;
     }
 
     public static byte[] fromInt(int i) {
@@ -84,15 +90,21 @@ public class Bytes {
     }
 
     public static int toInt(byte[] bytes) {
-        if (bytes.length != 4) {
-            throw new RuntimeException(String.format("trans bytes 2 u32 out of bounds, except eq 4, but receive %s", bytes.length));
-        } else {
-            int result = 0;
-            for (int i = 0; i < bytes.length; i++) {
-                result |= (bytes[i] & 0xFF) << (8 * (3 - i));
-            }
-            return result;
+        if (bytes.length > 4) {
+            throw new RuntimeException(String.format("trans bytes 2 u32 out of bounds, except le 4, but receive %s", bytes.length));
         }
+        if (bytes.length < 4) {
+            try {
+                bytes = join(new byte[4 - bytes.length], bytes);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        int result = 0;
+        for (int i = 0; i < bytes.length; i++) {
+            result |= (bytes[i] & 0xFF) << (8 * (3 - i));
+        }
+        return result;
     }
 
     public static boolean toBool(byte b) {

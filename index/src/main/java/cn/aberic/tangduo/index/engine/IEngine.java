@@ -14,7 +14,7 @@
 
 package cn.aberic.tangduo.index.engine;
 
-import cn.aberic.tangduo.common.Bytes;
+import cn.aberic.tangduo.common.ByteTools;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -164,8 +164,8 @@ public abstract class IEngine extends Number {
         public String toString() {
             return String.format("WriteDataFileVersionAndDatumSeek - transactionId = %s, indexName = %s, degree = %s, key = %s, dataFileVersion = %s, dataSeek = %s",
                     transaction.number, indexName, degree, key,
-                    Bytes.toInt(Objects.isNull(dataFileVersionBytes) ? new byte[4] : dataFileVersionBytes),
-                    Bytes.toLong(Objects.isNull(dataSeekBytes) ? new byte[8] : dataSeekBytes));
+                    ByteTools.toInt(Objects.isNull(dataFileVersionBytes) ? new byte[4] : dataFileVersionBytes),
+                    ByteTools.toLong(Objects.isNull(dataSeekBytes) ? new byte[8] : dataSeekBytes));
         }
 
         @Data

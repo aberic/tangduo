@@ -21,39 +21,39 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Date;
 
-public class DatesTests {
+public class DateToolsTests {
 
     static String dataStr = "2026-02-28 16:27:39.666";
     static String format = "yyyy-MM-dd HH:mm:ss.SSS";
 
     @Test
     void localData() {
-        LocalDate localDate = Dates.unformatLocalDate(dataStr, format);
-        Date date = Dates.localDate2date(localDate);
+        LocalDate localDate = DateTools.unformatLocalDate(dataStr, format);
+        Date date = DateTools.localDate2date(localDate);
         System.out.println(localDate);
         System.out.println(date);
-        System.out.println(Dates.localDate2date(localDate, ZoneOffset.ofHours(8)));
-        System.out.println(Dates.localDate2date8hours(localDate));
-        System.out.println(Dates.localDate2date(localDate, 8));
+        System.out.println(DateTools.localDate2date(localDate, ZoneOffset.ofHours(8)));
+        System.out.println(DateTools.localDate2date8hours(localDate));
+        System.out.println(DateTools.localDate2date(localDate, 8));
         long timestamp = date.getTime();
         System.out.println(timestamp);
-        System.out.println(Dates.localDate2timestamp(localDate));
-        System.out.println(Dates.timestamp2localDate(timestamp));
+        System.out.println(DateTools.localDate2timestamp(localDate));
+        System.out.println(DateTools.timestamp2localDate(timestamp));
     }
 
     @Test
     void localDataTime() {
-        LocalDateTime localDateTime = Dates.unformatLocalDateTime(dataStr, format);
-        Date date = Dates.localDateTime2date(localDateTime);
+        LocalDateTime localDateTime = DateTools.unformatLocalDateTime(dataStr, format);
+        Date date = DateTools.localDateTime2date(localDateTime);
         System.out.println(localDateTime);
         System.out.println(date);
-        System.out.println(Dates.localDateTime2date(localDateTime, ZoneOffset.ofHours(8)));
-        System.out.println(Dates.localDateTime2date8hours(localDateTime));
-        System.out.println(Dates.localDateTime2date(localDateTime, 8));
+        System.out.println(DateTools.localDateTime2date(localDateTime, ZoneOffset.ofHours(8)));
+        System.out.println(DateTools.localDateTime2date8hours(localDateTime));
+        System.out.println(DateTools.localDateTime2date(localDateTime, 8));
         long timestamp = date.getTime();
         System.out.println(timestamp);
-        System.out.println(Dates.localDateTime2timestamp(localDateTime));
-        System.out.println(Dates.timestamp2localDateTime(timestamp));
+        System.out.println(DateTools.localDateTime2timestamp(localDateTime));
+        System.out.println(DateTools.timestamp2localDateTime(timestamp));
 
 
         System.out.println(localDateTime.toLocalTime());

@@ -16,21 +16,21 @@ package cn.aberic.tangduo.common;
 
 import org.junit.jupiter.api.Test;
 
-public class MathsTests {
+public class MathToolsTests {
 
     @Test
     void divide() {
-        double d1 = Maths.divide(10, 3);
+        double d1 = MathTools.divide(10, 3);
         System.out.println(d1); // 3.33
         System.out.println((int) d1); // 3
         System.out.println(Math.divideExact(10, 3)); // 3
         System.out.println();
-        double d2 = Maths.divide(9, 3);
+        double d2 = MathTools.divide(9, 3);
         System.out.println(d2); // 3.0
         System.out.println((int) d2); // 3
         System.out.println(Math.divideExact(9, 3)); // 3
         System.out.println();
-        double d3 = Maths.divide(3, 10);
+        double d3 = MathTools.divide(3, 10);
         System.out.println(d3); // 0.3
         System.out.println((int) d3); // 0
         System.out.println(Math.divideExact(3, 10)); // 0

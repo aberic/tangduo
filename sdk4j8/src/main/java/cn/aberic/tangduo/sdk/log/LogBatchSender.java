@@ -14,19 +14,15 @@
 
 package cn.aberic.tangduo.sdk.log;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-@Component
-@RequiredArgsConstructor
 public class LogBatchSender {
 
     // 批量入库 + 失败重试
-    public boolean sendBatch(LinkedBlockingQueue<LogEntity> queue, int batchSize) {
+    public static boolean sendBatch(String serverUrl, LinkedBlockingQueue<LogEntity> queue, int batchSize) {
         if (queue.isEmpty()) return false;
 
         List<LogEntity> list = new ArrayList<>(batchSize);
@@ -41,9 +37,9 @@ public class LogBatchSender {
             try {
                 // mongoTemplate.insertAll(list);
                 // todo 真实批量写入
-                System.out.println("模拟批量写入开始");
+                System.out.println("模拟批量写入开始：serverUrl" + serverUrl);
                 System.out.println(list);
-                System.out.println("模拟批量写入结束");
+                System.out.println("模拟批量写入结束：serverUrl" + serverUrl);
                 success = true;
             } catch (Exception e) {
                 retry++;

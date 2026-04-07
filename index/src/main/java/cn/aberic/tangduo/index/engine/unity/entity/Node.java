@@ -14,7 +14,7 @@
 
 package cn.aberic.tangduo.index.engine.unity.entity;
 
-import cn.aberic.tangduo.common.Bytes;
+import cn.aberic.tangduo.common.ByteTools;
 import cn.aberic.tangduo.common.file.Channel;
 import cn.aberic.tangduo.common.file.Reader;
 import cn.aberic.tangduo.index.engine.IEngine;
@@ -112,7 +112,7 @@ public class Node implements INode {
         if (seek <= 0) { // 节点不存在，需要新建节点
             data = new byte[DATA_LENGTH];
             seek = Channel.append(indexFilepath, toBytes());
-            Channel.write(indexFilepath, mateSeek, Bytes.fromLong(seek)); // 更新下一节点在本节点的持久化数据
+            Channel.write(indexFilepath, mateSeek, ByteTools.fromLong(seek)); // 更新下一节点在本节点的持久化数据
         } else {
             byte[] bytes = Channel.read(indexFilepath, seek, Node.NODE_LENGTH);
             if (bytes.length != NODE_LENGTH) {
@@ -121,7 +121,7 @@ public class Node implements INode {
             if (bytes[0] != startBytes[0] || bytes[1] != startBytes[1] || bytes[NODE_LENGTH - 2] != endBytes[0] || bytes[NODE_LENGTH - 1] != endBytes[1]) {
                 throw new UnexpectedException("解析bytes与Node所需首尾默认值不匹配！");
             }
-            data = Bytes.read(bytes, 2, NODE_LENGTH - 4);
+            data = ByteTools.read(bytes, 2, NODE_LENGTH - 4);
         }
         this.seek = seek;
     }
@@ -143,7 +143,7 @@ public class Node implements INode {
         if (bytes[0] != startBytes[0] || bytes[1] != startBytes[1] || bytes[NODE_LENGTH - 2] != endBytes[0] || bytes[NODE_LENGTH - 1] != endBytes[1]) {
             throw new UnexpectedException("解析bytes与Node所需首尾默认值不匹配！");
         }
-        data = Bytes.read(bytes, 2, NODE_LENGTH - 4);
+        data = ByteTools.read(bytes, 2, NODE_LENGTH - 4);
         this.seek = seek;
     }
 
@@ -156,8 +156,8 @@ public class Node implements INode {
      * @param dataFileMaxSize 数据文件大小阈值，单位byte
      */
     public void put(IEngine.Content content, Unity.ChildIndex childIndex, String rootPath, String indexName, long position, long leafMateSeek,
-                    int dataFileVersion, long dataFileMaxSize) throws IOException {
-        long leafSeek = Bytes.toLong(Bytes.read(data, position * 8, 8)); // Leaf在索引文件中的起始偏移量
+                    int dataFileVersion, long dataFileMaxSize) throws Exception {
+        long leafSeek = ByteTools.toLong(ByteTools.read(data, position * 8, 8)); // Leaf在索引文件中的起始偏移量
         Leaf leaf = new Leaf(childIndex, indexFilepath, leafSeek);
         // 更新 indexDataSeek
         leaf.put(content, rootPath, indexName, leafMateSeek, dataFileVersion, dataFileMaxSize);
@@ -171,7 +171,7 @@ public class Node implements INode {
      * @param key      原始key
      */
     public List<byte[]> get(String rootPath, long position, String key) throws IOException {
-        long leafSeek = Bytes.toLong(Bytes.read(data, position * 8, 8)); // Leaf在索引文件中的起始偏移量
+        long leafSeek = ByteTools.toLong(ByteTools.read(data, position * 8, 8)); // Leaf在索引文件中的起始偏移量
         if (leafSeek <= 0) {
             return null;
         } else {
@@ -188,7 +188,7 @@ public class Node implements INode {
      * @param key      原始key
      */
     public void delete(String rootPath, long position, String key) throws IOException {
-        long leafSeek = Bytes.toLong(Bytes.read(data, position * 8, 8)); // Leaf在索引文件中的起始偏移量
+        long leafSeek = ByteTools.toLong(ByteTools.read(data, position * 8, 8)); // Leaf在索引文件中的起始偏移量
         if (leafSeek > 0) {
             Leaf leaf = new Leaf(indexFilepath, leafSeek);
             leaf.delete(rootPath, key);
@@ -202,7 +202,7 @@ public class Node implements INode {
      * @param position 数据坐标在节点字节数组中的位置
      */
     public List<byte[]> select(String rootPath, long position) throws IOException {
-        long leafSeek = Bytes.toLong(Bytes.read(data, position * 8, 8)); // Leaf在索引文件中的起始偏移量
+        long leafSeek = ByteTools.toLong(ByteTools.read(data, position * 8, 8)); // Leaf在索引文件中的起始偏移量
         if (leafSeek <= 0) {
             return new ArrayList<>();
         } else {
@@ -217,7 +217,21 @@ public class Node implements INode {
      * @return 存储字节数组
      */
     public byte[] toBytes() throws IOException {
-        return Bytes.join(startBytes, data, endBytes);
+        return ByteTools.join(startBytes, data, endBytes);
+    }
+
+    /// 有内容节点数量
+    public int valueCount() {
+        int count = 0;
+        int position = 2;
+        while (position <= data.length) {
+            byte[] bytes = ByteTools.read(data, position, 8);
+            if (ByteTools.toLong(bytes) > 0) {
+                count++;
+            }
+            position += 8;
+        }
+        return count;
     }
 
 }

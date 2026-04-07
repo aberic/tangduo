@@ -12,22 +12,23 @@
  * limitations under the License.
  */
 
-package cn.aberic.tangduo.common;
+package cn.aberic.tangduo.sdk.log;
 
-import org.junit.jupiter.api.Test;
+public class SenderConfig {
 
-import java.util.List;
+    private String serverUrl;
+    private String appName;
+    private String appKey;
 
-public class ListsTests {
+    public String getServerUrl() {return serverUrl;}
 
-    @Test
-    void demo() {
-        List<String> list = List.of("我", "喜欢", "Java");
-        System.out.println(list);
-        String s = Lists.toString(list);
-        System.out.println(s);
-        List<String> listFromString = Lists.fromString(s);
-        System.out.println(listFromString);
-    }
+    public void setServerUrl(String serverUrl) {this.serverUrl = serverUrl;}
 
+    public String getAppName() {return appName;}
+
+    public void setAppName(String appName) {this.appName = appName;}
+
+    public String getAppKey() {return appKey;}
+
+    public void setAppKey(String appKey) {this.appKey = appKey;}
 }

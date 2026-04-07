@@ -14,7 +14,7 @@
 
 package cn.aberic.tangduo.index.engine.skip.entity;
 
-import cn.aberic.tangduo.common.Bytes;
+import cn.aberic.tangduo.common.ByteTools;
 import cn.aberic.tangduo.index.engine.INode;
 import lombok.Data;
 
@@ -86,21 +86,21 @@ public class Node implements INode {
                 throw new UnexpectedException("解析bytes与Node所需首尾默认值不匹配！");
             }
             status = bytes[2];
-            key = Bytes.toLong(Bytes.read(bytes, 3, 8));
-            dataPosition = Bytes.toLong(Bytes.read(bytes, 11, 8));
-            nextNodePosition = Bytes.toLong(Bytes.read(bytes, 19, 8));
-            nextShiNodePosition = Bytes.toLong(Bytes.read(bytes, 27, 8));
-            nextBaiNodePosition = Bytes.toLong(Bytes.read(bytes, 35, 8));
-            nextQianNodePosition = Bytes.toLong(Bytes.read(bytes, 43, 8));
-            nextWanNodePosition = Bytes.toLong(Bytes.read(bytes, 51, 8));
-            nextShiWanNodePosition = Bytes.toLong(Bytes.read(bytes, 59, 8));
-            nextBaiWanNodePosition = Bytes.toLong(Bytes.read(bytes, 67, 8));
-            nextQianWanNodePosition = Bytes.toLong(Bytes.read(bytes, 75, 8));
-            nextYiNodePosition = Bytes.toLong(Bytes.read(bytes, 83, 8));
-            nextShiYiNodePosition = Bytes.toLong(Bytes.read(bytes, 91, 8));
-            nextBaiYiNodePosition = Bytes.toLong(Bytes.read(bytes, 99, 8));
-            nextQianYiNodePosition = Bytes.toLong(Bytes.read(bytes, 107, 8));
-            nextZhaoNodePosition = Bytes.toLong(Bytes.read(bytes, 115, 8));
+            key = ByteTools.toLong(ByteTools.read(bytes, 3, 8));
+            dataPosition = ByteTools.toLong(ByteTools.read(bytes, 11, 8));
+            nextNodePosition = ByteTools.toLong(ByteTools.read(bytes, 19, 8));
+            nextShiNodePosition = ByteTools.toLong(ByteTools.read(bytes, 27, 8));
+            nextBaiNodePosition = ByteTools.toLong(ByteTools.read(bytes, 35, 8));
+            nextQianNodePosition = ByteTools.toLong(ByteTools.read(bytes, 43, 8));
+            nextWanNodePosition = ByteTools.toLong(ByteTools.read(bytes, 51, 8));
+            nextShiWanNodePosition = ByteTools.toLong(ByteTools.read(bytes, 59, 8));
+            nextBaiWanNodePosition = ByteTools.toLong(ByteTools.read(bytes, 67, 8));
+            nextQianWanNodePosition = ByteTools.toLong(ByteTools.read(bytes, 75, 8));
+            nextYiNodePosition = ByteTools.toLong(ByteTools.read(bytes, 83, 8));
+            nextShiYiNodePosition = ByteTools.toLong(ByteTools.read(bytes, 91, 8));
+            nextBaiYiNodePosition = ByteTools.toLong(ByteTools.read(bytes, 99, 8));
+            nextQianYiNodePosition = ByteTools.toLong(ByteTools.read(bytes, 107, 8));
+            nextZhaoNodePosition = ByteTools.toLong(ByteTools.read(bytes, 115, 8));
         }
     }
 
@@ -284,11 +284,11 @@ public class Node implements INode {
      * @return 存储字节数组
      */
     public byte[] toBytes() throws IOException {
-        return Bytes.join(start, new byte[]{status}, Bytes.fromLong(key), Bytes.fromLong(dataPosition), Bytes.fromLong(nextNodePosition), Bytes.fromLong(nextShiNodePosition),
-                Bytes.fromLong(nextBaiNodePosition), Bytes.fromLong(nextQianNodePosition), Bytes.fromLong(nextBaiWanNodePosition),
-                Bytes.fromLong(nextShiWanNodePosition), Bytes.fromLong(nextBaiWanNodePosition), Bytes.fromLong(nextQianWanNodePosition),
-                Bytes.fromLong(nextYiNodePosition), Bytes.fromLong(nextShiYiNodePosition), Bytes.fromLong(nextBaiYiNodePosition),
-                Bytes.fromLong(nextQianYiNodePosition), Bytes.fromLong(nextZhaoNodePosition), end);
+        return ByteTools.join(start, new byte[]{status}, ByteTools.fromLong(key), ByteTools.fromLong(dataPosition), ByteTools.fromLong(nextNodePosition), ByteTools.fromLong(nextShiNodePosition),
+                ByteTools.fromLong(nextBaiNodePosition), ByteTools.fromLong(nextQianNodePosition), ByteTools.fromLong(nextBaiWanNodePosition),
+                ByteTools.fromLong(nextShiWanNodePosition), ByteTools.fromLong(nextBaiWanNodePosition), ByteTools.fromLong(nextQianWanNodePosition),
+                ByteTools.fromLong(nextYiNodePosition), ByteTools.fromLong(nextShiYiNodePosition), ByteTools.fromLong(nextBaiYiNodePosition),
+                ByteTools.fromLong(nextQianYiNodePosition), ByteTools.fromLong(nextZhaoNodePosition), end);
     }
 
 }

@@ -14,7 +14,7 @@
 
 package cn.aberic.tangduo.index.engine;
 
-import cn.aberic.tangduo.common.Bytes;
+import cn.aberic.tangduo.common.ByteTools;
 import cn.aberic.tangduo.common.file.Channel;
 import cn.aberic.tangduo.common.file.Reader;
 import lombok.Data;
@@ -60,9 +60,9 @@ public class Datum {
      */
     public void writeOrUpdate(IEngine.Content content, String indexFilepath, long datumMateSeek) throws IOException {
         // 4字节数据长度+ 数据字节数组
-        byte[] dataLengthBytes = Bytes.fromInt(content.getValue().length);
-        long dataSeek = Channel.append(filepath, Bytes.join(dataLengthBytes, content.getValue()));
-        byte[] dataSeekBytes = Bytes.fromLong(dataSeek);
+        byte[] dataLengthBytes = ByteTools.fromInt(content.getValue().length);
+        long dataSeek = Channel.append(filepath, ByteTools.join(dataLengthBytes, content.getValue()));
+        byte[] dataSeekBytes = ByteTools.fromLong(dataSeek);
         content.transaction.addTask(indexFilepath, datumMateSeek, dataSeekBytes, new byte[8]);
         if (Objects.isNull(content.getDataSeekBytes())) {
             content.setDataSeekBytes(dataSeekBytes);
@@ -72,7 +72,7 @@ public class Datum {
     /** 读取指定传入原始key相匹配的数据 */
     public byte[] read() throws IOException {
         // 4字节数据长度+ 数据字节数组
-        int dataLength = Bytes.toInt(Reader.read(filepath, seek, 4)); // 4字节数据主体长度
+        int dataLength = ByteTools.toInt(Reader.read(filepath, seek, 4)); // 4字节数据主体长度
         if (dataLength > 0) {
             return Reader.read(filepath, seek + 4, dataLength);
         }

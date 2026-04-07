@@ -14,7 +14,7 @@
 
 package cn.aberic.tangduo.common.file;
 
-import cn.aberic.tangduo.common.Bytes;
+import cn.aberic.tangduo.common.ByteTools;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -58,12 +58,12 @@ public class FileTests {
     @Test
     void longTbytes() {
         long l = 999999999999999999L;
-        byte[] bytes = Bytes.fromLong(l);
-        System.out.println(l + " | " + Bytes.toLong(bytes));
+        byte[] bytes = ByteTools.fromLong(l);
+        System.out.println(l + " | " + ByteTools.toLong(bytes));
 
         l = -999999999999999999L;
-        bytes = Bytes.fromLong(l);
-        System.out.println(l + " | " + Bytes.toLong(bytes));
+        bytes = ByteTools.fromLong(l);
+        System.out.println(l + " | " + ByteTools.toLong(bytes));
     }
 
     @Test
@@ -72,9 +72,9 @@ public class FileTests {
         System.out.println(Writer.appendForce(filepath, 1));
         System.out.println(Writer.appendForce(filepath, 999999999999L));
         System.out.println(Writer.appendForce(filepath, 999999999999999999L));
-        System.out.println(Bytes.toLong(Reader.read(filepath, 0, 8)));
-        System.out.println(Bytes.toLong(Reader.read(filepath, 8, 8)));
-        System.out.println(Bytes.toLong(Reader.read(filepath, 16, 8)));
+        System.out.println(ByteTools.toLong(Reader.read(filepath, 0, 8)));
+        System.out.println(ByteTools.toLong(Reader.read(filepath, 8, 8)));
+        System.out.println(ByteTools.toLong(Reader.read(filepath, 16, 8)));
     }
 
     @Test

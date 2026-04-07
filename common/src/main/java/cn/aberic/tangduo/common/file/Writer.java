@@ -14,7 +14,7 @@
 
 package cn.aberic.tangduo.common.file;
 
-import cn.aberic.tangduo.common.Bytes;
+import cn.aberic.tangduo.common.ByteTools;
 import lombok.NonNull;
 
 import java.io.FileOutputStream;
@@ -99,7 +99,7 @@ public class Writer {
             write(filepath, l);
         } catch (NoSuchFileException e) {
             Filer.createFile(filepath);
-            writeForce(filepath, Bytes.fromLong(l));
+            writeForce(filepath, ByteTools.fromLong(l));
         } catch (IOException e) {
             throw new IOException(e);
         }
@@ -112,7 +112,7 @@ public class Writer {
      * @param l        指定int64
      */
     public static void write(@NonNull String filepath, long l) throws IOException {
-        write(filepath, Bytes.fromLong(l));
+        write(filepath, ByteTools.fromLong(l));
     }
 
     /**
@@ -122,7 +122,7 @@ public class Writer {
      * @param l        指定int64
      */
     public synchronized static long append(@NonNull String filepath, long l) throws IOException {
-        return append(filepath, Bytes.fromLong(l));
+        return append(filepath, ByteTools.fromLong(l));
     }
 
     /**
@@ -185,7 +185,7 @@ public class Writer {
      * @param l        指定int64
      */
     public synchronized static long appendForce(@NonNull String filepath, long l) throws IOException {
-        return appendForce(filepath, Bytes.fromLong(l));
+        return appendForce(filepath, ByteTools.fromLong(l));
     }
 
     /**
@@ -224,7 +224,7 @@ public class Writer {
      * @param l        指定int64
      */
     public static void write(@NonNull String filepath, long seek, long l) throws IOException {
-        write(filepath, seek, Bytes.fromLong(l));
+        write(filepath, seek, ByteTools.fromLong(l));
     }
 
     /**

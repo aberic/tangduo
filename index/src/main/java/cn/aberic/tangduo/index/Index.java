@@ -98,7 +98,7 @@ public class Index {
         }
     }
 
-    private IEngine engine(int indexEngine, String indexName) throws NoSuchFieldException {
+    private IEngine engine(int indexEngine, String indexName) throws NoSuchFieldException, IOException {
         switch (indexEngine) {
             case IEngine.UNITY -> {
                 return new Unity(rootPath, indexName, dataFileMaxSize);

@@ -50,6 +50,19 @@ public class SHA256Tools {
     }
 
     /**
+     * 字节数组 SHA-256 摘要
+     */
+    public static String sha256(long l) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance(SHA256);
+            byte[] hash = digest.digest(ByteTools.fromLong(l));
+            return bytesToHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("不支持的算法 SHA-256", e);
+        }
+    }
+
+    /**
      * 文件 SHA-256（使用 FileChannel 高效读取，适合大文件）
      */
     public static String sha256File(String filePath) throws IOException {
