@@ -10,6 +10,11 @@ buildNumber.properties
 # https://github.com/takari/maven-wrapper#usage-without-binary-jar
 .mvn/wrapper/maven-wrapper.jar
 
+/tmp
 */tmp
+*/*/tmp
+*/*/*/tmp
 /LOG_DIR_IS_UNDEFINED/
 /LOG_PATH_IS_UNDEFINED/
+*/LOG_PATH_IS_UNDEFINED/
+*/*/LOG_PATH_IS_UNDEFINED/

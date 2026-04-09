@@ -12,15 +12,15 @@
  * limitations under the License.
  */
 
-package cn.aberic.tangduo.sdk.log;
+package cn.aberic.tangduo.search.entity;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
-public class SenderConfig {
+public class ReqSearchDataVO extends ReqSelectDataVO {
 
-    private String serverUrl;
-    private String appName;
-    private String appKey;
+    String query;
 
 }

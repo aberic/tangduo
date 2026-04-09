@@ -243,7 +243,7 @@ public class DBCallbackTests {
     void searchText() throws IOException, NoSuchFieldException {
         String dbName = "putTextDB";
         DB db = DB.getInstance(rootpath, 10737418240L);
-        List<Bm25Tools.DocItem> docItems = db.get(dbName, search1, 100);
+        List<Bm25Tools.DocItem> docItems = db.search(dbName, search1, 100);
         System.out.println("size = " + docItems.size());
         docItems.forEach(System.out::println);
     }
@@ -253,7 +253,7 @@ public class DBCallbackTests {
     void searchText1() throws IOException, NoSuchFieldException {
         String dbName = "putTextDB";
         DB db = DB.getInstance(rootpath, 10737418240L);
-        List<Bm25Tools.DocItem> docItems = db.get(dbName, search1);
+        List<Bm25Tools.DocItem> docItems = db.search(dbName, search1);
         System.out.println("size = " + docItems.size());
         docItems.forEach(System.out::println);
     }

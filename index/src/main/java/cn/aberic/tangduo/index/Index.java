@@ -258,7 +258,7 @@ public class Index {
         if (indexMap.containsKey(indexName)) {
             return indexMap.get(indexName).select(search);
         } else {
-            log.info("select indexMap.get(indexName) is null, indexName = {}", indexName);
+            log.info("select indexMap.get({}) is null", indexName);
             return null;
         }
     }
@@ -269,7 +269,7 @@ public class Index {
         if (indexMap.containsKey(indexName)) {
             return indexMap.get(indexName).delete(search);
         } else {
-            log.info("delete indexMap.get(indexName) is null, indexName = {}", indexName);
+            log.info("delete indexMap.get({}) is null", indexName);
             return null;
         }
     }

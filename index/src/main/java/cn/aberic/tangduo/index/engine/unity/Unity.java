@@ -115,9 +115,6 @@ public class Unity extends IEngine {
                 while (true) {
                     Content content = queue.take(); // 阻塞取数据
                     Path indexFilepath = getIndexFilepath(content.getDegree(indexName), indexName);
-                    if (indexName.equals("default_include_datetime")) {
-                        log.debug("put default_include_datetime key={}, degree={}, indexFilepath={}", content.getKey(indexName), content.getDegree(indexName), indexFilepath);
-                    }
                     put(content, indexName, indexFilepath.toString());
                     content.getLock(indexName).lock();
                     try {
@@ -212,7 +209,7 @@ public class Unity extends IEngine {
         long nextPosition = Math.divideExact(degree, 16777216); // 度位置; degree=4294967056; nextPosition=255; 4294967296-4294967056=240
         long nextNodeMateSeek = ROOT_NODE_SEEK + 2 + nextPosition * 8; // 向下一节点的数据坐标值在索引文件中的起始偏移量
         if (!new File(indexFilepath).exists()) {
-            log.debug("transactionId = {}, indexFilepath {} not found!", content.getTransaction().getNumber(), indexFilepath);
+            log.trace("transactionId = {}, indexFilepath {} not found!", content.getTransaction().getNumber(), indexFilepath);
             fillNodeLeaf(content, indexName, indexFilepath, degree, nextPosition, 4, nextNodeMateSeek);
             return;
         }
@@ -610,7 +607,7 @@ public class Unity extends IEngine {
                     continue;
                 }
                 if (Objects.nonNull(search.getSearchFilter())) {
-                    bytesListFromNode = search.getSearchFilter().filter(bytesListFromNode);
+                    bytesListFromNode = search.getSearchFilter().filter(bytesListFromNode, search.getConditions());
                 }
                 if (search.isDelete() && !bytesListFromNode.isEmpty()) {
                     long leafMateSeek = node.getSeek() + 2 + position * 8;
@@ -635,7 +632,7 @@ public class Unity extends IEngine {
                     List<byte[]> bytesListTmp = listAsc(search, indexFilepath, degreeMinTmp, degreeMaxTmp, includeMin, includeMax, nextNode, nodeCount / 256);
                     if (!bytesListTmp.isEmpty()) {
                         if (Objects.nonNull(search.getSearchFilter())) {
-                            bytesListTmp = search.getSearchFilter().filter(bytesListTmp);
+                            bytesListTmp = search.getSearchFilter().filter(bytesListTmp, search.getConditions());
                         }
                         if (bytesList.size() + bytesListTmp.size() < search.getLimit()) {
                             bytesList.addAll(bytesListTmp);
@@ -676,7 +673,7 @@ public class Unity extends IEngine {
                     continue;
                 }
                 if (Objects.nonNull(search.getSearchFilter())) {
-                    bytesListFromNode = search.getSearchFilter().filter(bytesListFromNode);
+                    bytesListFromNode = search.getSearchFilter().filter(bytesListFromNode, search.getConditions());
                 }
                 if (search.isDelete() && !bytesListFromNode.isEmpty()) {
                     long leafMateSeek = node.getSeek() + 2 + position * 8;
@@ -705,7 +702,7 @@ public class Unity extends IEngine {
                     List<byte[]> bytesListTmp = listDesc(search, indexFilepath, degreeMinTmp, degreeMaxTmp, includeMin, includeMax, nextNode, nodeCount / 256);
                     if (!bytesListTmp.isEmpty()) {
                         if (Objects.nonNull(search.getSearchFilter())) {
-                            bytesListTmp = search.getSearchFilter().filter(bytesListTmp);
+                            bytesListTmp = search.getSearchFilter().filter(bytesListTmp, search.getConditions());
                         }
                         if (bytesList.size() + bytesListTmp.size() < search.getLimit()) {
                             bytesList.addAll(bytesListTmp);

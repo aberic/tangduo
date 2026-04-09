@@ -116,7 +116,6 @@ public class Bm25Tools {
         private String content;
         double score = 0.0;
         /// 预计算好的分词（关键：分词只做一次，不重复做）
-        @JsonIgnore
         private List<String> segList;
 
         public DocItem(String id, String content, List<String> segList) {

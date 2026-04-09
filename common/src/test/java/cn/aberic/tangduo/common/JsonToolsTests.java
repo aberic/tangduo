@@ -16,9 +16,11 @@ package cn.aberic.tangduo.common;
 
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class JsonToolsTests {
 
@@ -44,6 +46,87 @@ public class JsonToolsTests {
         Map<String, Object> map1 = JsonTools.toMap(json);
         assert map1 != null;
         map1.forEach((key, value) -> System.out.println("Key: " + key + ", Value: " + value));
+    }
+
+    String jsonStr = """
+            {
+              "database": "national",
+              "index": "schools",
+              "student": {
+                "name": "n",
+                "age": 12
+              },
+              "rating1": 4.5,
+              "rating2": 4.5555,
+              "values": [
+                {
+                  "key": "key",
+                  "value": {
+                    "name": "City School",
+                    "description": "ICSE",
+                    "street": "West End",
+                    "city": "Meerut",
+                    "state": "UP",
+                    "zip": "250002",
+                    "location": [
+                      28.9926174,
+                      77.692485
+                    ],
+                    "fees": 3500,
+                    "tags": [
+                      "fully computerized"
+                    ],
+                    "rating": "4.5"
+                  }
+                },
+                {
+                  "key": "key",
+                  "value": {
+                    "name": "City School",
+                    "description": "ICSE",
+                    "street": "West End",
+                    "city": "Meerut",
+                    "state": "UP",
+                    "zip": "250002",
+                    "location": [
+                      28.9926174,
+                      77.692485
+                    ],
+                    "fees": 3500,
+                    "tags": [
+                      "fully computerized"
+                    ],
+                    "rating": "4.5"
+                  }
+                }
+              ]
+            }""";
+
+    @Test
+    void getValueByPath() throws Exception {
+        Object obj = JsonTools.getValueByPath(jsonStr, "student.name");
+        assert obj instanceof String;
+        assert Objects.equals(JsonTools.getValueByPath(jsonStr, "student.name"), "n");
+
+        obj = JsonTools.getValueByPath(jsonStr, "student.age");
+        assert obj instanceof Integer;
+        assert (int)JsonTools.getValueByPath(jsonStr, "student.age") == 12;
+
+        obj = JsonTools.getValueByPath(jsonStr, "values");
+        assert obj instanceof List<?>;
+
+        obj = JsonTools.getValueByPath(jsonStr, "values[0].value.name");
+        assert obj instanceof String;
+        assert Objects.equals(JsonTools.getValueByPath(jsonStr, "values[0].value.name"), "City School");
+
+        obj = JsonTools.getValueByPath(jsonStr, "student.age");
+        assert obj instanceof Number;
+        obj = JsonTools.getValueByPath(jsonStr, "rating1");
+        assert obj instanceof Number: obj;
+        obj = JsonTools.getValueByPath(jsonStr, "rating2");
+        assert obj instanceof Double: obj;
+
+
     }
 
 }

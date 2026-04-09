@@ -12,15 +12,30 @@
  * limitations under the License.
  */
 
-package cn.aberic.tangduo.sdk.log;
+package cn.aberic.tangduo.search.entity;
 
 import lombok.Data;
 
-@Data
-public class SenderConfig {
+import java.util.List;
 
-    private String serverUrl;
-    private String appName;
-    private String appKey;
+@Data
+public class ReqPutDataBatchVO {
+
+    /// 插入、读取
+    String database;
+    /// 插入、读取
+    String index;
+    /// 插入
+    boolean seg = true;
+    /// 批量插入
+    List<Value> values;
+
+    @Data
+    public static class Value {
+        /// 插入、读取
+        String key;
+        /// 插入
+        Object value;
+    }
 
 }

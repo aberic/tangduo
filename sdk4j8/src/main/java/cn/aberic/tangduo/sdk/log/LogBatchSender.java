@@ -14,32 +14,33 @@
 
 package cn.aberic.tangduo.sdk.log;
 
+import cn.aberic.tangduo.sdk.common.HttpTools;
+import cn.aberic.tangduo.sdk.common.JsonTools;
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 public class LogBatchSender {
 
     // 批量入库 + 失败重试
-    public static boolean sendBatch(String serverUrl, LinkedBlockingQueue<LogEntity> queue, int batchSize) {
-        if (queue.isEmpty()) return false;
+    public static void sendBatch(SenderConfig config, LinkedBlockingQueue<String> queue, int batchSize) {
+        if (queue.isEmpty()) return;
 
-        List<LogEntity> list = new ArrayList<>(batchSize);
+        List<String> list = new ArrayList<>(batchSize);
         queue.drainTo(list, batchSize);
 
-        if (list.isEmpty()) return false;
+        if (list.isEmpty()) return;
 
         int retry = 0;
         boolean success = false;
 
         while (retry < 2 && !success) {
             try {
-                // mongoTemplate.insertAll(list);
-                // todo 真实批量写入
-                System.out.println("模拟批量写入开始：serverUrl" + serverUrl);
-                System.out.println(list);
-                System.out.println("模拟批量写入结束：serverUrl" + serverUrl);
+                HttpTools.putJson(config.getServerUrl(), JsonTools.toJson(list));
                 success = true;
             } catch (Exception e) {
                 retry++;
@@ -50,6 +51,5 @@ public class LogBatchSender {
                 }
             }
         }
-        return true;
     }
 }

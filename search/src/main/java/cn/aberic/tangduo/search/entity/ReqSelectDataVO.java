@@ -12,15 +12,26 @@
  * limitations under the License.
  */
 
-package cn.aberic.tangduo.sdk.log;
+package cn.aberic.tangduo.search.entity;
 
 import lombok.Data;
 
 @Data
-public class SenderConfig {
+public class ReqSelectDataVO {
 
-    private String serverUrl;
-    private String appName;
-    private String appKey;
+    /// 插入、读取
+    String database;
+    /** 索引名（全名组合确保唯一性，如：库名+表名+索引名） */
+    String index;
+    /** 最小主键（-9223372036854775807 —— 9223372036854775808） */
+    long degreeMin = Long.MIN_VALUE;
+    /** 最大主键（-9223372036854775807 —— 9223372036854775808） */
+    long degreeMax = Long.MAX_VALUE;
+    /** 是否包含最小主键 */
+    boolean includeMin = true;
+    /** 是否包含最大主键 */
+    boolean includeMax = true;
+    Integer limit = 10;
+    boolean asc = true;
 
 }

@@ -17,11 +17,15 @@ package cn.aberic.tangduo.index.engine;
 import cn.aberic.tangduo.common.ByteTools;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
-import java.util.*;
+import java.rmi.UnexpectedException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -203,11 +207,17 @@ public abstract class IEngine extends Number {
         boolean includeMin = true;
         /** 是否包含最大主键 */
         boolean includeMax = true;
-        Integer limit;
+        Integer limit = 10;
         boolean asc = true;
         boolean delete = false;
 
         SearchFilter searchFilter;
+        Conditions conditions;
+
+        public Search(String indexName, Integer limit) {
+            this.indexName = indexName;
+            this.limit = limit;
+        }
 
         public Search(String indexName, Integer limit, boolean asc) {
             this.indexName = indexName;
@@ -244,6 +254,78 @@ public abstract class IEngine extends Number {
             this.asc = asc;
             this.searchFilter = searchFilter;
         }
+
+        public Search(String indexName, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, Integer limit, SearchFilter searchFilter) {
+            this.indexName = indexName;
+            this.degreeMin = degreeMin;
+            this.degreeMax = degreeMax;
+            this.includeMin = includeMin;
+            this.includeMax = includeMax;
+            this.limit = limit;
+            this.searchFilter = searchFilter;
+        }
+    }
+
+    @Getter
+    public static class Conditions {
+
+        List<Condition> conditions = new ArrayList<>();
+
+        /**
+         * 新增条件
+         *
+         * @param param        选中的key，目标为json对象中的key，通过.的方式拼接，允许指定深层次，如 name，school.student.name 等
+         * @param compare      条件 gt/ge/lt/le/eq/ne 大于/大于等于/小于/小于等于/等于/不等
+         * @param compareValue 要比较的值，大于或等于当前Object的内容
+         */
+        public void addCondition(String param, String compare, Object compareValue) throws UnexpectedException {
+            conditions.add(new Condition(param, Compare.getByType(compare), compareValue));
+        }
+
+        @AllArgsConstructor
+        @Getter
+        public static class Condition {
+            /// 选中的key，目标为json对象中的key，通过.的方式拼接，允许指定深层次，如 name，school.student.name 等
+            String param;
+            /// 条件 gt/ge/lt/le/eq/ne 大于/大于等于/小于/小于等于/等于/不等
+            Compare compare;
+            /// 要比较的值，大于或等于当前Object的内容
+            Object compareValue;
+        }
+
+        public enum Compare {
+            GT("gt"),
+            GE("ge"),
+            LT("lt"),
+            LE("le"),
+            EQ("eq"),
+            NE("ne");
+
+
+            // 成员变量
+            private final String type;
+
+            // 构造方法
+            Compare(String type) {
+                this.type = type;
+            }
+
+            /**
+             * 通过类型获取对应处理枚举
+             *
+             * @param type 类型
+             *
+             * @return 处理枚举
+             */
+            public static Compare getByType(String type) throws UnexpectedException {
+                for (Compare compare : values()) {
+                    if (compare.type.equals(type)) {
+                        return compare;
+                    }
+                }
+                throw new UnexpectedException(type);
+            }
+        }
     }
 
     /** 自定义过滤接口 */
@@ -256,6 +338,6 @@ public abstract class IEngine extends Number {
          *
          * @return 过滤后的数据集合
          */
-        List<byte[]> filter(List<byte[]> bytesList);
+        List<byte[]> filter(List<byte[]> bytesList, Conditions conditions);
     }
 }

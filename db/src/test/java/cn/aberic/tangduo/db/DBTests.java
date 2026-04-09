@@ -15,6 +15,7 @@
 package cn.aberic.tangduo.db;
 
 import cn.aberic.tangduo.common.ByteTools;
+import cn.aberic.tangduo.common.JsonTools;
 import cn.aberic.tangduo.common.ListTools;
 import cn.aberic.tangduo.common.file.Filer;
 import cn.aberic.tangduo.db.common.*;
@@ -27,12 +28,14 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.springframework.util.CollectionUtils;
 
 import javax.management.InstanceAlreadyExistsException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.rmi.UnexpectedException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -42,6 +45,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -128,9 +132,9 @@ public class DBTests {
         db.put(dbName, new IEngine.Content(new Transaction(1), indexName, -64424581328L, "1", ByteTools.fromInt(1)));
         assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, -64424581328L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, -64424581328L, "1"));
         db.put(dbName, new IEngine.Content(new Transaction(2), indexName, 0, "1", ByteTools.fromInt(1)));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, 0, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, 0, "1"));
+        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, 0L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, 0L, "1"));
         db.put(dbName, new IEngine.Content(new Transaction(3), indexName, 1, "1", ByteTools.fromInt(1)));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, 1, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, 1, "1"));
+        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, 1L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, 1L, "1"));
         db.put(dbName, new IEngine.Content(new Transaction(4), indexName, 9223372036854775807L, "1", ByteTools.fromLong(9223372036854775807L)));
         assert 9223372036854775807L == ByteTools.toLong(db.getFirst(dbName, indexName, 9223372036854775807L, "1")) : ByteTools.toLong(db.getFirst(dbName, indexName, 9223372036854775807L, "1"));
     }
@@ -158,9 +162,9 @@ public class DBTests {
         db.remove(dbName, indexName, -64424581328L, "1");
         assert null == db.getFirst(dbName, indexName, -64424581328L, "1") : ByteTools.toInt(db.getFirst(dbName, indexName, -64424581328L, "1"));
         db.remove(dbName, indexName, 0, "1");
-        assert null == db.getFirst(dbName, indexName, 0, "1") : ByteTools.toInt(db.getFirst(dbName, indexName, 0, "1"));
+        assert null == db.getFirst(dbName, indexName, 0L, "1") : ByteTools.toInt(db.getFirst(dbName, indexName, 0L, "1"));
         db.remove(dbName, indexName, 1, "1");
-        assert null == db.getFirst(dbName, indexName, 1, "1") : ByteTools.toInt(db.getFirst(dbName, indexName, 1, "1"));
+        assert null == db.getFirst(dbName, indexName, 1L, "1") : ByteTools.toInt(db.getFirst(dbName, indexName, 1L, "1"));
         db.remove(dbName, indexName, 9223372036854775807L, "1");
         assert null == db.getFirst(dbName, indexName, 9223372036854775807L, "1") : ByteTools.toLong(db.getFirst(dbName, indexName, 9223372036854775807L, "1"));
     }
@@ -415,7 +419,7 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void putAndGetFirstTimesAsync() throws IOException, NoSuchFieldException, NoSuchMethodException, InterruptedException {
+    void putAndSelectFirstTimesAsync() throws IOException, NoSuchFieldException, NoSuchMethodException, InterruptedException {
         String dbName = "putAndGetFirstTimesAsyncDB";
         Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "putAndGetFirstTimesAsyncIndex";
@@ -468,7 +472,7 @@ public class DBTests {
             CountDownLatch latchGet = new CountDownLatch(threadCount); // 计数3
             start = System.currentTimeMillis();
             for (int i = startIndex; i < threadCount; i++) {
-                int finalI = i;
+                long finalI = i;
                 String finalIndexName = indexName;
                 executor.execute(() -> {
                     try {
@@ -503,7 +507,7 @@ public class DBTests {
         DB db = DB.getInstance(rootpath, 10737418240L);
         indexName = CommonTools.indexName(indexName);
         long wrongCount = 0;
-        for (int i = -500; i < 500; i++) {
+        for (long i = -500; i < 500; i++) {
             byte[] bytes = db.getFirst(dbName, indexName, i, String.valueOf(i));
             if (i != ByteTools.toInt(Objects.isNull(bytes) ? new byte[4] : bytes)) {
                 log.debug("i = {}, | read = {}", i, ByteTools.toInt(Objects.isNull(bytes) ? new byte[4] : bytes));
@@ -556,7 +560,7 @@ public class DBTests {
         }
         System.out.println();
 
-        search = new IEngine.Search(indexName, -50, 50, false, false, 100, true, bsList -> {
+        search = new IEngine.Search(indexName, -50, 50, false, false, 100, true, (bsList, conditions) -> {
             List<byte[]> bl = new ArrayList<>();
             for (byte[] bytes : bsList) {
                 if (0 != ByteTools.toInt(bytes)) {
@@ -581,7 +585,7 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void putAndGetFirstInSameIndex0() throws IOException, NoSuchFieldException, NoSuchMethodException {
+    void putAndSelectFirstInSameIndex0() throws IOException, NoSuchFieldException, NoSuchMethodException {
         String dbName = "putAndGetFirstInSameIndexDB";
         Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "putAndGetFirstInSameIndex0Index";
@@ -597,16 +601,16 @@ public class DBTests {
         db.put(dbName, new IEngine.Content(new Transaction(1), indexName, -64424581328L, "1", ByteTools.fromInt(1)));
         assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, -64424581328L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, -64424581328L, "1"));
         db.put(dbName, new IEngine.Content(new Transaction(2), indexName, 0, "1", ByteTools.fromInt(1)));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, 0, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, 0, "1"));
+        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, 0L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, 0L, "1"));
         db.put(dbName, new IEngine.Content(new Transaction(3), indexName, 1, "1", ByteTools.fromInt(1)));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, 1, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, 1, "1"));
+        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, 1L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, 1L, "1"));
         db.put(dbName, new IEngine.Content(new Transaction(4), indexName, 9223372036854775807L, "1", ByteTools.fromLong(9223372036854775807L)));
         assert 9223372036854775807L == ByteTools.toLong(db.getFirst(dbName, indexName, 9223372036854775807L, "1")) : ByteTools.toLong(db.getFirst(dbName, indexName, 9223372036854775807L, "1"));
     }
 
     @Test
     @Order(3)
-    void putAndGetFirstInSameIndex1() throws IOException, NoSuchFieldException, NoSuchMethodException {
+    void putAndSelectFirstInSameIndex1() throws IOException, NoSuchFieldException, NoSuchMethodException {
         String dbName = "putAndGetFirstInSameIndexDB";
         String indexName = "putAndGetFirstInSameIndex1Index";
         DB db = DB.getInstance(rootpath, 10737418240L);
@@ -619,16 +623,16 @@ public class DBTests {
         db.put(dbName, new IEngine.Content(new Transaction(1), indexName, -64424581328L, "1", ByteTools.fromInt(1)));
         assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, -64424581328L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, -64424581328L, "1"));
         db.put(dbName, new IEngine.Content(new Transaction(2), indexName, 0, "1", ByteTools.fromInt(1)));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, 0, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, 0, "1"));
+        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, 0L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, 0L, "1"));
         db.put(dbName, new IEngine.Content(new Transaction(3), indexName, 1, "1", ByteTools.fromInt(1)));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, 1, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, 1, "1"));
+        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, 1L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, 1L, "1"));
         db.put(dbName, new IEngine.Content(new Transaction(4), indexName, 9223372036854775807L, "1", ByteTools.fromLong(9223372036854775807L)));
         assert 9223372036854775807L == ByteTools.toLong(db.getFirst(dbName, indexName, 9223372036854775807L, "1")) : ByteTools.toLong(db.getFirst(dbName, indexName, 9223372036854775807L, "1"));
     }
 
     @Test
     @Order(4)
-    void putAndGetFirstInSameIndex2() throws IOException, NoSuchFieldException {
+    void putAndSelectFirstInSameIndex2() throws IOException, NoSuchFieldException {
         String dbName = "putAndGetFirstInSameIndexDB";
         String indexName0 = "putAndGetFirstInSameIndex0Index";
         String indexName1 = "putAndGetFirstInSameIndex1Index";
@@ -636,12 +640,12 @@ public class DBTests {
         indexName0 = CommonTools.indexName(indexName0);
         indexName1 = CommonTools.indexName(indexName1);
         assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName0, -64424581328L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName0, -64424581328L, "1"));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName0, 0, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName0, 0, "1"));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName0, 1, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName0, 1, "1"));
+        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName0, 0L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName0, 0L, "1"));
+        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName0, 1L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName0, 1L, "1"));
         assert 9223372036854775807L == ByteTools.toLong(db.getFirst(dbName, indexName0, 9223372036854775807L, "1")) : ByteTools.toLong(db.getFirst(dbName, indexName0, 9223372036854775807L, "1"));
         assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName1, -64424581328L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName1, -64424581328L, "1"));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName1, 0, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName1, 0, "1"));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName1, 1, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName1, 1, "1"));
+        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName1, 0L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName1, 0L, "1"));
+        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName1, 1L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName1, 1L, "1"));
         assert 9223372036854775807L == ByteTools.toLong(db.getFirst(dbName, indexName1, 9223372036854775807L, "1")) : ByteTools.toLong(db.getFirst(dbName, indexName1, 9223372036854775807L, "1"));
     }
 
@@ -664,12 +668,12 @@ public class DBTests {
             db.put(dbName, new IEngine.Content(new Transaction(i), indexName, i, String.valueOf(i), ByteTools.fromInt(i)));
         }
         log.debug("setAndGetTimes set success!");
-        for (int i = -5000; i < count; i++) {
+        for (long i = -5000; i < count; i++) {
             assert i == ByteTools.toInt(db.getFirst(dbName, indexName, i, String.valueOf(i))) : i;
         }
         log.debug("setAndGetTimes check success!");
 
-        IEngine.Search search = new IEngine.Search(indexName, -100, 100, false, false, true);
+        IEngine.Search search = new IEngine.Search(indexName, -100, 100, false, false, 200, true);
         List<byte[]> bytesList = db.delete(dbName, search);
         assert 199 == bytesList.size() : "199 != " + bytesList.size(); // (-99 —— 0) + (1 —— 99) = 199
         for (int i = 0; i < bytesList.size(); i++) {
@@ -686,6 +690,121 @@ public class DBTests {
                 assert (i + 80) == ByteTools.toInt(bytesList.get(i)) : (i + 80) + " != " + ByteTools.toInt(bytesList.get(i));
             }
         }
+    }
+
+    @Test
+    void filterCondition() throws UnexpectedException {
+        String value1 = """
+                {
+                  "name": "Lily",
+                  "age": 18
+                }""";
+        String value2 = """
+                {
+                  "name": "Tom",
+                  "age": 19
+                }""";
+        String value3 = """
+                {
+                  "name": "Sam",
+                  "age": 20
+                }""";
+        byte[] bytes1 = ByteTools.fromString(value1);
+        byte[] bytes2 = ByteTools.fromString(value2);
+        byte[] bytes3 = ByteTools.fromString(value3);
+        List<byte[]> bytesList = List.of(bytes1, bytes2, bytes3);
+
+        IEngine.Conditions conditions1 = new IEngine.Conditions();
+        conditions1.addCondition("name", "eq", "Lily");
+        List<byte[]> resList = doFilter(bytesList, conditions1);
+        resList.forEach(bytes -> System.out.println(ByteTools.toString(bytes)));
+        System.out.println("===================================================");
+
+        IEngine.Conditions conditions2 = new IEngine.Conditions();
+        conditions2.addCondition("name", "ne", "Lily");
+        resList = doFilter(bytesList, conditions2);
+        resList.forEach(bytes -> System.out.println(ByteTools.toString(bytes)));
+        System.out.println("===================================================");
+
+        IEngine.Conditions conditions3 = new IEngine.Conditions();
+        conditions3.addCondition("name", "ne", "Lily");
+        conditions3.addCondition("age", "gt", 19);
+        resList = doFilter(bytesList, conditions3);
+        resList.forEach(bytes -> System.out.println(ByteTools.toString(bytes)));
+        System.out.println("===================================================");
+
+        IEngine.Conditions conditions4 = new IEngine.Conditions();
+        conditions4.addCondition("name", "ne", "Lily");
+        conditions4.addCondition("age", "ge", 19);
+        resList = doFilter(bytesList, conditions4);
+        resList.forEach(bytes -> System.out.println(ByteTools.toString(bytes)));
+        System.out.println("===================================================");
+    }
+
+    private List<byte[]> doFilter(List<byte[]> bytesList, IEngine.Conditions conditions) {
+        if (Objects.isNull(conditions)) {
+            return bytesList;
+        }
+        if (CollectionUtils.isEmpty(conditions.getConditions())) {
+            return bytesList;
+        }
+        return bytesList.stream().filter(bytes -> {
+            for (IEngine.Conditions.Condition condition : conditions.getConditions()) {
+                String value = ByteTools.toString(bytes);
+                if (!JsonTools.isJson(value)) {
+                    continue;
+                }
+                Object obj = null;
+                try {
+                    obj = JsonTools.getValueByPath(value, condition.getParam());
+                } catch (Exception ignore) {}
+                boolean pass;
+                if (obj instanceof String) {
+                    pass = switch (condition.getCompare()) {
+                        case EQ -> obj.equals(condition.getCompareValue());
+                        case NE -> !obj.equals(condition.getCompareValue());
+                        default -> false;
+                    };
+                } else if (obj instanceof Number) {
+                    int compareNumber = compareNumber((Number) obj, (Number) condition.getCompareValue());
+                    pass = switch (condition.getCompare()) {
+                        case EQ -> compareNumber == 0;
+                        case NE -> compareNumber != 0;
+                        case GE -> compareNumber > 0 || compareNumber == 0;
+                        case GT -> compareNumber > 0;
+                        case LE -> compareNumber < 0 || compareNumber == 0;
+                        case LT -> compareNumber < 0;
+                    };
+                } else {
+                    pass = false;
+                }
+                if (!pass) {
+                    return false;
+                }
+            }
+            return true;
+        }).collect(Collectors.toList());
+    }
+
+    /**
+     * 比较两个 Number 大小
+     *
+     * @return 负数：n1 < n2
+     * 0：n1 == n2
+     * 正数：n1 > n2
+     */
+    private int compareNumber(Number n1, Number n2) {
+        if (n1 == null && n2 == null) {
+            return 0;
+        }
+        if (n1 == null) {
+            return -1;
+        }
+        if (n2 == null) {
+            return 1;
+        }
+        // 统一转成 double 比较
+        return Double.compare(n1.doubleValue(), n2.doubleValue());
     }
 
 }

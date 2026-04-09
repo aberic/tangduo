@@ -43,7 +43,8 @@ public class LogCostAspect {
         long millis = ms % 1000;
         String cost = String.format("%02d.%02d.%03d", min, sec, millis);
 
-        log.info("[traceId:{}] {} 耗时: {}", traceId, joinPoint.getSignature().getName(), cost);
+        log.debug("[traceId:{}] {} 耗时: {}", traceId, joinPoint.getSignature().getName(), cost);
         return proceed;
     }
+
 }

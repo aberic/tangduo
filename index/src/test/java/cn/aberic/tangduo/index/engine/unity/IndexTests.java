@@ -377,7 +377,7 @@ public class IndexTests {
         }
         System.out.println();
 
-        search = new IEngine.Search(indexName, -50, 50, false, false, 100, true, bsList -> {
+        search = new IEngine.Search(indexName, -50, 50, false, false, 100, true, (bsList, conditions) -> {
             List<byte[]> bl = new ArrayList<>();
             for (byte[] bytes : bsList) {
                 if (0 != ByteTools.toInt(bytes)) {

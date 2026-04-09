@@ -15,6 +15,7 @@
 package cn.aberic.tangduo.common;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
@@ -46,7 +47,6 @@ public class JsonTools {
             return false;
         }
     }
-
 
     /// 对象 → JSON 字符串
     public static String toJson(Object obj) {
@@ -81,6 +81,53 @@ public class JsonTools {
             return OBJECT_MAPPER.readValue(json, new TypeReference<>() {});
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    /**
+     * 根据点分割路径获取 json 中的值
+     *
+     * @param json  原始 json 字符串
+     * @param path  如 "student.age"、"values[0].value.city"
+     * @return 读到的值
+     */
+    public static Object getValueByPath(String json, String path) throws Exception {
+        JsonNode root = OBJECT_MAPPER.readTree(json);
+        String[] keys = path.split("\\.");
+
+        JsonNode currentNode = root;
+        for (int i = 0; i < keys.length; i++) {
+            String key = keys[i];
+
+            // 处理数组，例如 values[0]
+            if (key.contains("[")) {
+                String arrayName = key.substring(0, key.indexOf("["));
+                String indexStr = key.substring(key.indexOf("[") + 1, key.indexOf("]"));
+                int index = Integer.parseInt(indexStr);
+
+                currentNode = currentNode.get(arrayName);
+                currentNode = currentNode.get(index);
+            } else {
+                currentNode = currentNode.get(key);
+            }
+
+            if (currentNode == null || currentNode.isMissingNode()) {
+                return null;
+            }
+        }
+
+        // 返回合适的类型
+        if (currentNode.isTextual()) {
+            return currentNode.asText();
+        } else if (currentNode.isNumber()) {
+            return currentNode.numberValue();
+        } else if (currentNode.isBoolean()) {
+            return currentNode.asBoolean();
+        } else if (currentNode.isObject() || currentNode.isArray()) {
+            // 转成普通 Map / List
+            return OBJECT_MAPPER.convertValue(currentNode, new TypeReference<Object>() {});
+        } else {
+            return currentNode.asText();
         }
     }
 }
