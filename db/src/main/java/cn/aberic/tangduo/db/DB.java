@@ -14,18 +14,20 @@
 
 package cn.aberic.tangduo.db;
 
-import cn.aberic.tangduo.common.ByteTools;
 import cn.aberic.tangduo.common.JsonTools;
-import cn.aberic.tangduo.common.ListTools;
-import cn.aberic.tangduo.common.SHA256Tools;
 import cn.aberic.tangduo.common.file.Channel;
 import cn.aberic.tangduo.common.file.Filer;
 import cn.aberic.tangduo.common.file.Writer;
 import cn.aberic.tangduo.db.common.*;
+import cn.aberic.tangduo.db.entity.Doc;
+import cn.aberic.tangduo.db.entity.DocGetResponseVO;
+import cn.aberic.tangduo.db.entity.DocPutResponseVO;
+import cn.aberic.tangduo.db.entity.DocSearchResponseVO;
 import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.Common;
 import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.Transaction;
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.annotation.Nonnull;
@@ -227,6 +229,7 @@ public class DB {
         }
         Writer.write(recordPath.toString(), sb.toString().getBytes(StandardCharsets.UTF_8));
         dbMap.remove(databaseName);
+        Filer.deleteDirectory(Path.of(rootPath, databaseName));
     }
 
     private Index getIndex(String dbName) {
@@ -257,7 +260,7 @@ public class DB {
      *
      * @param value 数据
      */
-    public IEngine.Content put(String value) throws IOException {
+    public DocPutResponseVO put(Object value) throws IOException {
         return put(null, value);
     }
 
@@ -266,7 +269,7 @@ public class DB {
      *
      * @param value 数据
      */
-    public IEngine.Content put(@Nullable String dbName, String value) throws IOException {
+    public DocPutResponseVO put(@Nullable String dbName, Object value) throws IOException {
         return put(dbName, null, value);
     }
 
@@ -276,7 +279,7 @@ public class DB {
      * @param key   原始key
      * @param value 数据
      */
-    public IEngine.Content put(@Nullable String dbName, @Nullable String key, String value) throws IOException {
+    public DocPutResponseVO put(@Nullable String dbName, @Nullable String key, Object value) throws IOException {
         return put(dbName, null, key, value);
     }
 
@@ -287,7 +290,7 @@ public class DB {
      * @param key       原始key
      * @param value     数据
      */
-    public IEngine.Content put(@Nullable String dbName, @Nullable String indexName, @Nullable String key, String value) throws IOException {
+    public DocPutResponseVO put(@Nullable String dbName, @Nullable String indexName, @Nullable String key, Object value) throws IOException {
         return put(dbName, indexName, key, true, value);
     }
 
@@ -298,16 +301,21 @@ public class DB {
      * @param key       原始key
      * @param value     数据
      */
-    public IEngine.Content put(@Nullable String dbName, @Nullable String indexName, @Nullable String key, boolean seg, String value) throws IOException {
+    public DocPutResponseVO put(@Nullable String dbName, @Nullable String indexName, @Nullable String key, boolean seg, @Nonnull Object value) throws IOException {
         dbName = StringUtils.isEmpty(dbName) ? DATABASE_NAME_DEFAULT : dbName;
         indexName = StringUtils.isEmpty(indexName) ? INDEX_NAME_DEFAULT : indexName;
-        key = StringUtils.isEmpty(key) ? DATABASE_NAME_DEFAULT : SHA256Tools.sha256(value);
+        key = StringUtils.isEmpty(key) ? DATABASE_NAME_DEFAULT : key;
         long degree = KeyHashTools.toLongKey(key);
+        Doc doc = new Doc(dbName, indexName, key, degree, value);
         IEngine.Content content;
         if (!seg) {
-            content = new IEngine.Content(new Transaction(), indexName, degree, key, valueToBytes(value, List.of()));
-            put(dbName, content);
-            return content;
+            content = new IEngine.Content(new Transaction(), indexName, degree, key, doc.toBytes());
+            Index index = getIndex(dbName);
+            if (index == null) {
+                throw new NoSuchFileException("数据库实例不存在");
+            }
+            index.put(content);
+            return new DocPutResponseVO(doc, content);
         }
         SegIndex segIndex = dbMap.get(dbName);
         if (segIndex == null) {
@@ -328,18 +336,35 @@ public class DB {
         }
         long degree4datetime = System.currentTimeMillis();
         String key4datetime = String.valueOf(degree4datetime);
-        List<IndexName4KeyAndDegree> list = parseIndexName4KeyAndDegree(value);
-        String valueTmp = value;
-        for (IndexName4KeyAndDegree indexName4KeyAndDegree : list) {
-            if (indexName4KeyAndDegree.hash) {
-                valueTmp = valueTmp.replace(indexName4KeyAndDegree.key, "");
+        List<IndexName4KeyAndDegree> list;
+        String valueStr;
+        if (value instanceof String) {
+            String str = String.valueOf(value);
+            if (JsonTools.isJson(str)) {
+                list = parseIndexName4KeyAndDegree(str);
+                valueStr = str;
+                for (IndexName4KeyAndDegree indexName4KeyAndDegree : list) {
+                    if (indexName4KeyAndDegree.hash) {
+                        valueStr = valueStr.replace(indexName4KeyAndDegree.key, "");
+                    }
+                }
+            } else {
+                list = new ArrayList<>();
+                if (HASH_PATTERN.matcher(str).matches()) {
+                    valueStr = "";
+                } else {
+                    valueStr = str;
+                }
             }
+        } else {
+            list = new ArrayList<>();
+            valueStr = "";
         }
         List<String> indexNameList;
         if (segIndex.seg.equals("ik")) {
-            indexNameList = IkTokenizerTools.tokenize(valueTmp);
+            indexNameList = IkTokenizerTools.tokenize(valueStr);
         } else {
-            indexNameList = HanlpTools.segFilter(valueTmp);
+            indexNameList = HanlpTools.segFilter(valueStr);
         }
         indexNameList.forEach(idxName -> {
             String indexName4datetime = CommonTools.indexName4datetime(idxName);
@@ -348,11 +373,12 @@ public class DB {
             }
         });
         Index index = segIndex.index;
-        content = new IEngine.Content(new Transaction(), CommonTools.indexName(indexName), degree, key, valueToBytes(value, indexNameList));
+        doc.setSegList(indexNameList);
+        content = new IEngine.Content(new Transaction(), CommonTools.indexName(indexName), degree, key, doc.toBytes());
         list.forEach(indexName4KeyAndDegree ->
                 content.addItem(indexName4KeyAndDegree.indexName(), indexName4KeyAndDegree.degree(), indexName4KeyAndDegree.key()));
         index.put(content);
-        return content;
+        return new DocPutResponseVO(doc, content);
     }
 
     /** 匹配 MD5 / SHA */
@@ -367,17 +393,14 @@ public class DB {
      * 当json中某一key的value不为number时，建立HashKey索引和时间索引，如果该value长度和内容满足摘要条件时，额外建立摘要索引。
      * 已确认为摘要索引的value，在后续分词时，会被屏蔽掉，避免分词干扰。
      *
-     * @param str json 字符串，如果不是，则返回空集合
+     * @param jsonStr json 字符串，如果不是，则返回空集合
      */
-    public static List<IndexName4KeyAndDegree> parseIndexName4KeyAndDegree(String str) throws JsonProcessingException {
+    public static List<IndexName4KeyAndDegree> parseIndexName4KeyAndDegree(String jsonStr) throws JsonProcessingException {
         List<IndexName4KeyAndDegree> list = new ArrayList<>();
-        if (Objects.isNull(str) || !JsonTools.isJson(str)) {
-            return list;
-        }
         long degree = System.currentTimeMillis();
         String key = String.valueOf(degree);
         // 解析字符串
-        JsonNode node = JsonTools.OBJECT_MAPPER.readTree(str);
+        JsonNode node = JsonTools.OBJECT_MAPPER.readTree(jsonStr);
         analysis(list, node, key, degree);
         return list;
     }
@@ -421,28 +444,14 @@ public class DB {
         }
     }
 
-    private byte[] valueToBytes(String value, List<String> segList) {
-        return ByteTools.fromString(SHA256Tools.sha256(value) + "###@@@###" + value + "###@@@###" + ListTools.toString(segList));
-    }
-
-    private Bm25Tools.DocItem bytesToDocItem(byte[] value) {
-        String valueStr = ByteTools.toString(value);
-        String[] arr = valueStr.split("###@@@###");
-        if (arr.length == 1) {
-            return new Bm25Tools.DocItem(SHA256Tools.sha256(valueStr), valueStr, List.of());
-        } else if (arr.length == 2) {
-            return new Bm25Tools.DocItem(arr[0], arr[1], List.of());
-        }
-        return new Bm25Tools.DocItem(arr[0], arr[1], ListTools.fromString(arr[2]));
-    }
-
-    /** Node插入数据data，此方法无分词插入处理 */
-    public void put(String dbName, IEngine.Content content) throws IOException {
-        Index index = getIndex(dbName);
-        if (index == null) {
-            throw new NoSuchFileException("数据库实例不存在");
-        }
-        index.put(content);
+    /**
+     * Node获取数据data
+     *
+     * @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+     * @param key       原始key
+     */
+    public DocGetResponseVO getFirst(@Nullable String dbName, @Nullable String indexName, @Nonnull String key) throws IOException {
+        return getFirst(dbName, indexName, null, key);
     }
 
     /**
@@ -452,10 +461,10 @@ public class DB {
      * @param degree    主键
      * @param key       原始key
      */
-    public byte[] getFirst(@Nullable String dbName, @Nullable String indexName, @Nullable Long degree, @Nonnull String key) throws IOException {
-        List<byte[]> bytesList = get(dbName, indexName, degree, key);
-        if (Objects.nonNull(bytesList) && !bytesList.isEmpty()) {
-            return bytesList.getFirst();
+    public DocGetResponseVO getFirst(@Nullable String dbName, @Nullable String indexName, @Nullable Long degree, @Nonnull String key) throws IOException {
+        List<DocGetResponseVO> docGetResponseVOList = get(dbName, indexName, degree, key);
+        if (Objects.nonNull(docGetResponseVOList) && !docGetResponseVOList.isEmpty()) {
+            return docGetResponseVOList.getFirst();
         }
         return null;
     }
@@ -467,7 +476,7 @@ public class DB {
      * @param degree    主键
      * @param key       原始key
      */
-    public List<byte[]> get(@Nullable String dbName, @Nullable String indexName, @Nullable Long degree, @Nonnull String key) throws IOException {
+    public List<DocGetResponseVO> get(@Nullable String dbName, @Nullable String indexName, @Nullable Long degree, @Nonnull String key) throws IOException {
         dbName = StringUtils.isEmpty(dbName) ? DATABASE_NAME_DEFAULT : dbName;
         indexName = StringUtils.isEmpty(indexName) ? INDEX_NAME_DEFAULT : indexName;
         degree = Objects.isNull(degree) ? KeyHashTools.toLongKey(key) : degree;
@@ -475,7 +484,19 @@ public class DB {
         if (index == null) {
             throw new NoSuchFileException("数据库实例不存在");
         }
-        return index.get(indexName, degree, key);
+        List<byte[]> bytesList = index.get(indexName, degree, key);
+        List<DocGetResponseVO> docGetResponseVOList = new ArrayList<>();
+        bytesList.forEach(bytes -> {
+            if (Objects.nonNull(bytes) && bytes.length > 0) {
+                try {
+                    Doc doc = new Doc(bytes);
+                    docGetResponseVOList.add(new DocGetResponseVO(doc));
+                } catch (JsonParseException e) {
+                    log.warn("db get JsonParseException: {}", e.getMessage());
+                }
+            }
+        });
+        return docGetResponseVOList;
     }
 
     /**
@@ -483,7 +504,7 @@ public class DB {
      *
      * @param query 检索字符串
      */
-    public List<Bm25Tools.DocItem> search(String dbName, String query) throws IOException {
+    public List<DocSearchResponseVO> search(String dbName, String query) throws IOException {
         return search(dbName, null, query, 10);
     }
 
@@ -492,7 +513,7 @@ public class DB {
      *
      * @param query 检索字符串
      */
-    public List<Bm25Tools.DocItem> search(String dbName, String query, int callbackCount) throws IOException {
+    public List<DocSearchResponseVO> search(String dbName, String query, int callbackCount) throws IOException {
         return search(dbName, null, query, callbackCount);
     }
 
@@ -501,12 +522,12 @@ public class DB {
      *
      * @param query 检索字符串
      */
-    public List<Bm25Tools.DocItem> search(String dbName, String indexName, String query, int callbackCount) throws IOException {
+    public List<DocSearchResponseVO> search(String dbName, String indexName, String query, int callbackCount) throws IOException {
         return search(dbName, query, new IEngine.Search(indexName, callbackCount));
     }
 
     /** 查询集合 */
-    public List<Bm25Tools.DocItem> search(String dbName, String query, IEngine.Search search) throws IOException {
+    public List<DocSearchResponseVO> search(String dbName, String query, IEngine.Search search) throws IOException {
         SegIndex segIndex = dbMap.get(dbName);
         if (segIndex == null) {
             throw new NoSuchFileException("数据库实例不存在");
@@ -520,7 +541,7 @@ public class DB {
         if (HASH_PATTERN.matcher(query).matches()) {
             indexNameList.add(CommonTools.indexName4dhash(query));
         }
-        Map<String, Bm25Tools.DocItem> valueWithSegMap = new ConcurrentHashMap<>();
+        Map<String, DocSearchResponseVO> valueWithSegMap = new ConcurrentHashMap<>();
         if (StringUtils.isEmpty(search.getIndexName())) {
             CountDownLatch latch = new CountDownLatch(indexNameList.size()); // 计数3
             indexNameList.forEach(idxName -> Thread.startVirtualThread(() -> {
@@ -529,8 +550,11 @@ public class DB {
                             search.isIncludeMin(), search.isIncludeMax(), searchMaxCount, this::doFilter));
                     if (Objects.nonNull(bytesList) && !bytesList.isEmpty()) {
                         bytesList.forEach(bytes -> {
-                            Bm25Tools.DocItem valueWithSeg = bytesToDocItem(bytes);
-                            valueWithSegMap.put(valueWithSeg.getId(), valueWithSeg);
+                            try {
+                                Doc doc = new Doc(bytes);
+                                DocSearchResponseVO valueWithSeg = new DocSearchResponseVO(doc.getDigests(), String.valueOf(doc.getValue()), doc.getSegList());
+                                valueWithSegMap.put(valueWithSeg.getDigests(), valueWithSeg);
+                            } catch (JsonParseException ignore) {}
                         });
                     }
                 } catch (IOException ignored) {
@@ -548,12 +572,15 @@ public class DB {
                     search.isIncludeMin(), search.isIncludeMax(), searchMaxCount, this::doFilter));
             if (Objects.nonNull(bytesList) && !bytesList.isEmpty()) {
                 bytesList.forEach(bytes -> {
-                    Bm25Tools.DocItem valueWithSeg = bytesToDocItem(bytes);
-                    valueWithSegMap.put(valueWithSeg.getId(), valueWithSeg);
+                    try {
+                        Doc doc = new Doc(bytes);
+                        DocSearchResponseVO valueWithSeg = new DocSearchResponseVO(doc.getDigests(), String.valueOf(doc.getValue()), doc.getSegList());
+                        valueWithSegMap.put(valueWithSeg.getDigests(), valueWithSeg);
+                    } catch (JsonParseException ignore) {}
                 });
             }
         }
-        List<Bm25Tools.DocItem> docItems = Bm25Tools.rank(valueWithSegMap.values().stream().toList(), query, segIndex.seg);
+        List<DocSearchResponseVO> docItems = Bm25Tools.rank(valueWithSegMap.values().stream().toList(), query, segIndex.seg);
         return docItems.subList(0, Math.min(search.getLimit(), docItems.size()));
     }
 
@@ -565,7 +592,13 @@ public class DB {
             return bytesList;
         }
         return bytesList.stream().filter(bytes -> {
-            Bm25Tools.DocItem docItem = bytesToDocItem(bytes);
+            DocSearchResponseVO docItem;
+            try {
+                Doc doc = new Doc(bytes);
+                docItem = new DocSearchResponseVO(doc.getDigests(), String.valueOf(doc.getValue()), doc.getSegList());
+            } catch (JsonParseException ignore) {
+                return false;
+            }
             if (!JsonTools.isJson(docItem.getContent())) {
                 return false;
             }
@@ -631,8 +664,20 @@ public class DB {
         if (index == null) {
             throw new NoSuchFileException("数据库实例不存在");
         }
-        search.setSearchFilter(this::doFilter);
+        if (Objects.isNull(search.getSearchFilter())) {
+            search.setSearchFilter(this::doFilter);
+        }
         return index.select(search);
+    }
+
+    /**
+     * Node获取数据data
+     *
+     * @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+     * @param key       原始key
+     */
+    public void remove(String dbName, String indexName, String key) throws IOException {
+        remove(dbName, indexName, null, key);
     }
 
     /**
@@ -642,7 +687,8 @@ public class DB {
      * @param degree    主键
      * @param key       原始key
      */
-    public void remove(String dbName, String indexName, long degree, String key) throws IOException {
+    public void remove(String dbName, String indexName, @Nullable Long degree, String key) throws IOException {
+        degree = Objects.isNull(degree) ? KeyHashTools.toLongKey(key) : degree;
         Index index = getIndex(dbName);
         if (index == null) {
             throw new NoSuchFileException("索引实例不存在");

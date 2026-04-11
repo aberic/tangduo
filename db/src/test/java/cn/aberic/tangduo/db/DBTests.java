@@ -16,12 +16,14 @@ package cn.aberic.tangduo.db;
 
 import cn.aberic.tangduo.common.ByteTools;
 import cn.aberic.tangduo.common.JsonTools;
-import cn.aberic.tangduo.common.ListTools;
 import cn.aberic.tangduo.common.file.Filer;
-import cn.aberic.tangduo.db.common.*;
+import cn.aberic.tangduo.db.common.CommonTools;
+import cn.aberic.tangduo.db.common.IkTokenizerTools;
+import cn.aberic.tangduo.db.entity.Doc;
+import cn.aberic.tangduo.db.entity.DocGetResponseVO;
+import cn.aberic.tangduo.db.entity.DocPutResponseVO;
 import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.IEngine;
-import cn.aberic.tangduo.index.engine.Transaction;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.MethodOrderer;
@@ -129,14 +131,18 @@ public class DBTests {
             System.out.println(e.getMessage());
         }
         indexName = CommonTools.indexName(indexName);
-        db.put(dbName, new IEngine.Content(new Transaction(1), indexName, -64424581328L, "1", ByteTools.fromInt(1)));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, -64424581328L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, -64424581328L, "1"));
-        db.put(dbName, new IEngine.Content(new Transaction(2), indexName, 0, "1", ByteTools.fromInt(1)));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, 0L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, 0L, "1"));
-        db.put(dbName, new IEngine.Content(new Transaction(3), indexName, 1, "1", ByteTools.fromInt(1)));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, 1L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, 1L, "1"));
-        db.put(dbName, new IEngine.Content(new Transaction(4), indexName, 9223372036854775807L, "1", ByteTools.fromLong(9223372036854775807L)));
-        assert 9223372036854775807L == ByteTools.toLong(db.getFirst(dbName, indexName, 9223372036854775807L, "1")) : ByteTools.toLong(db.getFirst(dbName, indexName, 9223372036854775807L, "1"));
+        DocPutResponseVO putVO = db.put(dbName, indexName, "-64424581328", false, 1);
+        int value = (int) db.getFirst(dbName, indexName, putVO.getDegree(), "-64424581328").getValue();
+        assert 1 == value : value;
+        putVO = db.put(dbName, indexName, "0", false, 1);
+        value = (int) db.getFirst(dbName, indexName, putVO.getDegree(), "0").getValue();
+        assert 1 == value : value;
+        putVO = db.put(dbName, indexName, "1", false, 1);
+        value = (int) db.getFirst(dbName, indexName, putVO.getDegree(), "1").getValue();
+        assert 1 == value : value;
+        putVO = db.put(dbName, indexName, "9223372036854775807", false, 1);
+        value = (int) db.getFirst(dbName, indexName, putVO.getDegree(), "9223372036854775807").getValue();
+        assert 1 == value : value;
     }
 
     @Test
@@ -154,19 +160,21 @@ public class DBTests {
             System.out.println(e.getMessage());
         }
         indexName = CommonTools.indexName(indexName);
-        db.put(dbName, new IEngine.Content(new Transaction(1), indexName, -64424581328L, "1", ByteTools.fromInt(1)));
-        db.put(dbName, new IEngine.Content(new Transaction(2), indexName, 0, "1", ByteTools.fromInt(1)));
-        db.put(dbName, new IEngine.Content(new Transaction(3), indexName, 1, "1", ByteTools.fromInt(1)));
-        db.put(dbName, new IEngine.Content(new Transaction(4), indexName, 9223372036854775807L, "1", ByteTools.fromLong(9223372036854775807L)));
 
-        db.remove(dbName, indexName, -64424581328L, "1");
-        assert null == db.getFirst(dbName, indexName, -64424581328L, "1") : ByteTools.toInt(db.getFirst(dbName, indexName, -64424581328L, "1"));
-        db.remove(dbName, indexName, 0, "1");
-        assert null == db.getFirst(dbName, indexName, 0L, "1") : ByteTools.toInt(db.getFirst(dbName, indexName, 0L, "1"));
-        db.remove(dbName, indexName, 1, "1");
-        assert null == db.getFirst(dbName, indexName, 1L, "1") : ByteTools.toInt(db.getFirst(dbName, indexName, 1L, "1"));
-        db.remove(dbName, indexName, 9223372036854775807L, "1");
-        assert null == db.getFirst(dbName, indexName, 9223372036854775807L, "1") : ByteTools.toLong(db.getFirst(dbName, indexName, 9223372036854775807L, "1"));
+        db.put(dbName, indexName, "-64424581328", false, 1);
+        db.put(dbName, indexName, "0", false, 1);
+        db.put(dbName, indexName, "1", false, 1);
+        db.put(dbName, indexName, "9223372036854775807", false, 1);
+
+        db.remove(dbName, indexName, "-64424581328");
+        db.remove(dbName, indexName, "0");
+        db.remove(dbName, indexName, "1");
+        db.remove(dbName, indexName, "9223372036854775807");
+
+        assert null == db.getFirst(dbName, indexName, "-64424581328") : db.getFirst(dbName, indexName, "-64424581328");
+        assert null == db.getFirst(dbName, indexName, "0") : db.getFirst(dbName, indexName, "0");
+        assert null == db.getFirst(dbName, indexName, "1") : db.getFirst(dbName, indexName, "1");
+        assert null == db.getFirst(dbName, indexName, "9223372036854775807") : db.getFirst(dbName, indexName, "9223372036854775807");
     }
 
     @Test
@@ -189,64 +197,6 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void putString() throws IOException, NoSuchFieldException, NoSuchMethodException {
-        String dbName = "putStringDB";
-        Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
-        String indexName = "putStringIndex";
-        DB db = DB.getInstance(rootpath, 10737418240L);
-        db.removeDB(dbName);
-        try {
-            db.createDB(dbName);
-            db.createIndex(dbName, IEngine.UNITY, new Index.Info(1, indexName, true, true, false));
-        } catch (InstanceAlreadyExistsException e) {
-            System.out.println(e.getMessage());
-        }
-
-        String key = "1";
-        long degree = KeyHashTools.toLongKey(key);
-        IEngine.Content content = new IEngine.Content(new Transaction(), CommonTools.indexName(indexName), degree, key, ByteTools.fromString(value));
-        long degree4datetime = System.currentTimeMillis();
-        String key4datetime = String.valueOf(degree4datetime);
-        List<DB.IndexName4KeyAndDegree> list = DB.parseIndexName4KeyAndDegree(value);
-        List<String> indexNameList = HanlpTools.seg(value);
-        indexNameList.forEach(idxName -> {
-            if (list.stream().noneMatch(in4kd -> in4kd.indexName().equals(idxName))) {
-                list.add(new DB.IndexName4KeyAndDegree(idxName, key4datetime, degree4datetime, false));
-            }
-        });
-        list.forEach(indexName4KeyAndDegree -> {
-            content.addItem(indexName4KeyAndDegree.indexName(), indexName4KeyAndDegree.degree(), indexName4KeyAndDegree.key());
-        });
-        log.debug("content = {}", content);
-        db.put(dbName, content);
-
-        int count = content.getItems().size();
-
-        AtomicInteger successCount = new AtomicInteger();
-        AtomicInteger failedCount = new AtomicInteger();
-        content.getItems().forEach(item -> {
-            List<byte[]> bytesList;
-            try {
-                bytesList = db.get(dbName, item.getIndexName(), item.getDegree(), item.getKey());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            if (Objects.isNull(bytesList) || bytesList.isEmpty()) {
-                System.out.println("failed indexName=" + item.getIndexName() + "|degree=" + item.getDegree() + "|key=" + item.getKey());
-                failedCount.addAndGet(1);
-            } else {
-                assert ByteTools.toString(bytesList.getFirst()).equals(value) : ByteTools.toString(bytesList.getFirst());
-                System.out.println("success indexName=" + item.getIndexName() + "|degree=" + item.getDegree() + "|key=" + item.getKey());
-                successCount.addAndGet(1);
-            }
-        });
-        System.out.println("successCount = " + successCount.get() + ", failedCount = " + failedCount.get());
-        assert count == successCount.get();
-        assert 0 == failedCount.get();
-    }
-
-    @Test
-    @Order(2)
     void putStringContent() throws IOException, NoSuchFieldException, NoSuchMethodException {
         String dbName = "putStringContentDB";
         Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
@@ -261,26 +211,26 @@ public class DBTests {
         }
 
         String key = "1";
-        IEngine.Content content = db.put(dbName, indexName, key, value);
-        log.debug("content = {}", content);
+        IEngine.Content content = db.put(dbName, indexName, key, value).getContent();
+        log.info("content = {}", content);
 
         int count = content.getItems().size();
 
         AtomicInteger successCount = new AtomicInteger();
         AtomicInteger failedCount = new AtomicInteger();
         content.getItems().forEach(item -> {
-            List<byte[]> bytesList;
+            List<DocGetResponseVO> docGetResponseVOList;
             try {
-                bytesList = db.get(dbName, item.getIndexName(), item.getDegree(), item.getKey());
+                docGetResponseVOList = db.get(dbName, item.getIndexName(), item.getDegree(), item.getKey());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            if (Objects.isNull(bytesList) || bytesList.isEmpty()) {
+            if (Objects.isNull(docGetResponseVOList) || docGetResponseVOList.isEmpty()) {
                 System.out.println("failed indexName=" + item.getIndexName() + "|degree=" + item.getDegree() + "|key=" + item.getKey());
                 failedCount.addAndGet(1);
             } else {
-                String valueFromDoc = bytesToDocItem(bytesList.getFirst()).getContent();
-                assert valueFromDoc.equals(value) : valueFromDoc;
+                String valueFromDoc = JsonTools.toJson(docGetResponseVOList.getFirst().getValue());
+                assert valueFromDoc == null || valueFromDoc.equals(JsonTools.compactJson(value)) : valueFromDoc;
                 System.out.println("success indexName=" + item.getIndexName() + "|degree=" + item.getDegree() + "|key=" + item.getKey());
                 successCount.addAndGet(1);
             }
@@ -288,12 +238,6 @@ public class DBTests {
         System.out.println("successCount = " + successCount.get() + ", failedCount = " + failedCount.get());
         assert count == successCount.get();
         assert 0 == failedCount.get();
-    }
-
-    private Bm25Tools.DocItem bytesToDocItem(byte[] value) {
-        String valueStr = ByteTools.toString(value);
-        String[] segList = valueStr.split("###@@@###");
-        return new Bm25Tools.DocItem(segList[0], segList[1], ListTools.fromString(segList[2]));
     }
 
     @Test
@@ -310,26 +254,26 @@ public class DBTests {
         }
 
         String key = "1";
-        IEngine.Content content = db.put(dbName, key, value);
-        log.debug("content = {}", content);
+        IEngine.Content content = db.put(dbName, key, value).getContent();
+        log.info("content = {}", content);
 
         int count = content.getItems().size();
 
         AtomicInteger successCount = new AtomicInteger();
         AtomicInteger failedCount = new AtomicInteger();
         content.getItems().forEach(item -> {
-            List<byte[]> bytesList;
+            List<DocGetResponseVO> docGetResponseVOList;
             try {
-                bytesList = db.get(dbName, item.getIndexName(), item.getDegree(), item.getKey());
+                docGetResponseVOList = db.get(dbName, item.getIndexName(), item.getDegree(), item.getKey());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            if (Objects.isNull(bytesList) || bytesList.isEmpty()) {
+            if (Objects.isNull(docGetResponseVOList) || docGetResponseVOList.isEmpty()) {
                 System.out.println("failed indexName=" + item.getIndexName() + "|degree=" + item.getDegree() + "|key=" + item.getKey());
                 failedCount.addAndGet(1);
             } else {
-                String valueFromDoc = bytesToDocItem(bytesList.getFirst()).getContent();
-                assert valueFromDoc.equals(value) : valueFromDoc;
+                String valueFromDoc = JsonTools.toJson(docGetResponseVOList.getFirst().getValue());
+                assert valueFromDoc == null || valueFromDoc.equals(JsonTools.compactJson(value)) : valueFromDoc;
                 System.out.println("success indexName=" + item.getIndexName() + "|degree=" + item.getDegree() + "|key=" + item.getKey());
                 successCount.addAndGet(1);
             }
@@ -352,26 +296,26 @@ public class DBTests {
             System.out.println(e.getMessage());
         }
 
-        IEngine.Content content = db.put(dbName, value);
-        log.debug("content = {}", content);
+        IEngine.Content content = db.put(dbName, value).getContent();
+        log.info("content = {}", content);
 
         int count = content.getItems().size();
 
         AtomicInteger successCount = new AtomicInteger();
         AtomicInteger failedCount = new AtomicInteger();
         content.getItems().forEach(item -> {
-            List<byte[]> bytesList;
+            List<DocGetResponseVO> docGetResponseVOList;
             try {
-                bytesList = db.get(dbName, item.getIndexName(), item.getDegree(), item.getKey());
+                docGetResponseVOList = db.get(dbName, item.getIndexName(), item.getDegree(), item.getKey());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            if (Objects.isNull(bytesList) || bytesList.isEmpty()) {
+            if (Objects.isNull(docGetResponseVOList) || docGetResponseVOList.isEmpty()) {
                 System.out.println("failed indexName=" + item.getIndexName() + "|degree=" + item.getDegree() + "|key=" + item.getKey());
                 failedCount.addAndGet(1);
             } else {
-                String valueFromDoc = bytesToDocItem(bytesList.getFirst()).getContent();
-                assert valueFromDoc.equals(value) : valueFromDoc;
+                String valueFromDoc = JsonTools.toJson(docGetResponseVOList.getFirst().getValue());
+                assert valueFromDoc == null || valueFromDoc.equals(JsonTools.compactJson(value)) : valueFromDoc;
                 System.out.println("success indexName=" + item.getIndexName() + "|degree=" + item.getDegree() + "|key=" + item.getKey());
                 successCount.addAndGet(1);
             }
@@ -388,26 +332,26 @@ public class DBTests {
         DB db = DB.getInstance(rootpath, 10737418240L);
         db.removeDB(DB.DATABASE_NAME_DEFAULT);
 
-        IEngine.Content content = db.put(value);
-        log.debug("content = {}", content);
+        IEngine.Content content = db.put(value).getContent();
+        log.info("content = {}", content);
 
         int count = content.getItems().size();
 
         AtomicInteger successCount = new AtomicInteger();
         AtomicInteger failedCount = new AtomicInteger();
         content.getItems().forEach(item -> {
-            List<byte[]> bytesList;
+            List<DocGetResponseVO> docGetResponseVOList;
             try {
-                bytesList = db.get(DB.DATABASE_NAME_DEFAULT, item.getIndexName(), item.getDegree(), item.getKey());
+                docGetResponseVOList = db.get(DB.DATABASE_NAME_DEFAULT, item.getIndexName(), item.getDegree(), item.getKey());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            if (Objects.isNull(bytesList) || bytesList.isEmpty()) {
+            if (Objects.isNull(docGetResponseVOList) || docGetResponseVOList.isEmpty()) {
                 System.out.println("failed indexName=" + item.getIndexName() + "|degree=" + item.getDegree() + "|key=" + item.getKey());
                 failedCount.addAndGet(1);
             } else {
-                String valueFromDoc = bytesToDocItem(bytesList.getFirst()).getContent();
-                assert valueFromDoc.equals(value) : valueFromDoc;
+                String valueFromDoc = JsonTools.toJson(docGetResponseVOList.getFirst().getValue());
+                assert valueFromDoc == null || valueFromDoc.equals(JsonTools.compactJson(value)) : valueFromDoc;
                 System.out.println("success indexName=" + item.getIndexName() + "|degree=" + item.getDegree() + "|key=" + item.getKey());
                 successCount.addAndGet(1);
             }
@@ -450,7 +394,7 @@ public class DBTests {
                 String finalIndexName = indexName;
                 executor.execute(() -> {
                     try {
-                        db.put(dbName, new IEngine.Content(new Transaction(finalI), finalIndexName, finalI, String.valueOf(finalI), ByteTools.fromInt(finalI)));
+                        db.put(dbName, finalIndexName, String.valueOf(finalI), false, finalI);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     } finally {
@@ -465,7 +409,7 @@ public class DBTests {
             long seconds = (ms / 1000) % 60;
             long millis = ms % 1000;
             String timeStr = String.format("%02d.%02d.%03d", minutes, seconds, millis);
-            log.debug("setAndGetTimes set success! 插入执行耗时：{}", timeStr);
+            log.info("setAndGetTimes set success! 插入执行耗时：{}", timeStr);
 
 
             AtomicLong wrongCount = new AtomicLong(0);
@@ -476,9 +420,9 @@ public class DBTests {
                 String finalIndexName = indexName;
                 executor.execute(() -> {
                     try {
-                        byte[] bytes = db.getFirst(dbName, finalIndexName, finalI, String.valueOf(finalI));
-                        if (finalI != ByteTools.toInt(Objects.isNull(bytes) ? new byte[4] : bytes)) {
-                            log.debug("i = {}, | read = {}", finalI, ByteTools.toInt(Objects.isNull(bytes) ? new byte[4] : bytes));
+                        int value = (int) db.getFirst(dbName, finalIndexName, String.valueOf(finalI)).getValue();
+                        if (finalI != value) {
+                            log.info("i = {}, | read = {}", finalI, value);
                             wrongCount.getAndAdd(1);
                         }
                     } catch (IOException e) {
@@ -494,7 +438,7 @@ public class DBTests {
             seconds = (ms / 1000) % 60;
             millis = ms % 1000;
             timeStr = String.format("%02d.%02d.%03d", minutes, seconds, millis);
-            log.debug("setAndGetTimes check over! 查询执行耗时：{},  wrongCount = {}", timeStr, wrongCount.get());
+            log.info("setAndGetTimes check over! 查询执行耗时：{},  wrongCount = {}", timeStr, wrongCount.get());
             assert wrongCount.get() == 0 : wrongCount;
         }
     }
@@ -508,62 +452,69 @@ public class DBTests {
         indexName = CommonTools.indexName(indexName);
         long wrongCount = 0;
         for (long i = -500; i < 500; i++) {
-            byte[] bytes = db.getFirst(dbName, indexName, i, String.valueOf(i));
-            if (i != ByteTools.toInt(Objects.isNull(bytes) ? new byte[4] : bytes)) {
-                log.debug("i = {}, | read = {}", i, ByteTools.toInt(Objects.isNull(bytes) ? new byte[4] : bytes));
+            int value = (int) db.getFirst(dbName, indexName, String.valueOf(i)).getValue();
+            if (i != value) {
+                log.info("i = {}, | read = {}", i, value);
                 wrongCount++;
             }
         }
-        log.debug("setAndGetTimes check over! wrongCount =  {}", wrongCount);
+        log.info("setAndGetTimes check over! wrongCount =  {}", wrongCount);
 
         IEngine.Search search = new IEngine.Search(indexName, -500, 500, true, true, 100, true);
         List<byte[]> bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
-            assert ByteTools.toInt(bytesList.get(i)) == -500 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-500 + i);
+            int value = new Doc(bytesList.get(i)).getValue().asInt();
+            assert value == -500 + i : value + " != " + (-500 + i);
         }
 
         search = new IEngine.Search(indexName, -500, 500, false, false, 100, true);
         bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
-            assert ByteTools.toInt(bytesList.get(i)) == -499 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-499 + i);
+            int value = new Doc(bytesList.get(i)).getValue().asInt();
+            assert value == -499 + i : value + " != " + (-499 + i);
         }
 
         search = new IEngine.Search(indexName, -500, 500, true, true, 100, false);
         bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
-            assert ByteTools.toInt(bytesList.get(i)) == 500 - i : ByteTools.toInt(bytesList.get(i)) + " != " + (500 - i);
+            int value = new Doc(bytesList.get(i)).getValue().asInt();
+            assert value == 500 - i : value + " != " + (500 - i);
         }
 
         search = new IEngine.Search(indexName, -500, 500, false, false, 100, false);
         bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
-            assert ByteTools.toInt(bytesList.get(i)) == 499 - i : ByteTools.toInt(bytesList.get(i)) + " != " + (499 - i);
+            int value = new Doc(bytesList.get(i)).getValue().asInt();
+            assert value == 499 - i : value + " != " + (499 - i);
         }
 
         search = new IEngine.Search(indexName, -50, 50, true, true, 100, true);
         bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
-            assert ByteTools.toInt(bytesList.get(i)) == -50 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-50 + i);
+            int value = new Doc(bytesList.get(i)).getValue().asInt();
+            assert value == -50 + i : value + " != " + (-50 + i);
         }
 
         search = new IEngine.Search(indexName, -50, 50, false, false, 100, true);
         bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
-            System.out.print(ByteTools.toInt(bytesList.get(i)) + " ");
-            assert ByteTools.toInt(bytesList.get(i)) == -49 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-49 + i);
+            int value = new Doc(bytesList.get(i)).getValue().asInt();
+            System.out.print(value + " ");
+            assert value == -49 + i : value + " != " + (-49 + i);
         }
         System.out.println();
 
         search = new IEngine.Search(indexName, -50, 50, false, false, 100, true, (bsList, conditions) -> {
             List<byte[]> bl = new ArrayList<>();
             for (byte[] bytes : bsList) {
-                if (0 != ByteTools.toInt(bytes)) {
+                int value = new Doc(bytes).getValue().asInt();
+                if (0 != value) {
                     bl.add(bytes);
                 }
             }
@@ -572,12 +523,12 @@ public class DBTests {
         bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
+            int value = new Doc(bytesList.get(i)).getValue().asInt();
+            System.out.print(value + " ");
             if (i < 49) {
-                System.out.print(ByteTools.toInt(bytesList.get(i)) + " ");
-                assert ByteTools.toInt(bytesList.get(i)) == -49 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-49 + i);
+                assert value == -49 + i : value + " != " + (-49 + i);
             } else {
-                System.out.print(ByteTools.toInt(bytesList.get(i)) + " ");
-                assert ByteTools.toInt(bytesList.get(i)) == -48 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-48 + i);
+                assert value == -48 + i : value + " != " + (-48 + i);
             }
         }
         System.out.println();
@@ -585,7 +536,7 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void putAndSelectFirstInSameIndex0() throws IOException, NoSuchFieldException, NoSuchMethodException {
+    void putAndGetFirstInSameIndex0() throws IOException, NoSuchFieldException, NoSuchMethodException {
         String dbName = "putAndGetFirstInSameIndexDB";
         Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "putAndGetFirstInSameIndex0Index";
@@ -598,19 +549,24 @@ public class DBTests {
             System.out.println(e.getMessage());
         }
         indexName = CommonTools.indexName(indexName);
-        db.put(dbName, new IEngine.Content(new Transaction(1), indexName, -64424581328L, "1", ByteTools.fromInt(1)));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, -64424581328L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, -64424581328L, "1"));
-        db.put(dbName, new IEngine.Content(new Transaction(2), indexName, 0, "1", ByteTools.fromInt(1)));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, 0L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, 0L, "1"));
-        db.put(dbName, new IEngine.Content(new Transaction(3), indexName, 1, "1", ByteTools.fromInt(1)));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, 1L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, 1L, "1"));
-        db.put(dbName, new IEngine.Content(new Transaction(4), indexName, 9223372036854775807L, "1", ByteTools.fromLong(9223372036854775807L)));
-        assert 9223372036854775807L == ByteTools.toLong(db.getFirst(dbName, indexName, 9223372036854775807L, "1")) : ByteTools.toLong(db.getFirst(dbName, indexName, 9223372036854775807L, "1"));
+
+        DocPutResponseVO putVO = db.put(dbName, indexName, "-64424581328", false, 1);
+        int value = (int) db.getFirst(dbName, indexName, putVO.getDegree(), "-64424581328").getValue();
+        assert 1 == value : value;
+        putVO = db.put(dbName, indexName, "0", false, 1);
+        value = (int) db.getFirst(dbName, indexName, putVO.getDegree(), "0").getValue();
+        assert 1 == value : value;
+        putVO = db.put(dbName, indexName, "1", false, 1);
+        value = (int) db.getFirst(dbName, indexName, putVO.getDegree(), "1").getValue();
+        assert 1 == value : value;
+        putVO = db.put(dbName, indexName, "9223372036854775807", false, 1);
+        value = (int) db.getFirst(dbName, indexName, putVO.getDegree(), "9223372036854775807").getValue();
+        assert 1 == value : value;
     }
 
     @Test
     @Order(3)
-    void putAndSelectFirstInSameIndex1() throws IOException, NoSuchFieldException, NoSuchMethodException {
+    void putAndGetFirstInSameIndex1() throws IOException, NoSuchFieldException, NoSuchMethodException {
         String dbName = "putAndGetFirstInSameIndexDB";
         String indexName = "putAndGetFirstInSameIndex1Index";
         DB db = DB.getInstance(rootpath, 10737418240L);
@@ -620,33 +576,47 @@ public class DBTests {
             System.out.println(e.getMessage());
         }
         indexName = CommonTools.indexName(indexName);
-        db.put(dbName, new IEngine.Content(new Transaction(1), indexName, -64424581328L, "1", ByteTools.fromInt(1)));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, -64424581328L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, -64424581328L, "1"));
-        db.put(dbName, new IEngine.Content(new Transaction(2), indexName, 0, "1", ByteTools.fromInt(1)));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, 0L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, 0L, "1"));
-        db.put(dbName, new IEngine.Content(new Transaction(3), indexName, 1, "1", ByteTools.fromInt(1)));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName, 1L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName, 1L, "1"));
-        db.put(dbName, new IEngine.Content(new Transaction(4), indexName, 9223372036854775807L, "1", ByteTools.fromLong(9223372036854775807L)));
-        assert 9223372036854775807L == ByteTools.toLong(db.getFirst(dbName, indexName, 9223372036854775807L, "1")) : ByteTools.toLong(db.getFirst(dbName, indexName, 9223372036854775807L, "1"));
+
+        DocPutResponseVO putVO = db.put(dbName, indexName, "-64424581328", false, 1);
+        int value = (int) db.getFirst(dbName, indexName, putVO.getDegree(), "-64424581328").getValue();
+        assert 1 == value : value;
+        putVO = db.put(dbName, indexName, "0", false, 1);
+        value = (int) db.getFirst(dbName, indexName, putVO.getDegree(), "0").getValue();
+        assert 1 == value : value;
+        putVO = db.put(dbName, indexName, "1", false, 1);
+        value = (int) db.getFirst(dbName, indexName, putVO.getDegree(), "1").getValue();
+        assert 1 == value : value;
+        putVO = db.put(dbName, indexName, "9223372036854775807", false, 1);
+        value = (int) db.getFirst(dbName, indexName, putVO.getDegree(), "9223372036854775807").getValue();
+        assert 1 == value : value;
     }
 
     @Test
     @Order(4)
-    void putAndSelectFirstInSameIndex2() throws IOException, NoSuchFieldException {
+    void putAndGetFirstInSameIndex2() throws IOException, NoSuchFieldException {
         String dbName = "putAndGetFirstInSameIndexDB";
         String indexName0 = "putAndGetFirstInSameIndex0Index";
         String indexName1 = "putAndGetFirstInSameIndex1Index";
         DB db = DB.getInstance(rootpath, 10737418240L);
         indexName0 = CommonTools.indexName(indexName0);
         indexName1 = CommonTools.indexName(indexName1);
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName0, -64424581328L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName0, -64424581328L, "1"));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName0, 0L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName0, 0L, "1"));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName0, 1L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName0, 1L, "1"));
-        assert 9223372036854775807L == ByteTools.toLong(db.getFirst(dbName, indexName0, 9223372036854775807L, "1")) : ByteTools.toLong(db.getFirst(dbName, indexName0, 9223372036854775807L, "1"));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName1, -64424581328L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName1, -64424581328L, "1"));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName1, 0L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName1, 0L, "1"));
-        assert 1 == ByteTools.toInt(db.getFirst(dbName, indexName1, 1L, "1")) : ByteTools.toInt(db.getFirst(dbName, indexName1, 1L, "1"));
-        assert 9223372036854775807L == ByteTools.toLong(db.getFirst(dbName, indexName1, 9223372036854775807L, "1")) : ByteTools.toLong(db.getFirst(dbName, indexName1, 9223372036854775807L, "1"));
+        int value = (int) db.getFirst(dbName, indexName0, "-64424581328").getValue();
+        assert 1 == value : value;
+        value = (int) db.getFirst(dbName, indexName0, "0").getValue();
+        assert 1 == value : value;
+        value = (int) db.getFirst(dbName, indexName0, "1").getValue();
+        assert 1 == value : value;
+        value = (int) db.getFirst(dbName, indexName0, "9223372036854775807").getValue();
+        assert 1 == value : value;
+
+        value = (int) db.getFirst(dbName, indexName1, "-64424581328").getValue();
+        assert 1 == value : value;
+        value = (int) db.getFirst(dbName, indexName1, "0").getValue();
+        assert 1 == value : value;
+        value = (int) db.getFirst(dbName, indexName1, "1").getValue();
+        assert 1 == value : value;
+        value = (int) db.getFirst(dbName, indexName1, "9223372036854775807").getValue();
+        assert 1 == value : value;
     }
 
     @Test
@@ -665,29 +635,32 @@ public class DBTests {
         }
         int count = 10000;
         for (int i = -5000; i < count; i++) {
-            db.put(dbName, new IEngine.Content(new Transaction(i), indexName, i, String.valueOf(i), ByteTools.fromInt(i)));
+            db.put(dbName, indexName, String.valueOf(i), false, i);
         }
-        log.debug("setAndGetTimes set success!");
+        log.info("setAndGetTimes set success!");
         for (long i = -5000; i < count; i++) {
-            assert i == ByteTools.toInt(db.getFirst(dbName, indexName, i, String.valueOf(i))) : i;
+            int value = (int) db.getFirst(dbName, indexName, String.valueOf(i)).getValue();
+            assert i == value : i + " != " + value;
         }
-        log.debug("setAndGetTimes check success!");
+        log.info("setAndGetTimes check success!");
 
         IEngine.Search search = new IEngine.Search(indexName, -100, 100, false, false, 200, true);
         List<byte[]> bytesList = db.delete(dbName, search);
         assert 199 == bytesList.size() : "199 != " + bytesList.size(); // (-99 —— 0) + (1 —— 99) = 199
         for (int i = 0; i < bytesList.size(); i++) {
-            assert (i - 99) == ByteTools.toInt(bytesList.get(i)) : (i - 99) + " != " + ByteTools.toInt(bytesList.get(i)); // (-99 —— 0) + (1 —— 99) = 199
+            int value = new Doc(bytesList.get(i)).getValue().asInt();
+            assert (i - 99) == value : (i - 99) + " != " + value; // (-99 —— 0) + (1 —— 99) = 199
         }
         search = new IEngine.Search(indexName, -120, 150, false, false, 100, true);
         bytesList = db.select(dbName, search); // -99 —— 99 上一轮已删
         assert 70 == bytesList.size() : "70 != " + bytesList.size(); // -120——150总计271个数字，减去上一轮的199，还剩70个数字
         for (int i = 0; i < bytesList.size(); i++) {
+            int value = new Doc(bytesList.get(i)).getValue().asInt();
             // (-99 —— 0) + (1 —— 99) 因获取不到，被过滤掉
             if (i < 20) { // 即 -120 —— -100 是可查到数字，但不包含 -120
-                assert (i - 119) == ByteTools.toInt(bytesList.get(i)) : (i - 119) + " != " + ByteTools.toInt(bytesList.get(i));
+                assert (i - 119) == value : (i - 119) + " != " + value;
             } else { // 100 —— 150 是可查到数字，但不包含 150，20以后从100开始计数
-                assert (i + 80) == ByteTools.toInt(bytesList.get(i)) : (i + 80) + " != " + ByteTools.toInt(bytesList.get(i));
+                assert (i + 80) == value : (i + 80) + " != " + value;
             }
         }
     }

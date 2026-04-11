@@ -15,7 +15,7 @@
 package cn.aberic.tangduo.db;
 
 import cn.aberic.tangduo.common.file.Filer;
-import cn.aberic.tangduo.db.common.Bm25Tools;
+import cn.aberic.tangduo.db.entity.DocSearchResponseVO;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -243,7 +243,7 @@ public class DBCallbackTests {
     void searchText() throws IOException, NoSuchFieldException {
         String dbName = "putTextDB";
         DB db = DB.getInstance(rootpath, 10737418240L);
-        List<Bm25Tools.DocItem> docItems = db.search(dbName, search1, 100);
+        List<DocSearchResponseVO> docItems = db.search(dbName, search1, 100);
         System.out.println("size = " + docItems.size());
         docItems.forEach(System.out::println);
     }
@@ -253,7 +253,17 @@ public class DBCallbackTests {
     void searchText1() throws IOException, NoSuchFieldException {
         String dbName = "putTextDB";
         DB db = DB.getInstance(rootpath, 10737418240L);
-        List<Bm25Tools.DocItem> docItems = db.search(dbName, search1);
+        List<DocSearchResponseVO> docItems = db.search(dbName, search2);
+        System.out.println("size = " + docItems.size());
+        docItems.forEach(System.out::println);
+    }
+
+    @Test
+    @Order(3)
+    void searchText2() throws IOException, NoSuchFieldException {
+        String dbName = "putTextDB";
+        DB db = DB.getInstance(rootpath, 10737418240L);
+        List<DocSearchResponseVO> docItems = db.search(dbName, search3);
         System.out.println("size = " + docItems.size());
         docItems.forEach(System.out::println);
     }

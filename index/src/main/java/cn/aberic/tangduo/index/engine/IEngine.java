@@ -15,6 +15,7 @@
 package cn.aberic.tangduo.index.engine;
 
 import cn.aberic.tangduo.common.ByteTools;
+import com.fasterxml.jackson.core.JsonParseException;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Getter;
@@ -219,6 +220,11 @@ public abstract class IEngine extends Number {
             this.limit = limit;
         }
 
+        public Search(String indexName, Conditions conditions) {
+            this.indexName = indexName;
+            this.conditions = conditions;
+        }
+
         public Search(String indexName, Integer limit, boolean asc) {
             this.indexName = indexName;
             this.limit = limit;
@@ -264,12 +270,28 @@ public abstract class IEngine extends Number {
             this.limit = limit;
             this.searchFilter = searchFilter;
         }
+
+        public Search(String indexName, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, int limit, boolean asc, Conditions conditions) {
+            this.indexName = indexName;
+            this.degreeMin = degreeMin;
+            this.degreeMax = degreeMax;
+            this.includeMin = includeMin;
+            this.includeMax = includeMax;
+            this.limit = limit;
+            this.asc = asc;
+            this.conditions = conditions;
+        }
     }
 
+    @NoArgsConstructor
     @Getter
     public static class Conditions {
 
         List<Condition> conditions = new ArrayList<>();
+
+        public Conditions(String param, String compare, Object compareValue) throws UnexpectedException {
+            conditions.add(new Condition(param, Compare.getByType(compare), compareValue));
+        }
 
         /**
          * 新增条件
@@ -338,6 +360,6 @@ public abstract class IEngine extends Number {
          *
          * @return 过滤后的数据集合
          */
-        List<byte[]> filter(List<byte[]> bytesList, Conditions conditions);
+        List<byte[]> filter(List<byte[]> bytesList, Conditions conditions) throws JsonParseException;
     }
 }

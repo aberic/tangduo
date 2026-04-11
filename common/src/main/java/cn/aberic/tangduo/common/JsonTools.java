@@ -17,10 +17,12 @@ package cn.aberic.tangduo.common;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 public class JsonTools {
 
     /// 全局单例
@@ -48,6 +50,20 @@ public class JsonTools {
         }
     }
 
+    /** 判断字节数组是否是合法的 JSON */
+    public static boolean isJson(byte[] bytes) {
+        if (bytes == null || bytes.length == 0) {
+            return false;
+        }
+        try {
+            // 尝试解析，能解析就是合法 JSON
+            OBJECT_MAPPER.readTree(bytes);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     /// 对象 → JSON 字符串
     public static String toJson(Object obj) {
         try {
@@ -62,7 +78,18 @@ public class JsonTools {
         try {
             return OBJECT_MAPPER.readValue(json, clazz);
         } catch (Exception e) {
+            log.error("JSON反序列化失败，json: {}, clazz: {}", json, clazz.getName(), e);
             return null;
+        }
+    }
+
+    // 工具方法：JsonNode → 普通 Map/List（可直接序列化）
+    public static Object jsonNodeToNormalObject(JsonNode jsonNode) {
+        if (jsonNode == null) return null;
+        try {
+            return new ObjectMapper().convertValue(jsonNode, Object.class);
+        } catch (Exception e) {
+            return jsonNode;
         }
     }
 
@@ -84,11 +111,33 @@ public class JsonTools {
         }
     }
 
+    public static JsonNode toJsonNode(Object obj) {
+        if (obj == null) {
+            return null;
+        }
+        try {
+            if (obj instanceof String) {
+                String objStr = String.valueOf(obj);
+                if (isJson(objStr)) {
+                    return OBJECT_MAPPER.readTree(objStr);
+                }
+                return OBJECT_MAPPER.valueToTree(obj);
+            } else {
+                // 如果是Map/对象，直接转成JsonNode
+                return OBJECT_MAPPER.valueToTree(obj);
+            }
+        } catch (Exception e) {
+            log.error("Object转JsonNode失败", e);
+            return null;
+        }
+    }
+
     /**
      * 根据点分割路径获取 json 中的值
      *
-     * @param json  原始 json 字符串
-     * @param path  如 "student.age"、"values[0].value.city"
+     * @param json 原始 json 字符串
+     * @param path 如 "student.age"、"values[0].value.city"
+     *
      * @return 读到的值
      */
     public static Object getValueByPath(String json, String path) throws Exception {
@@ -129,5 +178,85 @@ public class JsonTools {
         } else {
             return currentNode.asText();
         }
+    }
+
+    /**
+     * 自动识别 JsonNode 类型，转成对应 Java 对象
+     * 对象 -> Map
+     * 数组 -> List
+     * 数字 -> Number
+     * 字符串 -> String
+     * 布尔 -> Boolean
+     * 其他 -> String
+     */
+    public static Object parseJsonNode(JsonNode node) {
+        if (node == null || node.isNull() || node.isMissingNode()) {
+            return null;
+        }
+
+        // 对象 → Map
+        if (node.isObject()) {
+            return OBJECT_MAPPER.convertValue(node, Map.class);
+        }
+
+        // 数组 → List
+        if (node.isArray()) {
+            return OBJECT_MAPPER.convertValue(node, List.class);
+        }
+
+        // 数字 → Number
+        if (node.isNumber()) {
+            return node.numberValue();
+        }
+
+        // 字符串 → String
+        if (node.isTextual()) {
+            return node.asText();
+        }
+
+        // 布尔 → Boolean
+        if (node.isBoolean()) {
+            return node.asBoolean();
+        }
+
+        // 其他都返回字符串
+        return node.asText();
+    }
+
+    /**
+     * JSON 字符串 去空格、去换行、去回车
+     * 只去掉【无效空格】，不会破坏字符串内部的空格
+     */
+    public static String compactJson(String json) {
+        if (json == null || json.isEmpty()) {
+            return json;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        boolean inString = false; // 是否在字符串内部
+        char prev = 0;
+
+        for (char c : json.toCharArray()) {
+            // 换行、回车直接跳过
+            if (c == '\n' || c == '\r') {
+                continue;
+            }
+
+            // 处理引号，判断是否在字符串内部
+            if (c == '"' && prev != '\\') {
+                inString = !inString;
+                sb.append(c);
+            }
+            // 如果不在字符串里，空格直接跳过
+            else if (!inString && Character.isWhitespace(c)) {
+                continue;
+            }
+            // 其他字符保留
+            else {
+                sb.append(c);
+            }
+            prev = c;
+        }
+        return sb.toString();
     }
 }

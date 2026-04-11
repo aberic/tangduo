@@ -17,9 +17,11 @@ package cn.aberic.tangduo.search.controller;
 import cn.aberic.tangduo.common.SHA256Tools;
 import cn.aberic.tangduo.common.http.Response;
 import cn.aberic.tangduo.db.DB;
+import cn.aberic.tangduo.db.common.KeyHashTools;
 import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.search.entity.*;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
@@ -44,10 +46,13 @@ public class DataController {
     int searchMaxCount;
 
     @PutMapping()
-    public Response putData(@RequestBody ReqPutDataVO reqPutDataVO) {
-        log.debug("PUT data 向 {}/{} 中插入数据，数据摘要 {}", reqPutDataVO.getDatabase(), reqPutDataVO.getIndex(), SHA256Tools.sha256(String.valueOf(reqPutDataVO.getValue())));
+    public Response putData(@RequestBody ReqPutDataVO vo) {
+        log.debug("PUT data 向 {}/{} 中插入数据，key={},degree={},数据摘要={}", vo.getDatabase(), vo.getIndex(),
+                StringUtils.isEmpty(vo.getKey()) ? SHA256Tools.sha256(String.valueOf(vo.getValue())) : vo.getKey(),
+                KeyHashTools.toLongKey(StringUtils.isEmpty(vo.getKey()) ? SHA256Tools.sha256(String.valueOf(vo.getValue())) : vo.getKey()),
+                SHA256Tools.sha256(String.valueOf(vo.getValue())));
         try {
-            DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount).put(reqPutDataVO.getDatabase(), reqPutDataVO.getIndex(), reqPutDataVO.getKey(), reqPutDataVO.isSeg(), String.valueOf(reqPutDataVO.getValue()));
+            DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount).put(vo.getDatabase(), vo.getIndex(), vo.getKey(), vo.isSeg(), vo.getValue());
             return Response.success();
         } catch (IOException | NoSuchFieldException e) {
             return Response.failed(e);
@@ -55,9 +60,9 @@ public class DataController {
     }
 
     @PutMapping({"batch"})
-    public Response putDataBatch(@RequestBody ReqPutDataBatchVO reqPutDataBatchVO) {
-        log.debug("PUT data 向 {}/{} 中批量插入数据，数据摘要 {}", reqPutDataBatchVO.getDatabase(), reqPutDataBatchVO.getIndex(), SHA256Tools.sha256(String.valueOf(reqPutDataBatchVO.getValues())));
-        Map<String, String> map = reqPutDataBatchVO.getValues().stream().collect(Collectors.toMap(
+    public Response putDataBatch(@RequestBody ReqPutDataBatchVO vo) {
+        log.debug("PUT data 向 {}/{} 中批量插入数据，数据摘要 {}", vo.getDatabase(), vo.getIndex(), SHA256Tools.sha256(String.valueOf(vo.getValues())));
+        Map<String, String> map = vo.getValues().stream().collect(Collectors.toMap(
                         ReqPutDataBatchVO.Value::getKey,
                         value -> String.valueOf(value.getValue()),
                         (oldName, newName) -> oldName
@@ -69,7 +74,7 @@ public class DataController {
             for (Map.Entry<String, String> keyValueEntry : map.entrySet()) {
                 Thread.startVirtualThread(() -> {
                     try {
-                        db.put(reqPutDataBatchVO.getDatabase(), reqPutDataBatchVO.getIndex(), keyValueEntry.getKey(), reqPutDataBatchVO.isSeg(), keyValueEntry.getValue());
+                        db.put(vo.getDatabase(), vo.getIndex(), keyValueEntry.getKey(), vo.isSeg(), keyValueEntry.getValue());
                     } catch (IOException ignored) {
                     } finally {
                         latch.countDown();
@@ -88,11 +93,10 @@ public class DataController {
     }
 
     @GetMapping()
-    public Response getData(@RequestBody ReqGetDataVO data) {
-        log.debug("GET data 从 {}/{} 中读取数据", data.getDatabase(), data.getIndex());
+    public Response getData(@RequestBody ReqGetDataVO vo) {
+        log.debug("GET data 从 {}/{} 中读取数据，key={},degree={}", vo.getDatabase(), vo.getIndex(), vo.getKey(), KeyHashTools.toLongKey(vo.getKey()));
         try {
-            DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount).get(data.getDatabase(), data.getIndex(), null, data.getKey());
-            return Response.success();
+            return Response.success(DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount).get(vo.getDatabase(), vo.getIndex(), null, vo.getKey()));
         } catch (IOException | NoSuchFieldException e) {
             return Response.failed(e);
         }

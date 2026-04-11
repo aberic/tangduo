@@ -51,8 +51,11 @@ public class Filer {
         }
     }
 
-    public static void deleteDirectory(String absolutePath) {
-        Path path = Paths.get(absolutePath);
+    public static void deleteDirectory(String dirPath) {
+        deleteDirectory(Paths.get(dirPath));
+    }
+
+    public static void deleteDirectory(Path path) {
         if (!Files.exists(path)) {
             return;
         }
