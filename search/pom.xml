@@ -85,8 +85,8 @@
                 <configuration>
                     <!-- 关键：保留方法参数名 -->
                     <parameters>true</parameters>
-                    <source>21</source> <!-- 你的JDK版本 -->
-                    <target>21</target>
+                    <source>25</source> <!-- 你的JDK版本 -->
+                    <target>25</target>
                     <encoding>UTF-8</encoding>
                 </configuration>
             </plugin>

@@ -1,0 +1,111 @@
+### put data kv object，无分词
+PUT /data HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "key": "key",
+  "seg": false,
+  "value": {
+    "name": "City School",
+    "description": "ICSE",
+    "street": "West End",
+    "city": "Meerut",
+    "state": "UP",
+    "zip": "250002",
+    "location": [
+      28.9926174,
+      77.692485
+    ],
+    "fees": 3500,
+    "tags": [
+      "fully computerized"
+    ],
+    "rating": "4.5"
+  }
+}
+
+### get data kv object
+GET /data HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "key": "key"
+}
+
+### put data kv string，无分词
+PUT /data HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "key": "keystring",
+  "seg": false,
+  "value": "abc"
+}
+
+### get data kv string
+GET /data HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "key": "keystring"
+}
+
+### put data kv int，无分词
+PUT /data HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "key": "keyInt",
+  "seg": false,
+  "value": 1
+}
+
+### get data kv int
+GET /data HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "key": "keyInt"
+}
+
+### put data kv double，无分词
+PUT /data HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "key": "keyDouble",
+  "seg": false,
+  "value": 1.9
+}
+
+### get data kv double
+GET /data HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "key": "keyDouble"
+}

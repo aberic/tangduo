@@ -20,6 +20,7 @@ import cn.aberic.tangduo.common.file.Writer;
 import cn.aberic.tangduo.index.engine.Common;
 import cn.aberic.tangduo.index.engine.Datum;
 import cn.aberic.tangduo.index.engine.IEngine;
+import cn.aberic.tangduo.index.engine.Transaction;
 import cn.aberic.tangduo.index.engine.skip.Skip;
 import cn.aberic.tangduo.index.engine.unity.Unity;
 import lombok.Data;
@@ -33,11 +34,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.rmi.UnexpectedException;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * 索引接口<p>
@@ -60,16 +60,34 @@ public class Index {
     /** 数据文件大小阈值，单位byte */
     long dataFileMaxSize;
 
+    private static final Lock lock = new ReentrantLock();
+    private static Index instance;
+
     private Index() {}
 
-    public Index(String rootPath) throws IOException, NoSuchFieldException {
-        this(rootPath, DATA_FILE_DEFAULT_SIZE);
+    /**
+     *
+     * @param rootPath        数据根路径
+     * @param dataFileMaxSize 数据文件大小阈值，单位byte
+     */
+    public static Index getInstance(String rootPath, long dataFileMaxSize) throws IOException, NoSuchFieldException {
+        if (instance == null) {
+            lock.lock(); // 加锁
+            try {
+                if (instance == null) {
+                    instance = new Index(rootPath, dataFileMaxSize);
+                }
+            } finally {
+                lock.unlock(); // 释放锁
+            }
+        }
+        return instance;
     }
 
-    public Index(String rootPath, long dataFileMaxSize) throws IOException, NoSuchFieldException {
+    private Index(String rootPath, long dataFileMaxSize) throws IOException, NoSuchFieldException {
         this();
         this.rootPath = rootPath;
-        this.dataFileMaxSize = Math.max(dataFileMaxSize, DATA_FILE_DEFAULT_SIZE);
+        this.dataFileMaxSize = dataFileMaxSize;
         init();
     }
 
@@ -148,6 +166,40 @@ public class Index {
         Channel.append(recordPath.toString(), format.getBytes(StandardCharsets.UTF_8));
     }
 
+    /**
+     * 删除索引
+     *
+     * @param indexName 索引名称
+     */
+    public void removeIndex(String indexName) throws IOException {
+        // 遍历确认没有重复名称的索引
+        if (indexMap.entrySet().stream().noneMatch(entry -> entry.getKey().equals(indexName))) {
+            return;
+        }
+        Path recordPath = Common.recordFilepath(rootPath); // 如"tmp/record.rd"
+        // 索引引擎@#@索引名称@#@索引文件地址@#@索引文件版本号@#@索引创建时间 ##@@## 索引引擎@#@索引名称@#@索引文件地址@#@索引文件版本号@#@索引创建时间
+        String res = Files.readString(recordPath);
+        if (StringUtils.isEmpty(res)) {
+            return;
+        }
+        StringBuilder sb = new StringBuilder();
+        String[] blockArr = res.split(blockSkip);
+        for (String indexRecord : blockArr) {
+            String[] dbArr = indexRecord.split(indexSkip);
+            if (dbArr[1].equals(indexName)) {
+                continue;
+            }
+            if (!sb.isEmpty()) {
+                sb.append(blockSkip).append(indexRecord);
+            } else {
+                sb.append(indexRecord);
+            }
+        }
+        Writer.write(recordPath.toString(), sb.toString().getBytes(StandardCharsets.UTF_8));
+        indexMap.remove(indexName);
+        Filer.deleteDirectory(Path.of(rootPath, indexName));
+    }
+
     /** 刷盘 */
     public void force(long degree, String indexName) throws IOException {
         indexMap.get(indexName).force(degree, indexName);
@@ -156,10 +208,14 @@ public class Index {
     /** Node插入数据data */
     public void put(IEngine.Content content) throws IOException {
         if (!indexMap.containsKey(content.getIndexName())) {
-            try {
-                createIndex(IEngine.UNITY, new Info(content.getIndexName()));
-            } catch (InstanceAlreadyExistsException ignore) {} catch (NoSuchMethodException e) {
-                throw new RuntimeException(e);
+            if (content.isAutoCreateIndex()) {
+                try {
+                    createIndex(IEngine.UNITY, new Info(content.getIndexName()));
+                } catch (InstanceAlreadyExistsException ignore) {} catch (NoSuchMethodException e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                throw new NoSuchElementException("索引" + content.getIndexName() + "实例不存在");
             }
         }
         indexMap.get(content.getIndexName()).put(content);
@@ -174,42 +230,134 @@ public class Index {
             content.getLock().unlock();
         }
         if (!content.getItems().isEmpty()) {
-            CountDownLatch latch = new CountDownLatch(content.getItems().size()); // 计数3
-            for (IEngine.Content.Item item : content.getItems()) {
-                Thread.startVirtualThread(() -> {
-                    String indexName = item.getIndexName();
-                    if (!indexMap.containsKey(indexName)) {
+            try (ExecutorService childExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+                List<Future<?>> childFutures = new ArrayList<>();
+                for (IEngine.Content.Item item : content.getItems()) {
+                    Future<?> childFuture = childExecutor.submit(() -> {
                         try {
-                            createIndex(IEngine.UNITY, new Info(indexName));
-                        } catch (InstanceAlreadyExistsException | IOException ignore) {} catch (NoSuchMethodException e) {
+                            processSingleItem(item, content);
+                        } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
-                    }
+                    });
+                    childFutures.add(childFuture);
+                }
+                // 等待所有item任务完成
+                for (Future<?> future : childFutures) {
                     try {
-                        indexMap.get(indexName).put(content);
-                    } catch (IOException e) {
+                        future.get();
+                    } catch (InterruptedException | ExecutionException e) {
+                        Thread.currentThread().interrupt();
                         throw new RuntimeException(e);
                     }
-                    content.getLock(indexName).lock();
-                    try {
-                        while (!content.getIsNotified(indexName).get()) {
-                            content.getCondition(indexName).await();
-                        }
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    } finally {
-                        content.getLock(indexName).unlock();
-                        latch.countDown();
-                    }
-                });
-            }
-            try {
-                latch.await();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+                }
             }
         }
         content.getTransaction().execute();
+    }
+
+    /** Node批量插入数据data */
+    public void put(List<IEngine.Content> contentList) throws IOException {
+        Transaction transaction = new Transaction();
+        // 外层循环并行虚拟线程
+        try (ExecutorService parentExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<Future<?>> parentFutures = new ArrayList<>();
+            for (IEngine.Content content : contentList) {
+                Future<?> parentFuture = parentExecutor.submit(() -> {
+                    try {
+                        processSingleContent(content, transaction);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+                parentFutures.add(parentFuture);
+            }
+            // 统一等待所有任务，处理异常
+            for (Future<?> future : parentFutures) {
+                try {
+                    future.get();
+                } catch (InterruptedException | ExecutionException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+        transaction.execute();
+    }
+
+    private void processSingleContent(IEngine.Content content, Transaction transaction) throws Exception {
+        if (!indexMap.containsKey(content.getIndexName())) {
+            try {
+                createIndex(IEngine.UNITY, new Info(content.getIndexName()));
+            } catch (InstanceAlreadyExistsException ignore) {} catch (NoSuchMethodException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        content.setTransaction(transaction);
+        indexMap.get(content.getIndexName()).put(content);
+
+        content.getLock().lock();
+        try {
+            while (!content.getIsNotified().get()) {
+                content.getCondition().await();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw e;
+        } finally {
+            content.getLock().unlock();
+        }
+
+        // 内层循环用虚拟线程池替代CountDownLatch
+        if (!content.getItems().isEmpty()) {
+            try (ExecutorService childExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+                List<Future<?>> childFutures = new ArrayList<>();
+                for (IEngine.Content.Item item : content.getItems()) {
+                    Future<?> childFuture = childExecutor.submit(() -> {
+                        try {
+                            processSingleItem(item, content);
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                    childFutures.add(childFuture);
+                }
+                // 等待所有item任务完成
+                for (Future<?> future : childFutures) {
+                    try {
+                        future.get();
+                    } catch (InterruptedException | ExecutionException e) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        }
+    }
+
+    private void processSingleItem(IEngine.Content.Item item, IEngine.Content content) throws Exception {
+        // 原业务逻辑完全不变
+        String indexName = item.getIndexName();
+        if (!indexMap.containsKey(indexName)) {
+            try {
+                createIndex(IEngine.UNITY, new Info(indexName));
+            } catch (InstanceAlreadyExistsException | IOException ignore) {} catch (NoSuchMethodException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        indexMap.get(indexName).put(content);
+
+        content.getLock(indexName).lock();
+        try {
+            while (!content.getIsNotified(indexName).get()) {
+                content.getCondition(indexName).await();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw e;
+        } finally {
+            content.getLock(indexName).unlock();
+        }
     }
 
     /**

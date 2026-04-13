@@ -52,8 +52,7 @@ public class DataController {
                 KeyHashTools.toLongKey(StringUtils.isEmpty(vo.getKey()) ? SHA256Tools.sha256(String.valueOf(vo.getValue())) : vo.getKey()),
                 SHA256Tools.sha256(String.valueOf(vo.getValue())));
         try {
-            DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount).put(vo.getDatabase(), vo.getIndex(), vo.getKey(), vo.isSeg(), vo.getValue());
-            return Response.success();
+            return Response.success(DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount).put(vo.getDatabase(), vo.getIndex(), vo.getKey(), vo.isSeg(), vo.getValue()));
         } catch (IOException | NoSuchFieldException e) {
             return Response.failed(e);
         }
@@ -104,7 +103,7 @@ public class DataController {
 
     @GetMapping("search")
     public Response search(@RequestBody ReqSearchDataVO data) {
-        log.debug("GET data 从 {}/{} 中读取数据", data.getDatabase(), data.getIndex());
+        log.debug("GET data 从 {}/{} 中search数据", data.getDatabase(), data.getIndex());
         try {
             DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount).search(data.getDatabase(), data.getQuery(), fromReq(data));
             return Response.success();
@@ -115,7 +114,7 @@ public class DataController {
 
     @GetMapping("select")
     public Response select(@RequestBody ReqSelectDataVO data) {
-        log.debug("GET data 从 {}/{} 中读取数据", data.getDatabase(), data.getIndex());
+        log.debug("GET data 从 {}/{} 中select数据", data.getDatabase(), data.getIndex());
         try {
             DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount).select(data.getDatabase(), fromReq(data));
             return Response.success();

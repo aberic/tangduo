@@ -14,15 +14,13 @@
 
 package cn.aberic.tangduo.index.engine;
 
+import cn.aberic.tangduo.common.ByteTools;
 import cn.aberic.tangduo.common.file.Channel;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** 事务，用于存储每条完整命令的写入计划，待验证完成后一次执行，或全部失败，或全部成功 */
@@ -70,16 +68,23 @@ public class Transaction {
         for (Map.Entry<String, List<Task>> filepathListEntry : taskListMap.entrySet()) {
             List<Task> successTaskList = new ArrayList<>();
             successTaskListMap.put(filepathListEntry.getKey(), successTaskList);
+            StringBuilder sb = new StringBuilder();
             for (Task task : filepathListEntry.getValue()) {
                 try {
                     Channel.write(filepathListEntry.getKey(), task.seek, task.dataNew);
                     successTaskList.add(task);
+                    long dataSeek = ByteTools.toLong(task.dataNew);
+                    sb.append("seek=").append(task.seek).append(",dataSeek=").append(dataSeek).append(" ");
+                    if (dataSeek <= 0) {
+                        log.info("dataSeek <= 0");
+                    }
                 } catch (IOException e) {
                     log.warn("transaction-{} execute write error, rollback all task!", number);
                     rollback = true;
                     break;
                 }
             }
+            log.info("sb = {}", sb);
         }
         if (rollback) {
             for (Map.Entry<String, List<Task>> filepathListEntry : successTaskListMap.entrySet()) {

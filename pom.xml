@@ -21,8 +21,8 @@
     </modules>
 
     <properties>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
         <spring-boot.version>4.0.2</spring-boot.version>
         <lombok.version>1.18.42</lombok.version>
         <logback.version>1.5.25</logback.version>

@@ -106,6 +106,9 @@ public abstract class IEngine extends Number {
         /** 数据 */
         byte[] value;
 
+        /** 默认不允许自动创建索引 */
+        boolean autoCreateIndex = false;
+
         /** 同一索引允许多个kv */
         List<Item> items = new ArrayList<>();
 
@@ -119,12 +122,21 @@ public abstract class IEngine extends Number {
         Condition condition = lock.newCondition();
         AtomicBoolean isNotified = new AtomicBoolean(false);
 
+        public Content(String indexName, long degree, String key, byte[] value) {
+            this.indexName = indexName;
+            this.degree = degree;
+            this.key = key;
+            this.value = value;
+            autoCreateIndex = true;
+        }
+
         public Content(Transaction transaction, String indexName, long degree, String key, byte[] value) {
             this.transaction = transaction;
             this.indexName = indexName;
             this.degree = degree;
             this.key = key;
             this.value = value;
+            autoCreateIndex = true;
         }
 
         public void addItem(String indexName, long degree, String key) {
@@ -208,7 +220,7 @@ public abstract class IEngine extends Number {
         boolean includeMin = true;
         /** 是否包含最大主键 */
         boolean includeMax = true;
-        Integer limit = 10;
+        Integer limit = Integer.MAX_VALUE;
         boolean asc = true;
         boolean delete = false;
 

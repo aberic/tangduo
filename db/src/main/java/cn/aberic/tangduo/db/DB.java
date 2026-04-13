@@ -19,10 +19,7 @@ import cn.aberic.tangduo.common.file.Channel;
 import cn.aberic.tangduo.common.file.Filer;
 import cn.aberic.tangduo.common.file.Writer;
 import cn.aberic.tangduo.db.common.*;
-import cn.aberic.tangduo.db.entity.Doc;
-import cn.aberic.tangduo.db.entity.DocGetResponseVO;
-import cn.aberic.tangduo.db.entity.DocPutResponseVO;
-import cn.aberic.tangduo.db.entity.DocSearchResponseVO;
+import cn.aberic.tangduo.db.entity.*;
 import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.Common;
 import cn.aberic.tangduo.index.engine.IEngine;
@@ -136,7 +133,7 @@ public class DB {
             String dbName = dbArr[0];
             String seg = dbArr[1];
             String indexRootPath = Path.of(rootPath, dbName).normalize().toString(); // 如"tmp/data/manage"
-            dbMap.put(dbName, new SegIndex(seg, new Index(indexRootPath, dataFileMaxSize)));
+            dbMap.put(dbName, new SegIndex(seg, Index.getInstance(indexRootPath, dataFileMaxSize)));
         }
     }
 
@@ -169,7 +166,7 @@ public class DB {
         }
         Channel.append(recordPath.toString(), format.getBytes(StandardCharsets.UTF_8));
         String indexRootPath = Path.of(rootPath, dbName).normalize().toString(); // 如"tmp/data/manage"
-        dbMap.put(dbName, new SegIndex(seg, new Index(indexRootPath, dataFileMaxSize)));
+        dbMap.put(dbName, new SegIndex(seg, Index.getInstance(indexRootPath, dataFileMaxSize)));
     }
 
     /**
@@ -190,7 +187,7 @@ public class DB {
                 String[] dbArr = dbNameAndSeg.split(dbSkip);
                 if (dbArr[0].equals(databaseName)) {
                     String indexRootPath = Path.of(rootPath, databaseName).normalize().toString(); // 如"tmp/data/manage"
-                    dbMap.put(databaseName, new SegIndex(dbArr[1], new Index(indexRootPath, dataFileMaxSize)));
+                    dbMap.put(databaseName, new SegIndex(dbArr[1], Index.getInstance(indexRootPath, dataFileMaxSize)));
                     return true;
                 }
             }
@@ -302,13 +299,18 @@ public class DB {
      * @param value     数据
      */
     public DocPutResponseVO put(@Nullable String dbName, @Nullable String indexName, @Nullable String key, boolean seg, @Nonnull Object value) throws IOException {
-        dbName = StringUtils.isEmpty(dbName) ? DATABASE_NAME_DEFAULT : dbName;
-        indexName = StringUtils.isEmpty(indexName) ? INDEX_NAME_DEFAULT : indexName;
-        key = StringUtils.isEmpty(key) ? DATABASE_NAME_DEFAULT : key;
-        long degree = KeyHashTools.toLongKey(key);
-        Doc doc = new Doc(dbName, indexName, key, degree, value);
+        return put(new DocPutRequestVO(dbName, indexName, null, key, seg, value));
+    }
+
+    /**Node插入数据data*/
+    public DocPutResponseVO put(@Nonnull DocPutRequestVO batchVO) throws IOException {
+        String dbName = StringUtils.isEmpty(batchVO.getDatabase()) ? DATABASE_NAME_DEFAULT : batchVO.getDatabase();
+        String indexName = StringUtils.isEmpty(batchVO.getIndex()) ? INDEX_NAME_DEFAULT : batchVO.getIndex();
+        String key = StringUtils.isEmpty(batchVO.getKey()) ? DATABASE_NAME_DEFAULT : batchVO.getKey();
+        long degree = Objects.isNull(batchVO.getDegree()) ? KeyHashTools.toLongKey(key) : batchVO.getDegree();
+        Doc doc = new Doc(dbName, indexName, key, degree, batchVO.getValue());
         IEngine.Content content;
-        if (!seg) {
+        if (!batchVO.isSeg()) {
             content = new IEngine.Content(new Transaction(), indexName, degree, key, doc.toBytes());
             Index index = getIndex(dbName);
             if (index == null) {
@@ -338,8 +340,8 @@ public class DB {
         String key4datetime = String.valueOf(degree4datetime);
         List<IndexName4KeyAndDegree> list;
         String valueStr;
-        if (value instanceof String) {
-            String str = String.valueOf(value);
+        if (batchVO.getValue() instanceof String) {
+            String str = String.valueOf(batchVO.getValue());
             if (JsonTools.isJson(str)) {
                 list = parseIndexName4KeyAndDegree(str);
                 valueStr = str;
@@ -379,6 +381,100 @@ public class DB {
                 content.addItem(indexName4KeyAndDegree.indexName(), indexName4KeyAndDegree.degree(), indexName4KeyAndDegree.key()));
         index.put(content);
         return new DocPutResponseVO(doc, content);
+    }
+
+    /**Node批量插入数据data*/
+    public String put(String database, List<DocPutBatchRequestVO> batchRequestVOS) throws IOException {
+        List<IEngine.Content> contentList = new ArrayList<>();
+        Index baseIndex = null;
+        for (DocPutBatchRequestVO batchRequestVO : batchRequestVOS) {
+            String dbName = StringUtils.isEmpty(database) ? DATABASE_NAME_DEFAULT : database;
+            String indexName = StringUtils.isEmpty(batchRequestVO.getIndex()) ? INDEX_NAME_DEFAULT : batchRequestVO.getIndex();
+            String key = StringUtils.isEmpty(batchRequestVO.getKey()) ? DATABASE_NAME_DEFAULT : batchRequestVO.getKey();
+            long degree = Objects.isNull(batchRequestVO.getDegree()) ? KeyHashTools.toLongKey(key) : batchRequestVO.getDegree();
+            Doc doc = new Doc(dbName, indexName, key, degree, batchRequestVO.getValue());
+            IEngine.Content content;
+            if (!batchRequestVO.isSeg()) {
+                content = new IEngine.Content(indexName, degree, key, doc.toBytes());
+                Index index = getIndex(dbName);
+                if (index == null) {
+                    throw new NoSuchFileException("数据库实例不存在");
+                }
+                if (Objects.isNull(baseIndex)) {
+                    baseIndex = index;
+                }
+                contentList.add(content);
+                continue;
+            }
+            SegIndex segIndex = dbMap.get(dbName);
+            if (segIndex == null) {
+                if (dbName.equals(DATABASE_NAME_DEFAULT)) {
+                    try {
+                        createDB(DATABASE_NAME_DEFAULT);
+                        createIndex(DATABASE_NAME_DEFAULT, IEngine.UNITY, new Index.Info(1, INDEX_NAME_DEFAULT, false, false, false));
+                        segIndex = dbMap.get(dbName);
+                    } catch (InstanceAlreadyExistsException | NoSuchFieldException | NoSuchMethodException e) {
+                        segIndex = dbMap.get(dbName);
+                        if (segIndex == null) {
+                            throw new NoSuchFileException("数据库实例不存在");
+                        }
+                    }
+                } else {
+                    throw new NoSuchFileException("数据库实例不存在");
+                }
+            }
+            long degree4datetime = System.currentTimeMillis();
+            String key4datetime = String.valueOf(degree4datetime);
+            List<IndexName4KeyAndDegree> list;
+            String valueStr;
+            if (batchRequestVO.getValue() instanceof String) {
+                String str = String.valueOf(batchRequestVO.getValue());
+                if (JsonTools.isJson(str)) {
+                    list = parseIndexName4KeyAndDegree(str);
+                    valueStr = str;
+                    for (IndexName4KeyAndDegree indexName4KeyAndDegree : list) {
+                        if (indexName4KeyAndDegree.hash) {
+                            valueStr = valueStr.replace(indexName4KeyAndDegree.key, "");
+                        }
+                    }
+                } else {
+                    list = new ArrayList<>();
+                    if (HASH_PATTERN.matcher(str).matches()) {
+                        valueStr = "";
+                    } else {
+                        valueStr = str;
+                    }
+                }
+            } else {
+                list = new ArrayList<>();
+                valueStr = "";
+            }
+            List<String> indexNameList;
+            if (segIndex.seg.equals("ik")) {
+                indexNameList = IkTokenizerTools.tokenize(valueStr);
+            } else {
+                indexNameList = HanlpTools.segFilter(valueStr);
+            }
+            indexNameList.forEach(idxName -> {
+                String indexName4datetime = CommonTools.indexName4datetime(idxName);
+                if (list.stream().noneMatch(in4kd -> in4kd.indexName().equals(indexName4datetime))) {
+                    list.add(new IndexName4KeyAndDegree(indexName4datetime, key4datetime, degree4datetime, false));
+                }
+            });
+            if (Objects.isNull(baseIndex)) {
+                baseIndex = segIndex.index;
+            }
+            doc.setSegList(indexNameList);
+            content = new IEngine.Content(new Transaction(), CommonTools.indexName(indexName), degree, key, doc.toBytes());
+            list.forEach(indexName4KeyAndDegree ->
+                    content.addItem(indexName4KeyAndDegree.indexName(), indexName4KeyAndDegree.degree(), indexName4KeyAndDegree.key()));
+            contentList.add(content);
+        }
+        if (Objects.isNull(baseIndex)) {
+            throw new NoSuchFileException("无可用数据库实例");
+        }
+        baseIndex.put(contentList);
+        return database;
     }
 
     /** 匹配 MD5 / SHA */

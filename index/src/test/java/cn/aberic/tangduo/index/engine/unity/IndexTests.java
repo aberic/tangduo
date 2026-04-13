@@ -45,6 +45,8 @@ import java.util.stream.Stream;
 @Slf4j
 public class IndexTests {
 
+    final String rootpath = "tmp/index";
+
     @Test
     @Order(1)
     void init() throws IOException {
@@ -60,10 +62,9 @@ public class IndexTests {
     @Test
     @Order(2)
     void create() throws IOException, NoSuchFieldException, NoSuchMethodException {
-        String rootPath = "tmp/create";
-        Filer.deleteDirectory(rootPath);
-        String indexName = "index";
-        Index index = new Index(rootPath);
+        Filer.deleteDirectory(rootpath);
+        String indexName = "create";
+        Index index = Index.getInstance(rootpath, 1048576L);
         try {
             index.createIndex(IEngine.UNITY, new Index.Info(1, indexName, true, true, false));
         } catch (InstanceAlreadyExistsException e) {
@@ -72,33 +73,25 @@ public class IndexTests {
     }
 
     @Test
-    @Order(2)
+    @Order(3)
     void putAndGetFirstOne() throws IOException, NoSuchFieldException, NoSuchMethodException {
-        String rootPath = "tmp/putAndGetOne";
-        Filer.deleteDirectory(rootPath);
-        String indexName = "index";
-        Index index = new Index(rootPath);
-        try {
-            index.createIndex(IEngine.UNITY, new Index.Info(1, indexName, true, true, false));
-        } catch (InstanceAlreadyExistsException e) {
-            System.out.println(e.getMessage());
-        }
+        String indexName = "putAndGetOne";
+        Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
+        Index index = Index.getInstance(rootpath, 1048576L);
+        index.removeIndex(indexName);
+
         index.put(new IEngine.Content(new Transaction(1), indexName, 1, "1", ByteTools.fromInt(1)));
         assert 1 == ByteTools.toInt(index.getFirst(indexName, 1, "1")) : ByteTools.toInt(index.getFirst(indexName, 1, "1"));
     }
 
     @Test
-    @Order(2)
+    @Order(3)
     void putAndGetFirst() throws IOException, NoSuchFieldException, NoSuchMethodException {
-        String rootPath = "tmp/setAndGet";
-        Filer.deleteDirectory(rootPath);
-        String indexName = "index";
-        Index index = new Index(rootPath);
-        try {
-            index.createIndex(IEngine.UNITY, new Index.Info(1, indexName, true, true, false));
-        } catch (InstanceAlreadyExistsException e) {
-            System.out.println(e.getMessage());
-        }
+        String indexName = "setAndGet";
+        Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
+        Index index = Index.getInstance(rootpath, 1048576L);
+        index.removeIndex(indexName);
+
         index.put(new IEngine.Content(new Transaction(1), indexName, -64424581328L, "1", ByteTools.fromInt(1)));
         assert 1 == ByteTools.toInt(index.getFirst(indexName, -64424581328L, "1")) : ByteTools.toInt(index.getFirst(indexName, -64424581328L, "1"));
         index.put(new IEngine.Content(new Transaction(2), indexName, 0, "1", ByteTools.fromInt(1)));
@@ -110,17 +103,13 @@ public class IndexTests {
     }
 
     @Test
-    @Order(2)
+    @Order(3)
     void putAndGetFirstAndRemove() throws IOException, NoSuchFieldException, NoSuchMethodException {
-        String rootPath = "tmp/setAndGetAndDelete";
-        Filer.deleteDirectory(rootPath);
-        String indexName = "index";
-        Index index = new Index(rootPath);
-        try {
-            index.createIndex(IEngine.UNITY, new Index.Info(1, indexName, true, true, false));
-        } catch (InstanceAlreadyExistsException e) {
-            System.out.println(e.getMessage());
-        }
+        String indexName = "setAndGetAndDelete";
+        Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
+        Index index = Index.getInstance(rootpath, 1048576L);
+        index.removeIndex(indexName);
+
         index.put(new IEngine.Content(new Transaction(1), indexName, -64424581328L, "1", ByteTools.fromInt(1)));
         index.put(new IEngine.Content(new Transaction(2), indexName, 0, "1", ByteTools.fromInt(1)));
         index.put(new IEngine.Content(new Transaction(3), indexName, 1, "1", ByteTools.fromInt(1)));
@@ -143,7 +132,7 @@ public class IndexTests {
 
     @Test
     void pathTest() {
-        Path path = Paths.get("tmp/setAndGet/unity/index/0_4294967295.idx");
+        Path path = Paths.get("tmp/index/unity/setAndGet/0_4294967295.idx");
         // 提取文件名（不含后缀）
         String fileName = path.getFileName().toString();
         System.out.println("fileName = " + fileName);
@@ -206,60 +195,47 @@ public class IndexTests {
     }
 
     @Test
-    @Order(2)
+    @Order(3)
     void resetAndGetFirst() throws IOException, NoSuchFieldException, NoSuchMethodException {
-        String rootPath = "tmp/resetAndGet";
-        Filer.deleteDirectory(rootPath);
-        String indexName = "index";
-        Index index = new Index(rootPath);
-        try {
-            index.createIndex(IEngine.UNITY, new Index.Info(1, indexName, true, true, false));
-        } catch (InstanceAlreadyExistsException e) {
-            System.out.println(e.getMessage());
-        }
+        String indexName = "resetAndGetFirst";
+        Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
+        Index index = Index.getInstance(rootpath, 1048576L);
+        index.removeIndex(indexName);
+
         index.put(new IEngine.Content(new Transaction(1), indexName, 1, "1", ByteTools.fromInt(1)));
         assert 1 == ByteTools.toInt(index.getFirst(indexName, 1, "1")) : "1 !=" + ByteTools.toInt(index.getFirst(indexName, 1, "1"));
         index.put(new IEngine.Content(new Transaction(1), indexName, 1, "1", ByteTools.fromInt(2)));
         assert 2 == ByteTools.toInt(index.getFirst(indexName, 1, "1")) : "2 !=" + ByteTools.toInt(index.getFirst(indexName, 1, "1"));
-        Filer.deleteDirectory(rootPath);
     }
 
     @Test
-    @Order(2)
+    @Order(3)
     void putAndGetFirstTimes() throws IOException, NoSuchFieldException, NoSuchMethodException {
-        String rootPath = "tmp/setAndGetTimes";
-        Filer.deleteDirectory(rootPath);
-        String indexName = "index";
-        Index index = new Index(rootPath);
-        try {
-            index.createIndex(IEngine.UNITY, new Index.Info(1, indexName, true, true, false));
-        } catch (InstanceAlreadyExistsException e) {
-            System.out.println(e.getMessage());
-        }
+        String indexName = "putAndGetFirstTimes";
+        Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
+        Index index = Index.getInstance(rootpath, 1048576L);
+        index.removeIndex(indexName);
+
         int count = 100000;
         for (int i = 0; i < count; i++) {
             index.put(new IEngine.Content(new Transaction(i), indexName, i, String.valueOf(i), ByteTools.fromInt(i)));
         }
-        log.debug("setAndGetTimes set success!");
+        log.debug("putAndGetFirstTimes set success!");
         for (int i = 0; i < count; i++) {
             assert i == ByteTools.toInt(index.getFirst(indexName, i, String.valueOf(i))) : i;
         }
-        log.debug("setAndGetTimes check success!");
+        log.debug("putAndGetFirstTimes check success!");
     }
 
     @Test
-    @Order(2)
+    @Order(3)
     void putAndGetFirstTimesAsync() throws IOException, NoSuchFieldException, NoSuchMethodException, InterruptedException {
-        String rootPath = "tmp/putAndGetFirstTimesAsync";
-        Filer.deleteDirectory(rootPath);
-        String indexName = "index";
-        Index index = new Index(rootPath);
-        try {
-            index.createIndex(IEngine.UNITY, new Index.Info(1, indexName, true, true, false));
-        } catch (InstanceAlreadyExistsException e) {
-            System.out.println(e.getMessage());
-        }
-        int threadCount = 100000;
+        String indexName = "putAndGetFirstTimesAsync";
+        Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
+        Index index = Index.getInstance(rootpath, 1048576L);
+        index.removeIndex(indexName);
+
+        int threadCount = 100000; // 10000000 1小时16分钟
         int startIndex = threadCount / 2 - threadCount;
         CountDownLatch latch = new CountDownLatch(threadCount); // 计数3
         try (ThreadPoolExecutor executor = new ThreadPoolExecutor(
@@ -285,7 +261,7 @@ public class IndexTests {
         // 等待计数减到0（所有线程完成）
         latch.await();
         index.force(1, indexName);
-        log.debug("setAndGetTimes set success!");
+        log.debug("putAndGetFirstTimesAsync set success!");
 
         AtomicLong wrongCount = new AtomicLong(0);
         CountDownLatch latchGet = new CountDownLatch(threadCount); // 计数3
@@ -313,16 +289,15 @@ public class IndexTests {
                 });
             }
         }
-        log.debug("setAndGetTimes check over! wrongCount = {}", wrongCount.get());
+        log.debug("putAndGetFirstTimesAsync check over! wrongCount = {}", wrongCount.get());
         assert wrongCount.get() == 0 : wrongCount;
     }
 
     @Test
-    @Order(3)
+    @Order(4)
     void select() throws IOException, NoSuchFieldException {
-        String rootPath = "tmp/putAndGetFirstTimesAsync";
-        String indexName = "index";
-        Index index = new Index(rootPath);
+        String indexName = "putAndGetFirstTimesAsync";
+        Index index = Index.getInstance(rootpath, 1048576L);
         long wrongCount = 0;
         for (int i = -500; i < 500; i++) {
             byte[] bytes = index.getFirst(indexName, i, String.valueOf(i));
@@ -331,7 +306,7 @@ public class IndexTests {
                 wrongCount++;
             }
         }
-        log.debug("setAndGetTimes check over! wrongCount =  {}", wrongCount);
+        log.debug("putAndGetFirstTimesAsync check over! wrongCount =  {}", wrongCount);
 
         IEngine.Search search = new IEngine.Search(indexName, -500, 500, true, true, 100, true);
         List<byte[]> bytesList = index.select(search);
@@ -401,17 +376,112 @@ public class IndexTests {
     }
 
     @Test
-    @Order(2)
-    void putAndGetFirstAndAreaSelectTimes() throws IOException, NoSuchFieldException, NoSuchMethodException {
-        String rootPath = "tmp/putAndGetFirstAndAreaSelectTimes";
-        Filer.deleteDirectory(rootPath);
-        String indexName = "index";
-        Index index = new Index(rootPath);
-        try {
-            index.createIndex(IEngine.UNITY, new Index.Info(1, indexName, true, true, false));
-        } catch (InstanceAlreadyExistsException e) {
-            System.out.println(e.getMessage());
+    @Order(3)
+    void putAndGetFirstBatch() throws IOException, NoSuchFieldException, NoSuchMethodException, InterruptedException {
+        String indexName = "putAndGetFirstBatch";
+        Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
+        Index index = Index.getInstance(rootpath, 1048576L);
+        index.removeIndex(indexName);
+
+        int threadCount = 30000;
+        int startIndex = threadCount / 2 - threadCount;
+        int endIndex = threadCount / 2;
+
+        List<IEngine.Content> contentList = new ArrayList<>();
+        for (int i = startIndex; i < endIndex; i++) {
+            contentList.add(new IEngine.Content(indexName, i, String.valueOf(i), ByteTools.fromInt(i)));
         }
+        index.put(contentList);
+        log.debug("putAndGetFirstBatch set success!");
+
+        AtomicLong wrongCount = new AtomicLong(0);
+        CountDownLatch latchGet = new CountDownLatch(threadCount); // 计数3
+        try (ThreadPoolExecutor executor = new ThreadPoolExecutor(
+                10,                  // 核心线程
+                50,                  // 最大线程（关键！限制线程总数）
+                60L, TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(200),  // 有界队列！！绝对不用无界 LinkedBlockingQueue
+                new ThreadPoolExecutor.CallerRunsPolicy()  // 拒绝策略
+        )) {
+            for (int i = startIndex; i < endIndex; i++) {
+                int finalI = i;
+                executor.execute(() -> {
+                    try {
+                        byte[] bytes = index.getFirst(indexName, finalI, String.valueOf(finalI));
+                        if (Objects.isNull(bytes)) {
+                            wrongCount.getAndAdd(1);
+                            // log.info("i = {}", finalI);
+                        } else {
+                            if (finalI != ByteTools.toInt(bytes)) {
+                                // log.info("i = {}, | read = {}", finalI, ByteTools.toInt(bytes));
+                                wrongCount.getAndAdd(1);
+                            }
+                        }
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    } finally {
+                        latchGet.countDown();
+                    }
+                });
+            }
+        }
+        log.debug("putAndGetFirstBatch check over! wrongCount = {}", wrongCount.get());
+        assert wrongCount.get() == 0 : wrongCount;
+    }
+
+    @Test
+    @Order(3)
+    void putAndGetFirstBatchTmp() throws IOException, NoSuchFieldException, NoSuchMethodException, InterruptedException {
+        String indexName = "putAndGetFirstBatch";
+        Index index = Index.getInstance(rootpath, 1048576L);
+
+        int threadCount = 30000;
+        int startIndex = threadCount / 2 - threadCount;
+        int endIndex = threadCount / 2;
+
+        AtomicLong wrongCount = new AtomicLong(0);
+        CountDownLatch latchGet = new CountDownLatch(threadCount); // 计数3
+        try (ThreadPoolExecutor executor = new ThreadPoolExecutor(
+                10,                  // 核心线程
+                50,                  // 最大线程（关键！限制线程总数）
+                60L, TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(200),  // 有界队列！！绝对不用无界 LinkedBlockingQueue
+                new ThreadPoolExecutor.CallerRunsPolicy()  // 拒绝策略
+        )) {
+            for (int i = startIndex; i < endIndex; i++) {
+                int finalI = i;
+                executor.execute(() -> {
+                    try {
+                        byte[] bytes = index.getFirst(indexName, finalI, String.valueOf(finalI));
+                        if (Objects.isNull(bytes)) {
+                            wrongCount.getAndAdd(1);
+                            log.info("i = {}", finalI);
+                        } else {
+                            if (finalI != ByteTools.toInt(bytes)) {
+                                log.info("i = {}, | read = {}", finalI, ByteTools.toInt(bytes));
+                                wrongCount.getAndAdd(1);
+                            }
+                        }
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    } finally {
+                        latchGet.countDown();
+                    }
+                });
+            }
+        }
+        log.debug("putAndGetFirstBatch check over! wrongCount = {}", wrongCount.get());
+        assert wrongCount.get() == 0 : wrongCount;
+    }
+
+    @Test
+    @Order(3)
+    void putAndGetFirstAndAreaSelectTimes() throws IOException, NoSuchFieldException, NoSuchMethodException {
+        String indexName = "putAndGetFirstAndAreaSelectTimes";
+        Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
+        Index index = Index.getInstance(rootpath, 1048576L);
+        index.removeIndex(indexName);
+
         int count = 10;
         for (int i = 0; i < count; i++) {
             index.put(new IEngine.Content(new Transaction(i), indexName, i, String.valueOf(i), ByteTools.fromInt(i)));
@@ -445,11 +515,10 @@ public class IndexTests {
     }
 
     @Test
-    @Order(3)
+    @Order(4)
     void selectAreaTimes() throws IOException, NoSuchFieldException {
-        String rootPath = "tmp/putAndGetFirstAndAreaSelectTimes";
-        String indexName = "index";
-        Index index = new Index(rootPath);
+        String indexName = "putAndGetFirstAndAreaSelectTimes";
+        Index index = Index.getInstance(rootpath, 1048576L);
 
         IEngine.Search search = new IEngine.Search(indexName, 15, false);
         List<byte[]> bytesList = index.select(search);
@@ -459,35 +528,30 @@ public class IndexTests {
         }
     }
 
-    @Test
-    @Order(2)
-    void selectAreaTimesInclude() throws IOException, NoSuchFieldException {
-        String rootPath = "/Users/young/Documents/code/src/github.com/aberic/tangduo/search/tmp/data/test";
-        String indexName = "default_include_datetime";
-        Index index = new Index(rootPath);
+//    @Test
+//    @Order(3)
+//    void selectAreaTimesInclude() throws IOException, NoSuchFieldException {
+//        String rootPath = "/Users/young/Documents/code/src/github.com/aberic/tangduo/search/tmp/data/test";
+//        String indexName = "default_include_datetime";
+//        Index index = Index.getInstance(rootPath, 1048576L);
+//
+//        IEngine.Search search = new IEngine.Search(indexName, 15, false);
+//        List<byte[]> bytesList = index.select(search);
+//        System.out.println("list size = " + bytesList.size());
+//        bytesList.forEach(bytes -> System.out.println(ByteTools.toString(bytes)));
+//    }
 
-        IEngine.Search search = new IEngine.Search(indexName, 15, false);
-        List<byte[]> bytesList = index.select(search);
-        System.out.println("list size = " + bytesList.size());
-        bytesList.forEach(bytes -> System.out.println(ByteTools.toString(bytes)));
-    }
-
     @Test
-    @Order(2)
+    @Order(3)
     void deleteList() throws IOException, NoSuchFieldException {
-        String rootPath = "tmp/deleteList";
-        Filer.deleteDirectory(rootPath);
-        String indexName = "index";
-        Index index = new Index(rootPath);
-        try {
-            index.createIndex(IEngine.UNITY, new Index.Info(1, indexName, true, true, false));
-        } catch (InstanceAlreadyExistsException | NoSuchMethodException e) {
-            System.out.println(e.getMessage());
-        }
+        String indexName = "deleteList";
+        Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
+        Index index = Index.getInstance(rootpath, 1048576L);
+        index.removeIndex(indexName);
 
         int count = 10000;
         for (int i = -5000; i < count; i++) {
-            index.put(new IEngine.Content(new Transaction(i), indexName, i, String.valueOf(i), ByteTools.fromInt(i)));
+            index.put(new IEngine.Content(new Transaction(), indexName, i, String.valueOf(i), ByteTools.fromInt(i)));
         }
         log.debug("setAndGetTimes set success!");
         for (int i = -5000; i < count; i++) {
@@ -515,20 +579,22 @@ public class IndexTests {
     }
 
     @Test
-    @Order(2)
+    @Order(3)
     void mutilPutAndGetFirst() throws IOException, NoSuchFieldException, NoSuchMethodException {
-        String rootPath = "tmp/mutilPutAndGet";
-        Filer.deleteDirectory(rootPath);
-        String indexName1 = "index1";
-        String indexName2 = "index2";
-        String indexName3 = "index3";
-        String indexName4 = "index4";
-        Index index = new Index(rootPath);
-        try {
-            index.createIndex(IEngine.UNITY, new Index.Info(1, indexName1, true, true, false));
-        } catch (InstanceAlreadyExistsException e) {
-            System.out.println(e.getMessage());
-        }
+        String indexName1 = "mutilPutAndGetFirst_index1";
+        String indexName2 = "mutilPutAndGetFirst_index2";
+        String indexName3 = "mutilPutAndGetFirst_index3";
+        String indexName4 = "mutilPutAndGetFirst_index4";
+        Filer.deleteDirectory(Path.of(rootpath, indexName1).toAbsolutePath().toString());
+        Filer.deleteDirectory(Path.of(rootpath, indexName2).toAbsolutePath().toString());
+        Filer.deleteDirectory(Path.of(rootpath, indexName3).toAbsolutePath().toString());
+        Filer.deleteDirectory(Path.of(rootpath, indexName4).toAbsolutePath().toString());
+        Index index = Index.getInstance(rootpath, 1048576L);
+        index.removeIndex(indexName1);
+        index.removeIndex(indexName2);
+        index.removeIndex(indexName3);
+        index.removeIndex(indexName4);
+
         IEngine.Content content1 = new IEngine.Content(new Transaction(1), indexName1, -64424581328L, "1", ByteTools.fromInt(1));
         index.put(content1);
         IEngine.Content content2 = new IEngine.Content(new Transaction(2), indexName2, 0, "1", ByteTools.fromInt(1));
@@ -550,20 +616,22 @@ public class IndexTests {
     }
 
     @Test
-    @Order(2)
+    @Order(3)
     void mutilPutAndGetFirstAuto() throws IOException, NoSuchFieldException, NoSuchMethodException {
-        String rootPath = "tmp/mutilPutAndGetAuto";
-        Filer.deleteDirectory(rootPath);
-        String indexName1 = "index1";
-        String indexName2 = "index2";
-        String indexName3 = "index3";
-        String indexName4 = "index4";
-        Index index = new Index(rootPath);
-        try {
-            index.createIndex(IEngine.UNITY, new Index.Info(1, indexName1, true, true, false));
-        } catch (InstanceAlreadyExistsException e) {
-            System.out.println(e.getMessage());
-        }
+        String indexName1 = "mutilPutAndGetFirstAuto_index1";
+        String indexName2 = "mutilPutAndGetFirstAuto_index2";
+        String indexName3 = "mutilPutAndGetFirstAuto_index3";
+        String indexName4 = "mutilPutAndGetFirstAuto_index4";
+        Filer.deleteDirectory(Path.of(rootpath, indexName1).toAbsolutePath().toString());
+        Filer.deleteDirectory(Path.of(rootpath, indexName2).toAbsolutePath().toString());
+        Filer.deleteDirectory(Path.of(rootpath, indexName3).toAbsolutePath().toString());
+        Filer.deleteDirectory(Path.of(rootpath, indexName4).toAbsolutePath().toString());
+        Index index = Index.getInstance(rootpath, 1048576L);
+        index.removeIndex(indexName1);
+        index.removeIndex(indexName2);
+        index.removeIndex(indexName3);
+        index.removeIndex(indexName4);
+
         IEngine.Content content = new IEngine.Content(new Transaction(1), indexName1, -64424581328L, "1", ByteTools.fromInt(1));
         content.addItem(indexName2, 0, "2");
         content.addItem(indexName3, 1, "3");
@@ -573,6 +641,35 @@ public class IndexTests {
         assert 1 == ByteTools.toInt(index.getFirst(indexName2, 0, "2")) : ByteTools.toInt(index.getFirst(indexName2, 0, "2"));
         assert 1 == ByteTools.toInt(index.getFirst(indexName3, 1, "3")) : ByteTools.toInt(index.getFirst(indexName3, 1, "3"));
         assert 1 == ByteTools.toInt(index.getFirst(indexName4, 9223372036854775807L, "4")) : ByteTools.toInt(index.getFirst(indexName4, 9223372036854775807L, "4"));
+    }
+
+    @Test
+    @Order(3)
+    void mutilPutBatchAndGetFirst() throws IOException, NoSuchFieldException, NoSuchMethodException {
+        String indexName1 = "mutilPutBatchAndGetFirst_index1";
+        String indexName2 = "mutilPutBatchAndGetFirst_index2";
+        String indexName3 = "mutilPutBatchAndGetFirst_index3";
+        String indexName4 = "mutilPutBatchAndGetFirst_index4";
+        Filer.deleteDirectory(Path.of(rootpath, indexName1).toAbsolutePath().toString());
+        Filer.deleteDirectory(Path.of(rootpath, indexName2).toAbsolutePath().toString());
+        Filer.deleteDirectory(Path.of(rootpath, indexName3).toAbsolutePath().toString());
+        Filer.deleteDirectory(Path.of(rootpath, indexName4).toAbsolutePath().toString());
+        Index index = Index.getInstance(rootpath, 1048576L);
+        index.removeIndex(indexName1);
+        index.removeIndex(indexName2);
+        index.removeIndex(indexName3);
+        index.removeIndex(indexName4);
+
+        List<IEngine.Content> contentList = new ArrayList<>();
+        contentList.add(new IEngine.Content(indexName1, -64424581328L, "1", ByteTools.fromInt(1)));
+        contentList.add(new IEngine.Content(indexName2, 0, "1", ByteTools.fromInt(1)));
+        contentList.add(new IEngine.Content(indexName3, 1, "1", ByteTools.fromInt(1)));
+        contentList.add(new IEngine.Content(indexName4, 9223372036854775807L, "1", ByteTools.fromInt(1)));
+        index.put(contentList);
+        assert 1 == ByteTools.toInt(index.getFirst(indexName1, -64424581328L, "1")) : ByteTools.toInt(index.getFirst(indexName1, -64424581328L, "1"));
+        assert 1 == ByteTools.toInt(index.getFirst(indexName2, 0, "1")) : ByteTools.toInt(index.getFirst(indexName2, 0, "1"));
+        assert 1 == ByteTools.toInt(index.getFirst(indexName3, 1, "1")) : ByteTools.toInt(index.getFirst(indexName3, 1, "1"));
+        assert 1 == ByteTools.toInt(index.getFirst(indexName4, 9223372036854775807L, "1")) : ByteTools.toInt(index.getFirst(indexName4, 9223372036854775807L, "1"));
     }
 
 }
