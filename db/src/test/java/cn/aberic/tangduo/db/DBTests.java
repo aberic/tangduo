@@ -94,7 +94,7 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void dbRemove() throws IOException, NoSuchFieldException, NoSuchMethodException {
+    void dbRemove() throws IOException, NoSuchFieldException {
         String dbName = "dbRemove";
         Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         DB db = DB.getInstance(rootpath, 10737418240L);
@@ -111,7 +111,7 @@ public class DBTests {
 
     @Test
     @Order(3)
-    void dbRemoveCheck() throws IOException, NoSuchFieldException, NoSuchMethodException {
+    void dbRemoveCheck() throws IOException, NoSuchFieldException {
         String dbName = "dbRemove";
         DB db = DB.getInstance(rootpath, 10737418240L);
         assert !db.dbExist(dbName) : db.dbExist(dbName);
@@ -183,7 +183,7 @@ public class DBTests {
     void putPre() throws JsonProcessingException {
         long degree = System.currentTimeMillis();
         String key = String.valueOf(degree);
-        List<DB.IndexName4KeyAndDegree> list = DB.parseIndexName4KeyAndDegree(value);
+        List<DB.IndexName4KeyAndDegree> list = DB.parseJsonStr2IndexName4KeyAndDegree(value);
         System.out.println(list);
         List<String> indexNameList = IkTokenizerTools.tokenize(value);
         indexNameList.forEach(idxName -> {
@@ -511,7 +511,7 @@ public class DBTests {
         }
         System.out.println();
 
-        search = new IEngine.Search(indexName, -50, 50, false, false, 100, true, (bsList, conditions) -> {
+        search = new IEngine.Search(indexName, -50, 50, false, false, 100, true, (bsList, _) -> {
             List<byte[]> bl = new ArrayList<>();
             for (byte[] bytes : bsList) {
                 int value = new Doc(bytes).getValue().asInt();
@@ -781,93 +781,93 @@ public class DBTests {
         return Double.compare(n1.doubleValue(), n2.doubleValue());
     }
 
-//    @Test
-//    @Order(2)
-//    void putAndSelectFirstBatch() throws IOException, NoSuchFieldException, NoSuchMethodException, InterruptedException {
-//        String dbName = "putAndSelectFirstBatchDB";
-//        Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
-//        String indexName = "putAndSelectFirstBatchIndex";
-//        DB db = DB.getInstance(rootpath, 10737418240L);
-//        db.removeDB(dbName);
-//        try {
-//            db.createDB(dbName);
-//            db.createIndex(dbName, IEngine.UNITY, new Index.Info(1, indexName, true, true, false));
-//        } catch (InstanceAlreadyExistsException e) {
-//            System.out.println(e.getMessage());
-//        }
-////        int threadCount = 10000000; // 已测 插入执行耗时：14.52.055，查询执行耗时：33.37.622s，wrongCount = 0
-//        int threadCount = 30000;
-//        int startIndex = threadCount / 2 - threadCount;
-//        int endIndex = threadCount / 2;
-//        indexName = CommonTools.indexName(indexName);
-//        long start = System.currentTimeMillis();
-//
-//        List<DocPutBatchRequestVO> batchRequestVOS = new ArrayList<>();
-//        Integer iTmp = null;
-//        for (int i = startIndex; i < endIndex; i++) {
-//            if (Objects.isNull(iTmp)) {
-//                log.info("put i = {}", i);
-//            }
-//            batchRequestVOS.add(new DocPutBatchRequestVO(indexName, String.valueOf(i), i));
-//            iTmp = i;
-//        }
-//        log.info("put i = {}", iTmp);
-//        db.put(dbName, batchRequestVOS);
-//        long ms = System.currentTimeMillis() - start;
-//        long minutes = ms / (1000 * 60);
-//        long seconds = (ms / 1000) % 60;
-//        long millis = ms % 1000;
-//        String timeStr = String.format("%02d.%02d.%03d", minutes, seconds, millis);
-//        log.info("putAndSelectFirstBatch set success! 插入执行耗时：{}", timeStr);
-//
-//        try (ThreadPoolExecutor executor = new ThreadPoolExecutor(
-//                10,                  // 核心线程
-//                50,                  // 最大线程（关键！限制线程总数）
-//                60L, TimeUnit.SECONDS,
-//                new ArrayBlockingQueue<>(200),  // 有界队列！！绝对不用无界 LinkedBlockingQueue
-//                new ThreadPoolExecutor.CallerRunsPolicy()  // 拒绝策略
-//        )) {
-//            AtomicLong wrongCount = new AtomicLong(0);
-//            CountDownLatch latchGet = new CountDownLatch(threadCount); // 计数3
-//            start = System.currentTimeMillis();
-//            Integer iTmp2 = null;
-//            for (int i = startIndex; i < endIndex; i++) {
-//                if (Objects.isNull(iTmp2)) {
-//                    log.info("get i = {}", i);
-//                }
-//                long finalI = i;
-//                String finalIndexName = indexName;
-//                executor.execute(() -> {
-//                    try {
-//                        DocGetResponseVO getResponseVO = db.getFirst(dbName, finalIndexName, String.valueOf(finalI));
-//                        if (Objects.isNull(getResponseVO)) {
-//                            // log.info("i = {}, | read = {}", finalI, null);
-//                            wrongCount.getAndAdd(1);
-//                        } else {
-//                            int value = (int) getResponseVO.getValue();
-//                            if (finalI != value) {
-//                                // log.info("i = {}, | read = {}", finalI, value);
-//                                wrongCount.getAndAdd(1);
-//                            }
-//                        }
-//                    } catch (IOException e) {
-//                        throw new RuntimeException(e);
-//                    } finally {
-//                        latchGet.countDown();
-//                    }
-//                });
-//                iTmp2 = i;
-//            }
-//            log.info("get i = {}", iTmp2);
-//            latchGet.await();
-//            ms = System.currentTimeMillis() - start;
-//            minutes = ms / (1000 * 60);
-//            seconds = (ms / 1000) % 60;
-//            millis = ms % 1000;
-//            timeStr = String.format("%02d.%02d.%03d", minutes, seconds, millis);
-//            log.info("putAndSelectFirstBatch check over! 查询执行耗时：{},  wrongCount = {}", timeStr, wrongCount.get());
-//            assert wrongCount.get() == 0 : wrongCount;
-//        }
-//    }
+    @Test
+    @Order(2)
+    void putAndSelectFirstBatch() throws IOException, NoSuchFieldException, NoSuchMethodException, InterruptedException {
+        String dbName = "putAndSelectFirstBatchDB";
+        Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
+        String indexName = "putAndSelectFirstBatchIndex";
+        DB db = DB.getInstance(rootpath, 10737418240L);
+        db.removeDB(dbName);
+        try {
+            db.createDB(dbName);
+            db.createIndex(dbName, IEngine.UNITY, new Index.Info(1, indexName, true, true, false));
+        } catch (InstanceAlreadyExistsException e) {
+            System.out.println(e.getMessage());
+        }
+//        int threadCount = 10000000; // 已测 插入执行耗时：14.52.055，查询执行耗时：33.37.622s，wrongCount = 0
+        int threadCount = 300000;
+        int startIndex = threadCount / 2 - threadCount;
+        int endIndex = threadCount / 2;
+        indexName = CommonTools.indexName(indexName);
+        long start = System.currentTimeMillis();
+
+        List<DocPutBatchRequestVO> batchRequestVOS = new ArrayList<>();
+        Integer iTmp = null;
+        for (int i = startIndex; i < endIndex; i++) {
+            if (Objects.isNull(iTmp)) {
+                log.info("put i = {}", i);
+            }
+            batchRequestVOS.add(new DocPutBatchRequestVO(indexName, String.valueOf(i), i));
+            iTmp = i;
+        }
+        log.info("put i = {}", iTmp);
+        db.put(dbName, batchRequestVOS);
+        long ms = System.currentTimeMillis() - start;
+        long minutes = ms / (1000 * 60);
+        long seconds = (ms / 1000) % 60;
+        long millis = ms % 1000;
+        String timeStr = String.format("%02d.%02d.%03d", minutes, seconds, millis);
+        log.info("putAndSelectFirstBatch set success! 插入执行耗时：{}", timeStr);
+
+        try (ThreadPoolExecutor executor = new ThreadPoolExecutor(
+                10,                  // 核心线程
+                50,                  // 最大线程（关键！限制线程总数）
+                60L, TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(200),  // 有界队列！！绝对不用无界 LinkedBlockingQueue
+                new ThreadPoolExecutor.CallerRunsPolicy()  // 拒绝策略
+        )) {
+            AtomicLong wrongCount = new AtomicLong(0);
+            CountDownLatch latchGet = new CountDownLatch(threadCount); // 计数3
+            start = System.currentTimeMillis();
+            Integer iTmp2 = null;
+            for (int i = startIndex; i < endIndex; i++) {
+                if (Objects.isNull(iTmp2)) {
+                    log.info("get i = {}", i);
+                }
+                long finalI = i;
+                String finalIndexName = indexName;
+                executor.execute(() -> {
+                    try {
+                        DocGetResponseVO getResponseVO = db.getFirst(dbName, finalIndexName, String.valueOf(finalI));
+                        if (Objects.isNull(getResponseVO)) {
+                            // log.info("i = {}, | read = {}", finalI, null);
+                            wrongCount.getAndAdd(1);
+                        } else {
+                            int value = (int) getResponseVO.getValue();
+                            if (finalI != value) {
+                                // log.info("i = {}, | read = {}", finalI, value);
+                                wrongCount.getAndAdd(1);
+                            }
+                        }
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    } finally {
+                        latchGet.countDown();
+                    }
+                });
+                iTmp2 = i;
+            }
+            log.info("get i = {}", iTmp2);
+            latchGet.await();
+            ms = System.currentTimeMillis() - start;
+            minutes = ms / (1000 * 60);
+            seconds = (ms / 1000) % 60;
+            millis = ms % 1000;
+            timeStr = String.format("%02d.%02d.%03d", minutes, seconds, millis);
+            log.info("putAndSelectFirstBatch check over! 查询执行耗时：{},  wrongCount = {}", timeStr, wrongCount.get());
+            assert wrongCount.get() == 0 : wrongCount;
+        }
+    }
 
 }

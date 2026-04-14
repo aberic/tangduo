@@ -14,11 +14,13 @@
 
 package cn.aberic.tangduo.db.entity;
 
+import cn.aberic.tangduo.common.JsonTools;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
@@ -26,24 +28,25 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL) // 为null的字段不序列化
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 public class DocSearchResponseVO {
 
-    private String digests;
-    private String content;
+    String digests;
+    Object value;
     double score = 0.0;
     /// 预计算好的分词（关键：分词只做一次，不重复做）
     @JsonIgnore
-    private List<String> segList;
+    List<String> segList;
 
-    public DocSearchResponseVO(String digests, String content, List<String> segList) {
-        this.digests = digests;
-        this.content = content;
-        this.segList = segList;
+    public DocSearchResponseVO(Doc doc) {
+        this.digests = doc.getDigests();
+        this.segList = doc.getSegList();
+        this.value = JsonTools.parseJsonNode(doc.value);
     }
 
     @Override
     public String toString() {
-        return "score = " + score + ", content = " + content;
+        return "score = " + score + ", value = " + value;
     }
 
 }

@@ -48,6 +48,8 @@ custom:
     DB_ROOT_PATH: ${DB_ROOT_PATH:search/tmp/data} # 数据库根路径
     DB_DATA_FILE_MAX_SIZE: ${DB_DATA_FILE_MAX_SIZE:1073741824} # 数据文件大小阈值，单位byte
     DB_SEARCH_MAX_COUNT: ${DB_SEARCH_MAX_COUNT:10000} # 每条索引检索的最大数据量
+  index:
+    INDEX_BATCH_MAX_SIZE: ${INDEX_BATCH_MAX_SIZE:5000} # 单批次最大数量
 
 
 ---

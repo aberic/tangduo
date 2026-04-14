@@ -178,14 +178,17 @@ public class DBCallbackTests {
     @Test
     @Order(1)
     void init() {
-        try (Stream<Path> stream = Files.walk(Paths.get(rootpath))) {
-            stream.forEach(f -> {
-                try {
-                    Files.delete(f);
-                } catch (IOException ignore) {}
-            });
-        } catch (IOException e) {
-            log.warn(e.getMessage());
+        Path path = Paths.get(rootpath);
+        while (Files.exists(path)) {
+            try (Stream<Path> stream = Files.walk(path)) {
+                stream.forEach(f -> {
+                    try {
+                        Files.deleteIfExists(f);
+                    } catch (IOException ignore) {}
+                });
+            } catch (IOException e) {
+                log.warn(e.getMessage());
+            }
         }
     }
 
@@ -193,7 +196,6 @@ public class DBCallbackTests {
     @Order(2)
     void putText() throws IOException, NoSuchFieldException {
         String dbName = "putTextDB";
-        Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         DB db = DB.getInstance(rootpath, 10737418240L);
         db.removeDB(dbName);
         try {

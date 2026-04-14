@@ -124,7 +124,7 @@ public class SegToolsTests {
                     ]
                 }
                 """;
-        List<DB.IndexName4KeyAndDegree> indexName4KeyAndDegreeList = DB.parseIndexName4KeyAndDegree(text);
+        List<DB.IndexName4KeyAndDegree> indexName4KeyAndDegreeList = DB.parseJsonStr2IndexName4KeyAndDegree(text);
         System.out.println(indexName4KeyAndDegreeList);
         System.out.println();
         System.out.println(JsonTools.toJson(indexName4KeyAndDegreeList));

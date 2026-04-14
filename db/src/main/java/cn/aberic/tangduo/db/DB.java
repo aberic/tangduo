@@ -40,8 +40,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
@@ -57,6 +56,8 @@ public class DB {
     String rootPath;
     /** 数据文件大小阈值，单位byte */
     long dataFileMaxSize;
+    /** 单批次最大数量 */
+    int batchMaxSize = INDEX_BATCH_MAX_SIZE;
     /** 每条索引检索的最大数据量，默认10000条 */
     int searchMaxCount = SEARCH_MAX_COUNT;
 
@@ -67,6 +68,7 @@ public class DB {
     /** 受保护的默认库名称 */
     public static final String DATABASE_NAME_DEFAULT = "default";
     public static final int SEARCH_MAX_COUNT = 10000;
+    public static final int INDEX_BATCH_MAX_SIZE = 5000;
 
     private static final Lock lock = new ReentrantLock();
     private static DB instance;
@@ -77,7 +79,7 @@ public class DB {
      * @param dataFileMaxSize 数据文件大小阈值，单位byte
      */
     public static DB getInstance(String rootPath, long dataFileMaxSize) throws IOException, NoSuchFieldException {
-        return getInstance(rootPath, dataFileMaxSize, SEARCH_MAX_COUNT);
+        return getInstance(rootPath, dataFileMaxSize, SEARCH_MAX_COUNT, 5000);
     }
 
     /**
@@ -85,12 +87,12 @@ public class DB {
      * @param rootPath        数据根路径
      * @param dataFileMaxSize 数据文件大小阈值，单位byte
      */
-    public static DB getInstance(String rootPath, long dataFileMaxSize, int searchMaxCount) throws IOException, NoSuchFieldException {
+    public static DB getInstance(String rootPath, long dataFileMaxSize, int searchMaxCount, int batchMaxSize) throws IOException, NoSuchFieldException {
         if (instance == null) {
             lock.lock(); // 加锁
             try {
                 if (instance == null) {
-                    instance = new DB(rootPath, dataFileMaxSize, searchMaxCount);
+                    instance = new DB(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize);
                 }
             } finally {
                 lock.unlock(); // 释放锁
@@ -101,11 +103,12 @@ public class DB {
 
     private DB() {}
 
-    private DB(String rootPath, long dataFileMaxSize, int searchMaxCount) throws IOException, NoSuchFieldException {
+    private DB(String rootPath, long dataFileMaxSize, int searchMaxCount, int batchMaxSize) throws IOException, NoSuchFieldException {
         this();
         this.rootPath = rootPath;
         this.dataFileMaxSize = dataFileMaxSize;
         this.searchMaxCount = searchMaxCount;
+        this.batchMaxSize = batchMaxSize;
         init();
     }
 
@@ -166,6 +169,7 @@ public class DB {
         }
         Channel.append(recordPath.toString(), format.getBytes(StandardCharsets.UTF_8));
         String indexRootPath = Path.of(rootPath, dbName).normalize().toString(); // 如"tmp/data/manage"
+        Filer.createDirectory(indexRootPath);
         dbMap.put(dbName, new SegIndex(seg, Index.getInstance(indexRootPath, dataFileMaxSize)));
     }
 
@@ -302,11 +306,11 @@ public class DB {
         return put(new DocPutRequestVO(dbName, indexName, null, key, seg, value));
     }
 
-    /**Node插入数据data*/
+    /** Node插入数据data */
     public DocPutResponseVO put(@Nonnull DocPutRequestVO batchVO) throws IOException {
         String dbName = StringUtils.isEmpty(batchVO.getDatabase()) ? DATABASE_NAME_DEFAULT : batchVO.getDatabase();
         String indexName = StringUtils.isEmpty(batchVO.getIndex()) ? INDEX_NAME_DEFAULT : batchVO.getIndex();
-        String key = StringUtils.isEmpty(batchVO.getKey()) ? DATABASE_NAME_DEFAULT : batchVO.getKey();
+        String key = StringUtils.isEmpty(batchVO.getKey()) ? UUID.randomUUID().toString() : batchVO.getKey();
         long degree = Objects.isNull(batchVO.getDegree()) ? KeyHashTools.toLongKey(key) : batchVO.getDegree();
         Doc doc = new Doc(dbName, indexName, key, degree, batchVO.getValue());
         IEngine.Content content;
@@ -340,27 +344,30 @@ public class DB {
         String key4datetime = String.valueOf(degree4datetime);
         List<IndexName4KeyAndDegree> list;
         String valueStr;
-        if (batchVO.getValue() instanceof String) {
-            String str = String.valueOf(batchVO.getValue());
-            if (JsonTools.isJson(str)) {
-                list = parseIndexName4KeyAndDegree(str);
-                valueStr = str;
-                for (IndexName4KeyAndDegree indexName4KeyAndDegree : list) {
-                    if (indexName4KeyAndDegree.hash) {
-                        valueStr = valueStr.replace(indexName4KeyAndDegree.key, "");
+        switch (batchVO.getValue()) {
+            case String _, List<?> _, Map<?, ?> _ -> {
+                String str = String.valueOf(batchVO.getValue());
+                if (JsonTools.isJson(str)) {
+                    list = parseJsonStr2IndexName4KeyAndDegree(str);
+                    valueStr = str;
+                    for (IndexName4KeyAndDegree indexName4KeyAndDegree : list) {
+                        if (indexName4KeyAndDegree.hash) {
+                            valueStr = valueStr.replace(indexName4KeyAndDegree.key, "");
+                        }
+                    }
+                } else {
+                    list = new ArrayList<>();
+                    if (HASH_PATTERN.matcher(str).matches()) {
+                        valueStr = "";
+                    } else {
+                        valueStr = str;
                     }
                 }
-            } else {
-                list = new ArrayList<>();
-                if (HASH_PATTERN.matcher(str).matches()) {
-                    valueStr = "";
-                } else {
-                    valueStr = str;
-                }
             }
-        } else {
-            list = new ArrayList<>();
-            valueStr = "";
+            case null, default -> {
+                list = new ArrayList<>();
+                valueStr = "";
+            }
         }
         List<String> indexNameList;
         if (segIndex.seg.equals("ik")) {
@@ -376,21 +383,21 @@ public class DB {
         });
         Index index = segIndex.index;
         doc.setSegList(indexNameList);
-        content = new IEngine.Content(new Transaction(), CommonTools.indexName(indexName), degree, key, doc.toBytes());
+        content = new IEngine.Content(new Transaction(), indexName, degree, key, doc.toBytes());
         list.forEach(indexName4KeyAndDegree ->
                 content.addItem(indexName4KeyAndDegree.indexName(), indexName4KeyAndDegree.degree(), indexName4KeyAndDegree.key()));
         index.put(content);
         return new DocPutResponseVO(doc, content);
     }
 
-    /**Node批量插入数据data*/
+    /** Node批量插入数据data */
     public String put(String database, List<DocPutBatchRequestVO> batchRequestVOS) throws IOException {
         List<IEngine.Content> contentList = new ArrayList<>();
         Index baseIndex = null;
         for (DocPutBatchRequestVO batchRequestVO : batchRequestVOS) {
             String dbName = StringUtils.isEmpty(database) ? DATABASE_NAME_DEFAULT : database;
             String indexName = StringUtils.isEmpty(batchRequestVO.getIndex()) ? INDEX_NAME_DEFAULT : batchRequestVO.getIndex();
-            String key = StringUtils.isEmpty(batchRequestVO.getKey()) ? DATABASE_NAME_DEFAULT : batchRequestVO.getKey();
+            String key = StringUtils.isEmpty(batchRequestVO.getKey()) ? UUID.randomUUID().toString() : batchRequestVO.getKey();
             long degree = Objects.isNull(batchRequestVO.getDegree()) ? KeyHashTools.toLongKey(key) : batchRequestVO.getDegree();
             Doc doc = new Doc(dbName, indexName, key, degree, batchRequestVO.getValue());
             IEngine.Content content;
@@ -427,27 +434,30 @@ public class DB {
             String key4datetime = String.valueOf(degree4datetime);
             List<IndexName4KeyAndDegree> list;
             String valueStr;
-            if (batchRequestVO.getValue() instanceof String) {
-                String str = String.valueOf(batchRequestVO.getValue());
-                if (JsonTools.isJson(str)) {
-                    list = parseIndexName4KeyAndDegree(str);
-                    valueStr = str;
-                    for (IndexName4KeyAndDegree indexName4KeyAndDegree : list) {
-                        if (indexName4KeyAndDegree.hash) {
-                            valueStr = valueStr.replace(indexName4KeyAndDegree.key, "");
+            switch (batchRequestVO.getValue()) {
+                case String _, List<?> _, Map<?, ?> _ -> {
+                    String str = String.valueOf(batchRequestVO.getValue());
+                    if (JsonTools.isJson(str)) {
+                        list = parseJsonStr2IndexName4KeyAndDegree(str);
+                        valueStr = str;
+                        for (IndexName4KeyAndDegree indexName4KeyAndDegree : list) {
+                            if (indexName4KeyAndDegree.hash) {
+                                valueStr = valueStr.replace(indexName4KeyAndDegree.key, "");
+                            }
+                        }
+                    } else {
+                        list = new ArrayList<>();
+                        if (HASH_PATTERN.matcher(str).matches()) {
+                            valueStr = "";
+                        } else {
+                            valueStr = str;
                         }
                     }
-                } else {
-                    list = new ArrayList<>();
-                    if (HASH_PATTERN.matcher(str).matches()) {
-                        valueStr = "";
-                    } else {
-                        valueStr = str;
-                    }
                 }
-            } else {
-                list = new ArrayList<>();
-                valueStr = "";
+                case null, default -> {
+                    list = new ArrayList<>();
+                    valueStr = "";
+                }
             }
             List<String> indexNameList;
             if (segIndex.seg.equals("ik")) {
@@ -465,7 +475,7 @@ public class DB {
                 baseIndex = segIndex.index;
             }
             doc.setSegList(indexNameList);
-            content = new IEngine.Content(new Transaction(), CommonTools.indexName(indexName), degree, key, doc.toBytes());
+            content = new IEngine.Content(new Transaction(), indexName, degree, key, doc.toBytes());
             list.forEach(indexName4KeyAndDegree ->
                     content.addItem(indexName4KeyAndDegree.indexName(), indexName4KeyAndDegree.degree(), indexName4KeyAndDegree.key()));
             contentList.add(content);
@@ -491,7 +501,7 @@ public class DB {
      *
      * @param jsonStr json 字符串，如果不是，则返回空集合
      */
-    public static List<IndexName4KeyAndDegree> parseIndexName4KeyAndDegree(String jsonStr) throws JsonProcessingException {
+    public static List<IndexName4KeyAndDegree> parseJsonStr2IndexName4KeyAndDegree(String jsonStr) throws JsonProcessingException {
         List<IndexName4KeyAndDegree> list = new ArrayList<>();
         long degree = System.currentTimeMillis();
         String key = String.valueOf(degree);
@@ -572,16 +582,34 @@ public class DB {
      * @param degree    主键
      * @param key       原始key
      */
-    public List<DocGetResponseVO> get(@Nullable String dbName, @Nullable String indexName, @Nullable Long degree, @Nonnull String key) throws IOException {
+    public List<DocGetResponseVO> get(@Nullable String dbName, @Nullable String indexName, @Nullable Long degree, @Nullable String key) throws IOException {
         dbName = StringUtils.isEmpty(dbName) ? DATABASE_NAME_DEFAULT : dbName;
         indexName = StringUtils.isEmpty(indexName) ? INDEX_NAME_DEFAULT : indexName;
+        List<DocGetResponseVO> docGetResponseVOList = new ArrayList<>();
+        if (StringUtils.isEmpty(key)) {
+            IEngine.Search search = new IEngine.Search(indexName, 10);
+            List<byte[]> bytesList = select(dbName, search);
+            bytesList.forEach(bytes -> {
+                if (Objects.nonNull(bytes) && bytes.length > 0) {
+                    try {
+                        Doc doc = new Doc(bytes);
+                        docGetResponseVOList.add(new DocGetResponseVO(doc));
+                    } catch (JsonParseException e) {
+                        log.warn("db get JsonParseException: {}", e.getMessage());
+                    }
+                }
+            });
+            return docGetResponseVOList;
+        }
         degree = Objects.isNull(degree) ? KeyHashTools.toLongKey(key) : degree;
         Index index = getIndex(dbName);
         if (index == null) {
             throw new NoSuchFileException("数据库实例不存在");
         }
         List<byte[]> bytesList = index.get(indexName, degree, key);
-        List<DocGetResponseVO> docGetResponseVOList = new ArrayList<>();
+        if (CollectionUtils.isEmpty(bytesList)) {
+            return new ArrayList<>();
+        }
         bytesList.forEach(bytes -> {
             if (Objects.nonNull(bytes) && bytes.length > 0) {
                 try {
@@ -639,38 +667,45 @@ public class DB {
         }
         Map<String, DocSearchResponseVO> valueWithSegMap = new ConcurrentHashMap<>();
         if (StringUtils.isEmpty(search.getIndexName())) {
-            CountDownLatch latch = new CountDownLatch(indexNameList.size()); // 计数3
-            indexNameList.forEach(idxName -> Thread.startVirtualThread(() -> {
-                try {
-                    List<byte[]> bytesList = segIndex.index.select(new IEngine.Search(idxName, search.getDegreeMin(), search.getDegreeMax(),
-                            search.isIncludeMin(), search.isIncludeMax(), searchMaxCount, this::doFilter));
-                    if (Objects.nonNull(bytesList) && !bytesList.isEmpty()) {
-                        bytesList.forEach(bytes -> {
-                            try {
-                                Doc doc = new Doc(bytes);
-                                DocSearchResponseVO valueWithSeg = new DocSearchResponseVO(doc.getDigests(), String.valueOf(doc.getValue()), doc.getSegList());
-                                valueWithSegMap.put(valueWithSeg.getDigests(), valueWithSeg);
-                            } catch (JsonParseException ignore) {}
-                        });
-                    }
-                } catch (IOException ignored) {
-                } finally {
-                    latch.countDown();
+            // 外层循环并行虚拟线程
+            try (ExecutorService parentExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+                List<Future<?>> parentFutures = new ArrayList<>();
+                for (String idxName : indexNameList) {
+                    Future<?> parentFuture = parentExecutor.submit(() -> {
+                        try {
+                            List<byte[]> bytesList = segIndex.index.select(new IEngine.Search(idxName, search.getDegreeMin(), search.getDegreeMax(),
+                                    search.isIncludeMin(), search.isIncludeMax(), searchMaxCount, false, this::doFilter));
+                            if (!CollectionUtils.isEmpty(bytesList)) {
+                                bytesList.forEach(bytes -> {
+                                    try {
+                                        Doc doc = new Doc(bytes);
+                                        DocSearchResponseVO valueWithSeg = new DocSearchResponseVO(doc);
+                                        valueWithSegMap.put(valueWithSeg.getDigests(), valueWithSeg);
+                                    } catch (JsonParseException ignore) {}
+                                });
+                            }
+                        } catch (IOException ignored) {}
+                    });
+                    parentFutures.add(parentFuture);
                 }
-            }));
-            try {
-                latch.await();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+                // 统一等待所有任务，处理异常
+                for (Future<?> future : parentFutures) {
+                    try {
+                        future.get();
+                    } catch (InterruptedException | ExecutionException e) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException(e);
+                    }
+                }
             }
         } else {
             List<byte[]> bytesList = segIndex.index.select(new IEngine.Search(search.getIndexName(), search.getDegreeMin(), search.getDegreeMax(),
-                    search.isIncludeMin(), search.isIncludeMax(), searchMaxCount, this::doFilter));
-            if (Objects.nonNull(bytesList) && !bytesList.isEmpty()) {
+                    search.isIncludeMin(), search.isIncludeMax(), searchMaxCount, false, this::doFilter));
+            if (!CollectionUtils.isEmpty(bytesList)) {
                 bytesList.forEach(bytes -> {
                     try {
                         Doc doc = new Doc(bytes);
-                        DocSearchResponseVO valueWithSeg = new DocSearchResponseVO(doc.getDigests(), String.valueOf(doc.getValue()), doc.getSegList());
+                        DocSearchResponseVO valueWithSeg = new DocSearchResponseVO(doc);
                         valueWithSegMap.put(valueWithSeg.getDigests(), valueWithSeg);
                     } catch (JsonParseException ignore) {}
                 });
@@ -691,17 +726,25 @@ public class DB {
             DocSearchResponseVO docItem;
             try {
                 Doc doc = new Doc(bytes);
-                docItem = new DocSearchResponseVO(doc.getDigests(), String.valueOf(doc.getValue()), doc.getSegList());
+                docItem = new DocSearchResponseVO(doc);
             } catch (JsonParseException ignore) {
                 return false;
             }
-            if (!JsonTools.isJson(docItem.getContent())) {
-                return false;
+            switch (docItem.getValue()) {
+                case String s -> {
+                    if (!JsonTools.isJson(s)) {
+                        return false;
+                    }
+                }
+                case List<?> _, Map<?, ?> _ -> {}
+                case null, default -> {
+                    return false;
+                }
             }
             for (IEngine.Conditions.Condition condition : conditions.getConditions()) {
                 Object obj;
                 try {
-                    obj = JsonTools.getValueByPath(docItem.getContent(), condition.getParam());
+                    obj = JsonTools.getValueByPath(JsonTools.toJson(docItem.getValue()), condition.getParam());
                 } catch (Exception ignore) {
                     return false;
                 }
@@ -752,6 +795,23 @@ public class DB {
         }
         // 统一转成 double 比较
         return Double.compare(n1.doubleValue(), n2.doubleValue());
+    }
+
+    /** 查询集合 */
+    public List<DocSearchResponseVO> select1(String dbName, IEngine.Search search) throws IOException {
+        Map<String, DocSearchResponseVO> valueWithSegMap = new ConcurrentHashMap<>();
+        List<byte[]> bytesList = select(dbName, search);
+        if (!CollectionUtils.isEmpty(bytesList)) {
+            bytesList.forEach(bytes -> {
+                try {
+                    Doc doc = new Doc(bytes);
+                    DocSearchResponseVO valueWithSeg = new DocSearchResponseVO(doc);
+                    valueWithSegMap.put(valueWithSeg.getDigests(), valueWithSeg);
+                } catch (JsonParseException ignore) {}
+            });
+        }
+        List<DocSearchResponseVO> docItems = valueWithSegMap.values().stream().toList();
+        return docItems.subList(0, Math.min(search.getLimit(), docItems.size()));
     }
 
     /** 查询集合 */

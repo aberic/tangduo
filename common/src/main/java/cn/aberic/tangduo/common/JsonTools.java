@@ -145,9 +145,7 @@ public class JsonTools {
         String[] keys = path.split("\\.");
 
         JsonNode currentNode = root;
-        for (int i = 0; i < keys.length; i++) {
-            String key = keys[i];
-
+        for (String key : keys) {
             // 处理数组，例如 values[0]
             if (key.contains("[")) {
                 String arrayName = key.substring(0, key.indexOf("["));

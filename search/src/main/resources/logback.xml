@@ -97,7 +97,7 @@
     <!-- 日志采集追加器 -->
     <appender name="LOG_COLLECT" class="cn.aberic.tangduo.sdk.log.LogCollectAppender">
         <!-- 业务项目在这里传入服务器地址 -->
-        <serverUrl>http://127.0.0.1:19219/db/batch/test</serverUrl>
+        <serverUrl>http://127.0.0.1:19219/data/batch</serverUrl>
         <appName>search-service</appName>
         <appKey>your-app-key-123456</appKey>
         <batchSize>30</batchSize>

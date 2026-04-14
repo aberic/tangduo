@@ -15,11 +15,13 @@
 package cn.aberic.tangduo.db.common;
 
 import cn.aberic.tangduo.common.SHA256Tools;
+import cn.aberic.tangduo.db.entity.Doc;
 import cn.aberic.tangduo.db.entity.DocSearchResponseVO;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class Bm25ToolsTests {
 
@@ -192,7 +194,13 @@ public class Bm25ToolsTests {
         contents.add(noiseText9);
         contents.add(noiseText10);
         List<DocSearchResponseVO> valueWithSegList = new ArrayList<>();
-        contents.forEach(s -> valueWithSegList.add(new DocSearchResponseVO(SHA256Tools.sha256(s), s, HanlpTools.seg(s))));
+        contents.forEach(s -> {
+            DocSearchResponseVO vo = new DocSearchResponseVO();
+            vo.setDigests(SHA256Tools.sha256(s));
+            vo.setValue(s);
+            vo.setSegList(HanlpTools.segNormal(s));
+            valueWithSegList.add(vo);
+        });
         List<DocSearchResponseVO> docItems = Bm25Tools.rank(valueWithSegList, search1, "hanlp");
         docItems.forEach(docItem -> System.out.println(docItem.toString()));
     }

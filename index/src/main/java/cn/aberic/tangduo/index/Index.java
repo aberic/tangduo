@@ -52,13 +52,12 @@ public class Index {
     private static final String blockSkip = "##@@##";
     private static final String indexSkip = "@#@";
 
-    /** 数据文件大小阈值，单位byte，默认1MB */
-    private static final long DATA_FILE_DEFAULT_SIZE = 1048576L;
-
     /** 数据库索引所在根路径 */
     String rootPath;
     /** 数据文件大小阈值，单位byte */
     long dataFileMaxSize;
+    /** 单批次最大数量 */
+    int batchMaxSize;
 
     private static final Lock lock = new ReentrantLock();
     private static Index instance;
@@ -71,11 +70,20 @@ public class Index {
      * @param dataFileMaxSize 数据文件大小阈值，单位byte
      */
     public static Index getInstance(String rootPath, long dataFileMaxSize) throws IOException, NoSuchFieldException {
+        return getInstance(rootPath, dataFileMaxSize, 5000);
+    }
+
+    /**
+     *
+     * @param rootPath        数据根路径
+     * @param dataFileMaxSize 数据文件大小阈值，单位byte
+     */
+    public static Index getInstance(String rootPath, long dataFileMaxSize, int batchMaxSize) throws IOException, NoSuchFieldException {
         if (instance == null) {
             lock.lock(); // 加锁
             try {
                 if (instance == null) {
-                    instance = new Index(rootPath, dataFileMaxSize);
+                    instance = new Index(rootPath, dataFileMaxSize, batchMaxSize);
                 }
             } finally {
                 lock.unlock(); // 释放锁
@@ -84,10 +92,11 @@ public class Index {
         return instance;
     }
 
-    private Index(String rootPath, long dataFileMaxSize) throws IOException, NoSuchFieldException {
+    private Index(String rootPath, long dataFileMaxSize, int batchMaxSize) throws IOException, NoSuchFieldException {
         this();
         this.rootPath = rootPath;
         this.dataFileMaxSize = dataFileMaxSize;
+        this.batchMaxSize = batchMaxSize;
         init();
     }
 
@@ -158,7 +167,7 @@ public class Index {
         }
         Path recordPath = Common.recordFilepath(rootPath); // 如"tmp/record.rd"
         String format;
-        if (Files.size(recordPath) == 0) {
+        if (!Files.exists(recordPath) || Files.size(recordPath) == 0) {
             format = String.format("%s%s%s", engine, indexSkip, info.name);
         } else {
             format = String.format("%s%s%s%s", blockSkip, engine, indexSkip, info.name);
@@ -258,6 +267,39 @@ public class Index {
 
     /** Node批量插入数据data */
     public void put(List<IEngine.Content> contentList) throws IOException {
+        List<List<IEngine.Content>> result = splitContentList(contentList);
+        for (List<IEngine.Content> contents : result) {
+            putBatch(contents);
+        }
+    }
+
+    /**
+     * 将大的contentList拆分为多个指定大小的子集合
+     *
+     * @param contentList 原始数据集合
+     *
+     * @return 拆分后的子批次集合
+     */
+    private List<List<IEngine.Content>> splitContentList(List<IEngine.Content> contentList) {
+        List<List<IEngine.Content>> result = new ArrayList<>();
+        if (contentList == null || contentList.isEmpty()) {
+            return result;
+        }
+        int totalSize = contentList.size();
+        int startIndex = 0;
+        // 循环拆分：从startIndex开始，每次取batchSize条，直到末尾
+        while (startIndex < totalSize) {
+            int endIndex = Math.min(startIndex + batchMaxSize, totalSize);
+            List<IEngine.Content> subBatch = contentList.subList(startIndex, endIndex);
+            // 注意：subList是视图，需转为新ArrayList避免原集合修改影响子批次
+            result.add(new ArrayList<>(subBatch));
+            startIndex = endIndex;
+        }
+        return result;
+    }
+
+    /** Node批量插入数据data */
+    public void putBatch(List<IEngine.Content> contentList) {
         Transaction transaction = new Transaction();
         // 外层循环并行虚拟线程
         try (ExecutorService parentExecutor = Executors.newVirtualThreadPerTaskExecutor()) {

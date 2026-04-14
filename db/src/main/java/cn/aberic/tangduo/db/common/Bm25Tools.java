@@ -14,6 +14,7 @@
 
 package cn.aberic.tangduo.db.common;
 
+import cn.aberic.tangduo.common.JsonTools;
 import cn.aberic.tangduo.db.entity.DocSearchResponseVO;
 
 import java.util.Collections;
@@ -94,7 +95,8 @@ public class Bm25Tools {
             }
 
             // 标题加权（可选，和Lucene boosting效果一致）
-            if (doc.getContent().toLowerCase().contains(query.toLowerCase())) {
+            String jsonStr = JsonTools.toJson(doc.getValue());
+            if (jsonStr != null && jsonStr.toLowerCase().contains(query.toLowerCase())) {
                 score *= 2.0;
             }
             doc.setScore(score);

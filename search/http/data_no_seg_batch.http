@@ -1,0 +1,110 @@
+### put data kv object batch，无分词
+PUT /data/batch HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "seg": false,
+  "values": [
+    {
+      "index": "schools",
+      "key": "key1",
+      "value": {
+        "name": "City School",
+        "zip": 250002,
+        "location": [
+          28.9926174,
+          77.692485
+        ],
+        "tags": [
+          "fully computerized"
+        ],
+        "rating": 4.5
+      }
+    },
+    {
+      "index": "schools",
+      "key": "key2",
+      "value": {
+        "name": "City School",
+        "zip": 250002,
+        "location": [
+          28.9926174,
+          77.692485
+        ],
+        "tags": [
+          "fully computerized"
+        ],
+        "rating": 4.5
+      }
+    },
+    {
+      "index": "schools",
+      "key": "key3",
+      "value": {
+        "name": "City School",
+        "zip": 250002,
+        "location": [
+          28.9926174,
+          77.692485
+        ],
+        "tags": [
+          "fully computerized"
+        ],
+        "rating": 4.5
+      }
+    }
+  ]
+}
+
+### get data kv object
+GET /data HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "key": "key1"
+}
+
+### put data kv string batch，无分词
+PUT /data/batch HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "key": "keystring",
+  "seg": false,
+  "values": [
+    {
+      "index": "schools",
+      "key": "keys1",
+      "value": "abc"
+    },
+    {
+      "index": "schools",
+      "key": "keys2",
+      "value": "bcd"
+    },
+    {
+      "index": "schools",
+      "key": "keys3",
+      "value": "cde"
+    }
+  ]
+}
+
+### get data kv string
+GET /data HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "key": "keys1"
+}

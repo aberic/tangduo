@@ -23,8 +23,6 @@ public class ReqPutDataBatchVO {
 
     /// 插入、读取
     String database;
-    /// 插入、读取
-    String index;
     /// 插入
     boolean seg = true;
     /// 批量插入
@@ -32,6 +30,8 @@ public class ReqPutDataBatchVO {
 
     @Data
     public static class Value {
+        /// 插入、读取
+        String index;
         /// 插入、读取
         String key;
         /// 插入

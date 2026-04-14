@@ -34,6 +34,9 @@ public class DBController {
     /// 数据文件大小阈值，单位byte
     @Value("${custom.db.DB_DATA_FILE_MAX_SIZE}")
     long dataFileMaxSize;
+    /// 单批次最大数量
+    @Value("${custom.index.INDEX_BATCH_MAX_SIZE}")
+    int batchMaxSize;
     /// 每条索引检索的最大数据量
     @Value("${custom.db.DB_SEARCH_MAX_COUNT}")
     int searchMaxCount;
@@ -42,7 +45,7 @@ public class DBController {
     public Response create(@PathVariable("dbName") String dbName) {
         log.trace("PUT db/{} 建库，库名：{}", dbName, dbName);
         try {
-            DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount).createDB(dbName);
+            DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).createDB(dbName);
             return Response.success();
         } catch (IOException | NoSuchFieldException | InstanceAlreadyExistsException e) {
             return Response.failed(e);
@@ -53,7 +56,7 @@ public class DBController {
     public Response delete(@PathVariable("dbName") String dbName) {
         log.trace("DELETE db/{} 删库，库名：{}", dbName, dbName);
         try {
-            DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount).removeDB(dbName);
+            DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).removeDB(dbName);
             return Response.success();
         } catch (IOException | NoSuchFieldException e) {
             return Response.failed(e);

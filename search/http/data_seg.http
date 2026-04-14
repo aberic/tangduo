@@ -1,0 +1,60 @@
+### put data kv object，有分词
+PUT /data HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "key": "keySeg",
+  "seg": true,
+  "value": {
+    "name": "City School",
+    "description": "ICSE",
+    "street": "West End",
+    "city": "Meerut",
+    "state": "UP",
+    "zip": "250002",
+    "location": [
+      28.9926174,
+      77.692485
+    ],
+    "fees": 3500,
+    "tags": [
+      "fully computerized"
+    ],
+    "rating": "4.5",
+    "content": "学习永无止境，读书则是最好的学习方式。通过阅读，我们可以积累知识、拓宽视野、提升修养，让自己不断进步。在阅读中沉淀内心，在学习中提升能力，能让我们在生活中更从容，在工作中更出色，实现持续的自我成长。"
+  }
+}
+
+### get data kv object
+GET /data HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "key": "keySeg"
+}
+
+### search data
+GET /data/search HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "query": "读书"
+}
+
+### search data
+GET /data/search HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "query": "学习"
+}
