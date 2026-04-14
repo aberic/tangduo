@@ -19,6 +19,8 @@ import cn.aberic.tangduo.common.file.Filer;
 import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.Transaction;
+import cn.aberic.tangduo.index.engine.entity.Content;
+import cn.aberic.tangduo.index.engine.entity.Search;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -82,7 +84,7 @@ public class IndexTests {
         Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
-        index.put(new IEngine.Content(new Transaction(1), indexName, 1, "1", ByteTools.fromInt(1)));
+        index.put(new Content(new Transaction(1), indexName, 1, "1", ByteTools.fromInt(1)));
         assert 1 == ByteTools.toInt(index.getFirst(indexName, 1, "1")) : ByteTools.toInt(index.getFirst(indexName, 1, "1"));
     }
 
@@ -94,13 +96,13 @@ public class IndexTests {
         Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
-        index.put(new IEngine.Content(new Transaction(1), indexName, -64424581328L, "1", ByteTools.fromInt(1)));
+        index.put(new Content(new Transaction(1), indexName, -64424581328L, "1", ByteTools.fromInt(1)));
         assert 1 == ByteTools.toInt(index.getFirst(indexName, -64424581328L, "1")) : ByteTools.toInt(index.getFirst(indexName, -64424581328L, "1"));
-        index.put(new IEngine.Content(new Transaction(2), indexName, 0, "1", ByteTools.fromInt(1)));
+        index.put(new Content(new Transaction(2), indexName, 0, "1", ByteTools.fromInt(1)));
         assert 1 == ByteTools.toInt(index.getFirst(indexName, 0, "1")) : ByteTools.toInt(index.getFirst(indexName, 0, "1"));
-        index.put(new IEngine.Content(new Transaction(3), indexName, 1, "1", ByteTools.fromInt(1)));
+        index.put(new Content(new Transaction(3), indexName, 1, "1", ByteTools.fromInt(1)));
         assert 1 == ByteTools.toInt(index.getFirst(indexName, 1, "1")) : ByteTools.toInt(index.getFirst(indexName, 1, "1"));
-        index.put(new IEngine.Content(new Transaction(4), indexName, 9223372036854775807L, "1", ByteTools.fromLong(9223372036854775807L)));
+        index.put(new Content(new Transaction(4), indexName, 9223372036854775807L, "1", ByteTools.fromLong(9223372036854775807L)));
         assert 9223372036854775807L == ByteTools.toLong(index.getFirst(indexName, 9223372036854775807L, "1")) : ByteTools.toLong(index.getFirst(indexName, 9223372036854775807L, "1"));
     }
 
@@ -112,10 +114,10 @@ public class IndexTests {
         Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
-        index.put(new IEngine.Content(new Transaction(1), indexName, -64424581328L, "1", ByteTools.fromInt(1)));
-        index.put(new IEngine.Content(new Transaction(2), indexName, 0, "1", ByteTools.fromInt(1)));
-        index.put(new IEngine.Content(new Transaction(3), indexName, 1, "1", ByteTools.fromInt(1)));
-        index.put(new IEngine.Content(new Transaction(4), indexName, 9223372036854775807L, "1", ByteTools.fromLong(9223372036854775807L)));
+        index.put(new Content(new Transaction(1), indexName, -64424581328L, "1", ByteTools.fromInt(1)));
+        index.put(new Content(new Transaction(2), indexName, 0, "1", ByteTools.fromInt(1)));
+        index.put(new Content(new Transaction(3), indexName, 1, "1", ByteTools.fromInt(1)));
+        index.put(new Content(new Transaction(4), indexName, 9223372036854775807L, "1", ByteTools.fromLong(9223372036854775807L)));
 
         index.remove(indexName, -64424581328L, "1");
         assert null == index.getFirst(indexName, -64424581328L, "1") : Arrays.toString(index.getFirst(indexName, -64424581328L, "1"));
@@ -204,9 +206,9 @@ public class IndexTests {
         Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
-        index.put(new IEngine.Content(new Transaction(1), indexName, 1, "1", ByteTools.fromInt(1)));
+        index.put(new Content(new Transaction(1), indexName, 1, "1", ByteTools.fromInt(1)));
         assert 1 == ByteTools.toInt(index.getFirst(indexName, 1, "1")) : "1 !=" + ByteTools.toInt(index.getFirst(indexName, 1, "1"));
-        index.put(new IEngine.Content(new Transaction(1), indexName, 1, "1", ByteTools.fromInt(2)));
+        index.put(new Content(new Transaction(1), indexName, 1, "1", ByteTools.fromInt(2)));
         assert 2 == ByteTools.toInt(index.getFirst(indexName, 1, "1")) : "2 !=" + ByteTools.toInt(index.getFirst(indexName, 1, "1"));
     }
 
@@ -220,7 +222,7 @@ public class IndexTests {
 
         int count = 100000;
         for (int i = 0; i < count; i++) {
-            index.put(new IEngine.Content(new Transaction(i), indexName, i, String.valueOf(i), ByteTools.fromInt(i)));
+            index.put(new Content(new Transaction(i), indexName, i, String.valueOf(i), ByteTools.fromInt(i)));
         }
         log.debug("putAndGetFirstTimes set success!");
         for (int i = 0; i < count; i++) {
@@ -251,7 +253,7 @@ public class IndexTests {
                 int finalI = i;
                 executor.execute(() -> {
                     try {
-                        index.put(new IEngine.Content(new Transaction(finalI), indexName, finalI, String.valueOf(finalI), ByteTools.fromInt(finalI)));
+                        index.put(new Content(new Transaction(finalI), indexName, finalI, String.valueOf(finalI), ByteTools.fromInt(finalI)));
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     } finally {
@@ -310,42 +312,42 @@ public class IndexTests {
         }
         log.debug("select check over! wrongCount =  {}", wrongCount);
 
-        IEngine.Search search = new IEngine.Search(indexName, -500, 500, true, true, 100, true);
+        Search search = new Search(indexName, -500, 500, true, true, 100, true);
         List<byte[]> bytesList = index.select(search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             assert ByteTools.toInt(bytesList.get(i)) == -500 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-500 + i);
         }
 
-        search = new IEngine.Search(indexName, -500, 500, false, false, 100, true);
+        search = new Search(indexName, -500, 500, false, false, 100, true);
         bytesList = index.select(search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             assert ByteTools.toInt(bytesList.get(i)) == -499 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-499 + i);
         }
 
-        search = new IEngine.Search(indexName, -500, 500, true, true, 100, false);
+        search = new Search(indexName, -500, 500, true, true, 100, false);
         bytesList = index.select(search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             assert ByteTools.toInt(bytesList.get(i)) == 500 - i : ByteTools.toInt(bytesList.get(i)) + " != " + (500 - i);
         }
 
-        search = new IEngine.Search(indexName, -500, 500, false, false, 100, false);
+        search = new Search(indexName, -500, 500, false, false, 100, false);
         bytesList = index.select(search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             assert ByteTools.toInt(bytesList.get(i)) == 499 - i : ByteTools.toInt(bytesList.get(i)) + " != " + (499 - i);
         }
 
-        search = new IEngine.Search(indexName, -50, 50, true, true, 100, true);
+        search = new Search(indexName, -50, 50, true, true, 100, true);
         bytesList = index.select(search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             assert ByteTools.toInt(bytesList.get(i)) == -50 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-50 + i);
         }
 
-        search = new IEngine.Search(indexName, -50, 50, false, false, 100, true);
+        search = new Search(indexName, -50, 50, false, false, 100, true);
         bytesList = index.select(search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
@@ -354,7 +356,7 @@ public class IndexTests {
         }
         System.out.println();
 
-        search = new IEngine.Search(indexName, -50, 50, false, false, 100, true, (bsList, _) -> {
+        search = new Search(indexName, -50, 50, false, false, 100, true, (bsList, _) -> {
             List<byte[]> bl = new ArrayList<>();
             for (byte[] bytes : bsList) {
                 if (0 != ByteTools.toInt(bytes)) {
@@ -389,9 +391,9 @@ public class IndexTests {
         int startIndex = threadCount / 2 - threadCount;
         int endIndex = threadCount / 2;
 
-        List<IEngine.Content> contentList = new ArrayList<>();
+        List<Content> contentList = new ArrayList<>();
         for (int i = startIndex; i < endIndex; i++) {
-            contentList.add(new IEngine.Content(indexName, i, String.valueOf(i), ByteTools.fromInt(i)));
+            contentList.add(new Content(indexName, i, String.valueOf(i), ByteTools.fromInt(i)));
         }
         index.put(contentList);
         log.debug("putAndGetFirstBatch set success!");
@@ -486,7 +488,7 @@ public class IndexTests {
 
         int count = 10;
         for (int i = 0; i < count; i++) {
-            index.put(new IEngine.Content(new Transaction(i), indexName, i, String.valueOf(i), ByteTools.fromInt(i)));
+            index.put(new Content(new Transaction(i), indexName, i, String.valueOf(i), ByteTools.fromInt(i)));
         }
         log.debug("putAndGetFirstAndAreaSelectTimes 0 set success!");
         for (int i = 0; i < count; i++) {
@@ -495,7 +497,7 @@ public class IndexTests {
 
         for (int i = 0; i < count; i++) {
             long degree = -64424581328L + i;
-            index.put(new IEngine.Content(new Transaction(i), indexName, degree, String.valueOf(i), ByteTools.fromLong(degree)));
+            index.put(new Content(new Transaction(i), indexName, degree, String.valueOf(i), ByteTools.fromLong(degree)));
         }
         log.debug("putAndGetFirstAndAreaSelectTimes -64424581328L set success!");
         for (int i = 0; i < count; i++) {
@@ -505,7 +507,7 @@ public class IndexTests {
 
         for (int i = 0; i < count; i++) {
             long degree = 9223372036854775507L + i;
-            index.put(new IEngine.Content(new Transaction(i), indexName, degree, String.valueOf(i), ByteTools.fromLong(degree)));
+            index.put(new Content(new Transaction(i), indexName, degree, String.valueOf(i), ByteTools.fromLong(degree)));
         }
         log.debug("putAndGetFirstAndAreaSelectTimes set 9223372036854775507L success!");
         for (int i = 0; i < count; i++) {
@@ -522,7 +524,7 @@ public class IndexTests {
         String indexName = "putAndGetFirstAndAreaSelectTimes";
         Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
 
-        IEngine.Search search = new IEngine.Search(indexName, 15, false);
+        Search search = new Search(indexName, 15, false);
         List<byte[]> bytesList = index.select(search);
         System.out.println("list size = " + bytesList.size());
         for (byte[] bytes : bytesList) {
@@ -540,7 +542,7 @@ public class IndexTests {
 
         int count = 10000;
         for (int i = -5000; i < count; i++) {
-            index.put(new IEngine.Content(new Transaction(), indexName, i, String.valueOf(i), ByteTools.fromInt(i)));
+            index.put(new Content(new Transaction(), indexName, i, String.valueOf(i), ByteTools.fromInt(i)));
         }
         log.debug("setAndGetTimes set success!");
         for (int i = -5000; i < count; i++) {
@@ -548,13 +550,13 @@ public class IndexTests {
         }
         log.debug("setAndGetTimes check success!");
 
-        IEngine.Search search = new IEngine.Search(indexName, -100, 100, false, false, true);
+        Search search = new Search(indexName, -100, 100, false, false, true);
         List<byte[]> bytesList = index.delete(search);
         assert 199 == bytesList.size() : "199 != " + bytesList.size(); // (-99 —— 0) + (1 —— 99) = 199
         for (int i = 0; i < bytesList.size(); i++) {
             assert (i - 99) == ByteTools.toInt(bytesList.get(i)) : (i - 99) + " != " + ByteTools.toInt(bytesList.get(i)); // (-99 —— 0) + (1 —— 99) = 199
         }
-        search = new IEngine.Search(indexName, -120, 150, false, false, 100, true);
+        search = new Search(indexName, -120, 150, false, false, 100, true);
         bytesList = index.select(search); // -99 —— 99 上一轮已删
         assert 70 == bytesList.size() : "70 != " + bytesList.size(); // -120——150总计271个数字，减去上一轮的199，还剩70个数字
         for (int i = 0; i < bytesList.size(); i++) {
@@ -584,17 +586,17 @@ public class IndexTests {
         index.removeIndex(indexName3);
         index.removeIndex(indexName4);
 
-        IEngine.Content content1 = new IEngine.Content(new Transaction(1), indexName1, -64424581328L, "1", ByteTools.fromInt(1));
+        Content content1 = new Content(new Transaction(1), indexName1, -64424581328L, "1", ByteTools.fromInt(1));
         index.put(content1);
-        IEngine.Content content2 = new IEngine.Content(new Transaction(2), indexName2, 0, "1", ByteTools.fromInt(1));
+        Content content2 = new Content(new Transaction(2), indexName2, 0, "1", ByteTools.fromInt(1));
         content2.setDataFileVersionBytes(content1.getDataFileVersionBytes());
         content2.setDataSeekBytes(content1.getDataSeekBytes());
         index.put(content2);
-        IEngine.Content content3 = new IEngine.Content(new Transaction(3), indexName3, 1, "1", ByteTools.fromInt(1));
+        Content content3 = new Content(new Transaction(3), indexName3, 1, "1", ByteTools.fromInt(1));
         content3.setDataFileVersionBytes(content1.getDataFileVersionBytes());
         content3.setDataSeekBytes(content1.getDataSeekBytes());
         index.put(content3);
-        IEngine.Content content4 = new IEngine.Content(new Transaction(4), indexName4, 9223372036854775807L, "1", ByteTools.fromInt(1));
+        Content content4 = new Content(new Transaction(4), indexName4, 9223372036854775807L, "1", ByteTools.fromInt(1));
         content4.setDataFileVersionBytes(content1.getDataFileVersionBytes());
         content4.setDataSeekBytes(content1.getDataSeekBytes());
         index.put(content4);
@@ -621,7 +623,7 @@ public class IndexTests {
         index.removeIndex(indexName3);
         index.removeIndex(indexName4);
 
-        IEngine.Content content = new IEngine.Content(new Transaction(1), indexName1, -64424581328L, "1", ByteTools.fromInt(1));
+        Content content = new Content(new Transaction(1), indexName1, -64424581328L, "1", ByteTools.fromInt(1));
         content.addItem(indexName2, 0, "2");
         content.addItem(indexName3, 1, "3");
         content.addItem(indexName4, 9223372036854775807L, "4");
@@ -649,11 +651,11 @@ public class IndexTests {
         index.removeIndex(indexName3);
         index.removeIndex(indexName4);
 
-        List<IEngine.Content> contentList = new ArrayList<>();
-        contentList.add(new IEngine.Content(indexName1, -64424581328L, "1", ByteTools.fromInt(1)));
-        contentList.add(new IEngine.Content(indexName2, 0, "1", ByteTools.fromInt(1)));
-        contentList.add(new IEngine.Content(indexName3, 1, "1", ByteTools.fromInt(1)));
-        contentList.add(new IEngine.Content(indexName4, 9223372036854775807L, "1", ByteTools.fromInt(1)));
+        List<Content> contentList = new ArrayList<>();
+        contentList.add(new Content(indexName1, -64424581328L, "1", ByteTools.fromInt(1)));
+        contentList.add(new Content(indexName2, 0, "1", ByteTools.fromInt(1)));
+        contentList.add(new Content(indexName3, 1, "1", ByteTools.fromInt(1)));
+        contentList.add(new Content(indexName4, 9223372036854775807L, "1", ByteTools.fromInt(1)));
         index.put(contentList);
         assert 1 == ByteTools.toInt(index.getFirst(indexName1, -64424581328L, "1")) : ByteTools.toInt(index.getFirst(indexName1, -64424581328L, "1"));
         assert 1 == ByteTools.toInt(index.getFirst(indexName2, 0, "1")) : ByteTools.toInt(index.getFirst(indexName2, 0, "1"));

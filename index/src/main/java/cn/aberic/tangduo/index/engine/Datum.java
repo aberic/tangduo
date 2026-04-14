@@ -17,6 +17,7 @@ package cn.aberic.tangduo.index.engine;
 import cn.aberic.tangduo.common.ByteTools;
 import cn.aberic.tangduo.common.file.Channel;
 import cn.aberic.tangduo.common.file.Reader;
+import cn.aberic.tangduo.index.engine.entity.Content;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
@@ -58,12 +59,12 @@ public class Datum {
      *
      * @param datumMateSeek 指向数据坐标值在数据文件中的起始偏移量
      */
-    public void writeOrUpdate(IEngine.Content content, String indexFilepath, long datumMateSeek) throws IOException {
+    public void writeOrUpdate(Content content, String indexFilepath, long datumMateSeek) throws IOException {
         // 4字节数据长度+ 数据字节数组
         byte[] dataLengthBytes = ByteTools.fromInt(content.getValue().length);
         long dataSeek = Channel.append(filepath, ByteTools.join(dataLengthBytes, content.getValue()));
         byte[] dataSeekBytes = ByteTools.fromLong(dataSeek);
-        content.transaction.addTask(indexFilepath, datumMateSeek, dataSeekBytes, new byte[8]);
+        content.getTransaction().addTask(indexFilepath, datumMateSeek, dataSeekBytes, new byte[8]);
         if (Objects.isNull(content.getDataSeekBytes())) {
             content.setDataSeekBytes(dataSeekBytes);
         }

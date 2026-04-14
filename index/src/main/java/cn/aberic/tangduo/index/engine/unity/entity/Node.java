@@ -17,8 +17,8 @@ package cn.aberic.tangduo.index.engine.unity.entity;
 import cn.aberic.tangduo.common.ByteTools;
 import cn.aberic.tangduo.common.file.Channel;
 import cn.aberic.tangduo.common.file.Reader;
-import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.INode;
+import cn.aberic.tangduo.index.engine.entity.Content;
 import cn.aberic.tangduo.index.engine.unity.Unity;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -155,7 +155,7 @@ public class Node implements INode {
      * @param dataFileVersion 数据文件版本号，如 1，与索引版本号结合使用，如1.1，区分相同索引下的不同数据文件
      * @param dataFileMaxSize 数据文件大小阈值，单位byte
      */
-    public void put(IEngine.Content content, Unity.ChildIndex childIndex, String rootPath, String indexName, long position, long leafMateSeek,
+    public void put(Content content, Unity.ChildIndex childIndex, String rootPath, String indexName, long position, long leafMateSeek,
                     int dataFileVersion, long dataFileMaxSize) throws Exception {
         long leafSeek = ByteTools.toLong(ByteTools.read(data, position * 8, 8)); // Leaf在索引文件中的起始偏移量
         Leaf leaf = new Leaf(childIndex, indexFilepath, leafSeek);

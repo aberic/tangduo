@@ -18,6 +18,8 @@ import cn.aberic.tangduo.common.file.Reader;
 import cn.aberic.tangduo.common.file.Writer;
 import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.Transaction;
+import cn.aberic.tangduo.index.engine.entity.Content;
+import cn.aberic.tangduo.index.engine.entity.Search;
 import cn.aberic.tangduo.index.engine.skip.entity.Node;
 import lombok.NonNull;
 

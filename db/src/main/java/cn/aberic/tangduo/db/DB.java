@@ -24,6 +24,9 @@ import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.Common;
 import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.Transaction;
+import cn.aberic.tangduo.index.engine.entity.Conditions;
+import cn.aberic.tangduo.index.engine.entity.Content;
+import cn.aberic.tangduo.index.engine.entity.Search;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -313,9 +316,9 @@ public class DB {
         String key = StringUtils.isEmpty(batchVO.getKey()) ? UUID.randomUUID().toString() : batchVO.getKey();
         long degree = Objects.isNull(batchVO.getDegree()) ? KeyHashTools.toLongKey(key) : batchVO.getDegree();
         Doc doc = new Doc(dbName, indexName, key, degree, batchVO.getValue());
-        IEngine.Content content;
+        Content content;
         if (!batchVO.isSeg()) {
-            content = new IEngine.Content(new Transaction(), indexName, degree, key, doc.toBytes());
+            content = new Content(new Transaction(), indexName, degree, key, doc.toBytes());
             Index index = getIndex(dbName);
             if (index == null) {
                 throw new NoSuchFileException("数据库实例不存在");
@@ -383,7 +386,7 @@ public class DB {
         });
         Index index = segIndex.index;
         doc.setSegList(indexNameList);
-        content = new IEngine.Content(new Transaction(), indexName, degree, key, doc.toBytes());
+        content = new Content(new Transaction(), indexName, degree, key, doc.toBytes());
         list.forEach(indexName4KeyAndDegree ->
                 content.addItem(indexName4KeyAndDegree.indexName(), indexName4KeyAndDegree.degree(), indexName4KeyAndDegree.key()));
         index.put(content);
@@ -392,7 +395,7 @@ public class DB {
 
     /** Node批量插入数据data */
     public String put(String database, List<DocPutBatchRequestVO> batchRequestVOS) throws IOException {
-        List<IEngine.Content> contentList = new ArrayList<>();
+        List<Content> contentList = new ArrayList<>();
         Index baseIndex = null;
         for (DocPutBatchRequestVO batchRequestVO : batchRequestVOS) {
             String dbName = StringUtils.isEmpty(database) ? DATABASE_NAME_DEFAULT : database;
@@ -400,9 +403,9 @@ public class DB {
             String key = StringUtils.isEmpty(batchRequestVO.getKey()) ? UUID.randomUUID().toString() : batchRequestVO.getKey();
             long degree = Objects.isNull(batchRequestVO.getDegree()) ? KeyHashTools.toLongKey(key) : batchRequestVO.getDegree();
             Doc doc = new Doc(dbName, indexName, key, degree, batchRequestVO.getValue());
-            IEngine.Content content;
+            Content content;
             if (!batchRequestVO.isSeg()) {
-                content = new IEngine.Content(indexName, degree, key, doc.toBytes());
+                content = new Content(indexName, degree, key, doc.toBytes());
                 Index index = getIndex(dbName);
                 if (index == null) {
                     throw new NoSuchFileException("数据库实例不存在");
@@ -475,7 +478,7 @@ public class DB {
                 baseIndex = segIndex.index;
             }
             doc.setSegList(indexNameList);
-            content = new IEngine.Content(new Transaction(), indexName, degree, key, doc.toBytes());
+            content = new Content(new Transaction(), indexName, degree, key, doc.toBytes());
             list.forEach(indexName4KeyAndDegree ->
                     content.addItem(indexName4KeyAndDegree.indexName(), indexName4KeyAndDegree.degree(), indexName4KeyAndDegree.key()));
             contentList.add(content);
@@ -587,7 +590,7 @@ public class DB {
         indexName = StringUtils.isEmpty(indexName) ? INDEX_NAME_DEFAULT : indexName;
         List<DocGetResponseVO> docGetResponseVOList = new ArrayList<>();
         if (StringUtils.isEmpty(key)) {
-            IEngine.Search search = new IEngine.Search(indexName, 10);
+            Search search = new Search(indexName, 10);
             List<byte[]> bytesList = select(dbName, search);
             bytesList.forEach(bytes -> {
                 if (Objects.nonNull(bytes) && bytes.length > 0) {
@@ -647,11 +650,11 @@ public class DB {
      * @param query 检索字符串
      */
     public List<DocSearchResponseVO> search(String dbName, String indexName, String query, int callbackCount) throws IOException {
-        return search(dbName, query, new IEngine.Search(indexName, callbackCount));
+        return search(dbName, query, new Search(indexName, callbackCount));
     }
 
     /** 查询集合 */
-    public List<DocSearchResponseVO> search(String dbName, String query, IEngine.Search search) throws IOException {
+    public List<DocSearchResponseVO> search(String dbName, String query, Search search) throws IOException {
         SegIndex segIndex = dbMap.get(dbName);
         if (segIndex == null) {
             throw new NoSuchFileException("数据库实例不存在");
@@ -673,7 +676,7 @@ public class DB {
                 for (String idxName : indexNameList) {
                     Future<?> parentFuture = parentExecutor.submit(() -> {
                         try {
-                            List<byte[]> bytesList = segIndex.index.select(new IEngine.Search(idxName, search.getDegreeMin(), search.getDegreeMax(),
+                            List<byte[]> bytesList = segIndex.index.select(new Search(idxName, search.getDegreeMin(), search.getDegreeMax(),
                                     search.isIncludeMin(), search.isIncludeMax(), searchMaxCount, false, this::doFilter));
                             if (!CollectionUtils.isEmpty(bytesList)) {
                                 bytesList.forEach(bytes -> {
@@ -699,7 +702,7 @@ public class DB {
                 }
             }
         } else {
-            List<byte[]> bytesList = segIndex.index.select(new IEngine.Search(search.getIndexName(), search.getDegreeMin(), search.getDegreeMax(),
+            List<byte[]> bytesList = segIndex.index.select(new Search(search.getIndexName(), search.getDegreeMin(), search.getDegreeMax(),
                     search.isIncludeMin(), search.isIncludeMax(), searchMaxCount, false, this::doFilter));
             if (!CollectionUtils.isEmpty(bytesList)) {
                 bytesList.forEach(bytes -> {
@@ -715,7 +718,7 @@ public class DB {
         return docItems.subList(0, Math.min(search.getLimit(), docItems.size()));
     }
 
-    private List<byte[]> doFilter(List<byte[]> bytesList, IEngine.Conditions conditions) {
+    private List<byte[]> doFilter(List<byte[]> bytesList, Conditions conditions) {
         if (Objects.isNull(conditions)) {
             return bytesList;
         }
@@ -741,7 +744,7 @@ public class DB {
                     return false;
                 }
             }
-            for (IEngine.Conditions.Condition condition : conditions.getConditions()) {
+            for (Conditions.Condition condition : conditions.getConditions()) {
                 Object obj;
                 try {
                     obj = JsonTools.getValueByPath(JsonTools.toJson(docItem.getValue()), condition.getParam());
@@ -798,7 +801,7 @@ public class DB {
     }
 
     /** 查询集合 */
-    public List<DocSearchResponseVO> select1(String dbName, IEngine.Search search) throws IOException {
+    public List<DocSearchResponseVO> select1(String dbName, Search search) throws IOException {
         Map<String, DocSearchResponseVO> valueWithSegMap = new ConcurrentHashMap<>();
         List<byte[]> bytesList = select(dbName, search);
         if (!CollectionUtils.isEmpty(bytesList)) {
@@ -815,7 +818,7 @@ public class DB {
     }
 
     /** 查询集合 */
-    public List<byte[]> select(String dbName, IEngine.Search search) throws IOException {
+    public List<byte[]> select(String dbName, Search search) throws IOException {
         Index index = getIndex(dbName);
         if (index == null) {
             throw new NoSuchFileException("数据库实例不存在");
@@ -853,7 +856,7 @@ public class DB {
     }
 
     /** 删除集合 */
-    public List<byte[]> delete(String dbName, IEngine.Search search) throws IOException {
+    public List<byte[]> delete(String dbName, Search search) throws IOException {
         Index index = getIndex(dbName);
         if (index == null) {
             throw new NoSuchFileException("索引实例不存在");

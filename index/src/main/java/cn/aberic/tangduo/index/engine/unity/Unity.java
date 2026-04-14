@@ -21,6 +21,8 @@ import cn.aberic.tangduo.common.file.Filer;
 import cn.aberic.tangduo.common.file.Reader;
 import cn.aberic.tangduo.index.engine.Common;
 import cn.aberic.tangduo.index.engine.IEngine;
+import cn.aberic.tangduo.index.engine.entity.Content;
+import cn.aberic.tangduo.index.engine.entity.Search;
 import cn.aberic.tangduo.index.engine.unity.entity.Leaf;
 import cn.aberic.tangduo.index.engine.unity.entity.Node;
 import lombok.Data;
@@ -203,7 +205,7 @@ public class Unity extends IEngine {
      * -------------------------------------------------------------------------------------------------------------------------------------<p>
      * <p>
      */
-    public void put(IEngine.Content content, String indexName, String indexFilepath) throws Exception {
+    public void put(Content content, String indexName, String indexFilepath) throws Exception {
         long degree = reDegree(content.getDegree(indexName));
         // 获取2层节点
         long nextPosition = Math.divideExact(degree, 16777216); // 度位置; degree=4294967056; nextPosition=255; 4294967296-4294967056=240
@@ -252,7 +254,7 @@ public class Unity extends IEngine {
         nextNode.put(content, childIndex, rootPath, indexName, nextPosition, leafMateSeek, dataFileVersion, dataFileMaxSize);
     }
 
-    private void fillNodeLeaf(IEngine.Content content, String indexName, String indexFilepath, long degree, long nextPosition, int nodeCount, long nodeMateSeek) throws Exception {
+    private void fillNodeLeaf(Content content, String indexName, String indexFilepath, long degree, long nextPosition, int nodeCount, long nodeMateSeek) throws Exception {
         byte[] data; // 待写入字节数组
         Node node = new Node(); // 单个节点
         byte[] nodeBytes = node.toBytes(); // 单个节点的字节数组

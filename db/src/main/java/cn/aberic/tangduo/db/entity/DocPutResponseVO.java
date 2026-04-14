@@ -15,6 +15,7 @@
 package cn.aberic.tangduo.db.entity;
 
 import cn.aberic.tangduo.index.engine.IEngine;
+import cn.aberic.tangduo.index.engine.entity.Content;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -34,9 +35,9 @@ public class DocPutResponseVO {
     long degree;
     String digests;
     @JsonIgnore
-    IEngine.Content content;
+    Content content;
 
-    public DocPutResponseVO(Doc doc, IEngine.Content content) {
+    public DocPutResponseVO(Doc doc, Content content) {
         BeanUtils.copyProperties(doc, this);
         this.content = content;
     }

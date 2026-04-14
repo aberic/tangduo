@@ -14,6 +14,7 @@
 
 package cn.aberic.tangduo.search.entity;
 
+import cn.aberic.tangduo.index.engine.entity.Conditions;
 import lombok.Data;
 
 @Data
@@ -33,5 +34,7 @@ public class ReqSelectDataVO {
     boolean includeMax = true;
     Integer limit = 10;
     boolean asc = true;
+
+    Conditions conditions;
 
 }

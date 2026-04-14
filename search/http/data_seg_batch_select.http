@@ -1,0 +1,147 @@
+### put data kv object batch，无分词
+PUT /data/batch HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "seg": false,
+  "values": [
+    {
+      "index": "schools",
+      "key": "0",
+      "value": {
+        "name": "City0",
+        "zip": 250000
+      }
+    },
+    {
+      "index": "schools",
+      "key": "1",
+      "value": {
+        "name": "City0",
+        "zip": 250001
+      }
+    },
+    {
+      "index": "schools",
+      "key": "2",
+      "value": {
+        "name": "City0",
+        "zip": 250002
+      }
+    },
+    {
+      "index": "schools",
+      "key": "3",
+      "value": {
+        "name": "City0",
+        "zip": 250003
+      }
+    },
+    {
+      "index": "schools",
+      "key": "4",
+      "value": {
+        "name": "City0",
+        "zip": 250004
+      }
+    },
+    {
+      "index": "schools",
+      "key": "5",
+      "value": {
+        "name": "City1",
+        "zip": 250005
+      }
+    },
+    {
+      "index": "schools",
+      "key": "6",
+      "value": {
+        "name": "City1",
+        "zip": 250006
+      }
+    },
+    {
+      "index": "schools",
+      "key": "7",
+      "value": {
+        "name": "City1",
+        "zip": 250007
+      }
+    },
+    {
+      "index": "schools",
+      "key": "8",
+      "value": {
+        "name": "City1",
+        "zip": 250008
+      }
+    },
+    {
+      "index": "schools",
+      "key": "9",
+      "value": {
+        "name": "City1",
+        "zip": 250009
+      }
+    },
+    {
+      "index": "schools",
+      "key": "10",
+      "value": {
+        "name": "City2",
+        "zip": 250010
+      }
+    },
+    {
+      "index": "schools",
+      "key": "11",
+      "value": {
+        "name": "City2",
+        "zip": 250011
+      }
+    },
+    {
+      "index": "schools",
+      "key": "12",
+      "value": {
+        "name": "City2",
+        "zip": 250012
+      }
+    },
+    {
+      "index": "schools",
+      "key": "13",
+      "value": {
+        "name": "City2",
+        "zip": 250013
+      }
+    }
+  ]
+}
+
+### search data
+GET /data/select HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "conditions": {
+    "conditions": [
+      {
+        "param": "param1",
+        "compare": "GT",
+        "compareValue": "cv1"
+      },
+      {
+        "param": "param2",
+        "compare": "LT",
+        "compareValue": "cv2"
+      }
+    ]
+  }
+}

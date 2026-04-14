@@ -17,8 +17,7 @@ package cn.aberic.tangduo.search;
 import cn.aberic.tangduo.common.ByteTools;
 import cn.aberic.tangduo.db.DB;
 import cn.aberic.tangduo.db.common.CommonTools;
-import cn.aberic.tangduo.index.Index;
-import cn.aberic.tangduo.index.engine.IEngine;
+import cn.aberic.tangduo.index.engine.entity.Search;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
@@ -36,7 +35,7 @@ public class SearchTests {
         String indexName = "include";
         DB db = DB.getInstance(rootpath, 10737418240L);
         indexName = CommonTools.indexName4datetime(indexName);
-        List<byte[]> bytesList = db.select(dbName, new IEngine.Search(indexName, 100, true));
+        List<byte[]> bytesList = db.select(dbName, new Search(indexName, 100, true));
         if (Objects.isNull(bytesList)) {
             System.out.println("bytesList is null");
             return;

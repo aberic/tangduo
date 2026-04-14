@@ -19,7 +19,7 @@ import cn.aberic.tangduo.common.file.Channel;
 import cn.aberic.tangduo.common.file.Reader;
 import cn.aberic.tangduo.index.engine.Common;
 import cn.aberic.tangduo.index.engine.Datum;
-import cn.aberic.tangduo.index.engine.IEngine;
+import cn.aberic.tangduo.index.engine.entity.Content;
 import cn.aberic.tangduo.index.engine.unity.Unity;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -77,7 +77,7 @@ public class Leaf {
      *
      * @param rootPath 数据根路径
      */
-    public void put(IEngine.Content content, String rootPath, String indexName, long leafMateSeek, int dataFileVersion, long fileMaxSize) throws Exception {
+    public void put(Content content, String rootPath, String indexName, long leafMateSeek, int dataFileVersion, long fileMaxSize) throws Exception {
         long dataMateSeek = -1;
         if (seek <= 0) { // 新写入
             if (Objects.nonNull(content.getDataFileVersionBytes())) { // 复用data
@@ -169,8 +169,8 @@ public class Leaf {
     /**
      * 读取数据
      *
-     * @param rootPath  数据根路径
-     * @param key       原始key
+     * @param rootPath 数据根路径
+     * @param key      原始key
      */
     public List<byte[]> get(String rootPath, String key) throws IOException {
         List<byte[]> bytesList = new ArrayList<>();
@@ -226,10 +226,10 @@ public class Leaf {
     /**
      * 读取数据
      *
-     * @param rootPath  数据根路径
+     * @param rootPath 数据根路径
      */
     public List<byte[]> select(String rootPath) throws IOException {
-        List<byte[]>  bytesList = new ArrayList<>();
+        List<byte[]> bytesList = new ArrayList<>();
         // 读取 默认声明2字节、4字节数据文件版本号、8字节数据坐标、
         // 8字节下一碰撞key坐标（8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组）、
         // 4字节key字节数组长度、key字节数组、默认收尾2字节

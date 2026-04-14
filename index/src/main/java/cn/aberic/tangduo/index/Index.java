@@ -21,6 +21,8 @@ import cn.aberic.tangduo.index.engine.Common;
 import cn.aberic.tangduo.index.engine.Datum;
 import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.Transaction;
+import cn.aberic.tangduo.index.engine.entity.Content;
+import cn.aberic.tangduo.index.engine.entity.Search;
 import cn.aberic.tangduo.index.engine.skip.Skip;
 import cn.aberic.tangduo.index.engine.unity.Unity;
 import lombok.Data;
@@ -215,7 +217,7 @@ public class Index {
     }
 
     /** Node插入数据data */
-    public void put(IEngine.Content content) throws IOException {
+    public void put(Content content) throws IOException {
         if (!indexMap.containsKey(content.getIndexName())) {
             if (content.isAutoCreateIndex()) {
                 try {
@@ -241,7 +243,7 @@ public class Index {
         if (!content.getItems().isEmpty()) {
             try (ExecutorService childExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
                 List<Future<?>> childFutures = new ArrayList<>();
-                for (IEngine.Content.Item item : content.getItems()) {
+                for (Content.Item item : content.getItems()) {
                     Future<?> childFuture = childExecutor.submit(() -> {
                         try {
                             processSingleItem(item, content);
@@ -266,9 +268,9 @@ public class Index {
     }
 
     /** Node批量插入数据data */
-    public void put(List<IEngine.Content> contentList) throws IOException {
-        List<List<IEngine.Content>> result = splitContentList(contentList);
-        for (List<IEngine.Content> contents : result) {
+    public void put(List<Content> contentList) throws IOException {
+        List<List<Content>> result = splitContentList(contentList);
+        for (List<Content> contents : result) {
             putBatch(contents);
         }
     }
@@ -280,8 +282,8 @@ public class Index {
      *
      * @return 拆分后的子批次集合
      */
-    private List<List<IEngine.Content>> splitContentList(List<IEngine.Content> contentList) {
-        List<List<IEngine.Content>> result = new ArrayList<>();
+    private List<List<Content>> splitContentList(List<Content> contentList) {
+        List<List<Content>> result = new ArrayList<>();
         if (contentList == null || contentList.isEmpty()) {
             return result;
         }
@@ -290,7 +292,7 @@ public class Index {
         // 循环拆分：从startIndex开始，每次取batchSize条，直到末尾
         while (startIndex < totalSize) {
             int endIndex = Math.min(startIndex + batchMaxSize, totalSize);
-            List<IEngine.Content> subBatch = contentList.subList(startIndex, endIndex);
+            List<Content> subBatch = contentList.subList(startIndex, endIndex);
             // 注意：subList是视图，需转为新ArrayList避免原集合修改影响子批次
             result.add(new ArrayList<>(subBatch));
             startIndex = endIndex;
@@ -299,12 +301,12 @@ public class Index {
     }
 
     /** Node批量插入数据data */
-    public void putBatch(List<IEngine.Content> contentList) {
+    public void putBatch(List<Content> contentList) {
         Transaction transaction = new Transaction();
         // 外层循环并行虚拟线程
         try (ExecutorService parentExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
             List<Future<?>> parentFutures = new ArrayList<>();
-            for (IEngine.Content content : contentList) {
+            for (Content content : contentList) {
                 Future<?> parentFuture = parentExecutor.submit(() -> {
                     try {
                         processSingleContent(content, transaction);
@@ -327,7 +329,7 @@ public class Index {
         transaction.execute();
     }
 
-    private void processSingleContent(IEngine.Content content, Transaction transaction) throws Exception {
+    private void processSingleContent(Content content, Transaction transaction) throws Exception {
         if (!indexMap.containsKey(content.getIndexName())) {
             try {
                 createIndex(IEngine.UNITY, new Info(content.getIndexName()));
@@ -354,7 +356,7 @@ public class Index {
         if (!content.getItems().isEmpty()) {
             try (ExecutorService childExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
                 List<Future<?>> childFutures = new ArrayList<>();
-                for (IEngine.Content.Item item : content.getItems()) {
+                for (Content.Item item : content.getItems()) {
                     Future<?> childFuture = childExecutor.submit(() -> {
                         try {
                             processSingleItem(item, content);
@@ -377,7 +379,7 @@ public class Index {
         }
     }
 
-    private void processSingleItem(IEngine.Content.Item item, IEngine.Content content) throws Exception {
+    private void processSingleItem(Content.Item item, Content content) throws Exception {
         // 原业务逻辑完全不变
         String indexName = item.getIndexName();
         if (!indexMap.containsKey(indexName)) {
@@ -443,7 +445,7 @@ public class Index {
     }
 
     /** 查询集合 */
-    public List<byte[]> select(IEngine.Search search) throws IOException {
+    public List<byte[]> select(Search search) throws IOException {
         String indexName = search.getIndexName();
         if (indexMap.containsKey(indexName)) {
             return indexMap.get(indexName).select(search);
@@ -454,7 +456,7 @@ public class Index {
     }
 
     /** 删除集合 */
-    public List<byte[]> delete(IEngine.Search search) throws IOException {
+    public List<byte[]> delete(Search search) throws IOException {
         String indexName = search.getIndexName();
         if (indexMap.containsKey(indexName)) {
             return indexMap.get(indexName).delete(search);

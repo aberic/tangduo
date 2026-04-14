@@ -21,7 +21,7 @@ import cn.aberic.tangduo.db.common.KeyHashTools;
 import cn.aberic.tangduo.db.entity.DocPutBatchRequestVO;
 import cn.aberic.tangduo.db.entity.DocPutRequestVO;
 import cn.aberic.tangduo.db.entity.DocSearchResponseVO;
-import cn.aberic.tangduo.index.engine.IEngine;
+import cn.aberic.tangduo.index.engine.entity.Search;
 import cn.aberic.tangduo.search.entity.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -109,8 +109,8 @@ public class DataController {
         }
     }
 
-    private IEngine.Search createSearch(ReqSelectDataVO data) {
-        IEngine.Search search = new IEngine.Search();
+    private Search createSearch(ReqSelectDataVO data) {
+        Search search = new Search();
         search.setIndexName(data.getIndex());
         search.setDegreeMin(data.getDegreeMin());
         search.setDegreeMax(data.getDegreeMax());
@@ -118,6 +118,7 @@ public class DataController {
         search.setIncludeMax(data.isIncludeMax());
         search.setLimit(data.getLimit());
         search.setAsc(data.isAsc());
+        search.setConditions(data.getConditions());
         return search;
     }
 

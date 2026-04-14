@@ -25,6 +25,9 @@ import cn.aberic.tangduo.db.entity.DocPutBatchRequestVO;
 import cn.aberic.tangduo.db.entity.DocPutResponseVO;
 import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.IEngine;
+import cn.aberic.tangduo.index.engine.entity.Conditions;
+import cn.aberic.tangduo.index.engine.entity.Content;
+import cn.aberic.tangduo.index.engine.entity.Search;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.MethodOrderer;
@@ -212,7 +215,7 @@ public class DBTests {
         }
 
         String key = "1";
-        IEngine.Content content = db.put(dbName, indexName, key, value).getContent();
+        Content content = db.put(dbName, indexName, key, value).getContent();
         log.info("content = {}", content);
 
         int count = content.getItems().size();
@@ -255,7 +258,7 @@ public class DBTests {
         }
 
         String key = "1";
-        IEngine.Content content = db.put(dbName, key, value).getContent();
+        Content content = db.put(dbName, key, value).getContent();
         log.info("content = {}", content);
 
         int count = content.getItems().size();
@@ -297,7 +300,7 @@ public class DBTests {
             System.out.println(e.getMessage());
         }
 
-        IEngine.Content content = db.put(dbName, value).getContent();
+        Content content = db.put(dbName, value).getContent();
         log.info("content = {}", content);
 
         int count = content.getItems().size();
@@ -333,7 +336,7 @@ public class DBTests {
         DB db = DB.getInstance(rootpath, 10737418240L);
         db.removeDB(DB.DATABASE_NAME_DEFAULT);
 
-        IEngine.Content content = db.put(value).getContent();
+        Content content = db.put(value).getContent();
         log.info("content = {}", content);
 
         int count = content.getItems().size();
@@ -461,7 +464,7 @@ public class DBTests {
         }
         log.info("setAndGetTimes check over! wrongCount =  {}", wrongCount);
 
-        IEngine.Search search = new IEngine.Search(indexName, -500, 500, true, true, 100, true);
+        Search search = new Search(indexName, -500, 500, true, true, 100, true);
         List<byte[]> bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
@@ -469,7 +472,7 @@ public class DBTests {
             assert value == -500 + i : value + " != " + (-500 + i);
         }
 
-        search = new IEngine.Search(indexName, -500, 500, false, false, 100, true);
+        search = new Search(indexName, -500, 500, false, false, 100, true);
         bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
@@ -477,7 +480,7 @@ public class DBTests {
             assert value == -499 + i : value + " != " + (-499 + i);
         }
 
-        search = new IEngine.Search(indexName, -500, 500, true, true, 100, false);
+        search = new Search(indexName, -500, 500, true, true, 100, false);
         bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
@@ -485,7 +488,7 @@ public class DBTests {
             assert value == 500 - i : value + " != " + (500 - i);
         }
 
-        search = new IEngine.Search(indexName, -500, 500, false, false, 100, false);
+        search = new Search(indexName, -500, 500, false, false, 100, false);
         bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
@@ -493,7 +496,7 @@ public class DBTests {
             assert value == 499 - i : value + " != " + (499 - i);
         }
 
-        search = new IEngine.Search(indexName, -50, 50, true, true, 100, true);
+        search = new Search(indexName, -50, 50, true, true, 100, true);
         bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
@@ -501,7 +504,7 @@ public class DBTests {
             assert value == -50 + i : value + " != " + (-50 + i);
         }
 
-        search = new IEngine.Search(indexName, -50, 50, false, false, 100, true);
+        search = new Search(indexName, -50, 50, false, false, 100, true);
         bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
@@ -511,7 +514,7 @@ public class DBTests {
         }
         System.out.println();
 
-        search = new IEngine.Search(indexName, -50, 50, false, false, 100, true, (bsList, _) -> {
+        search = new Search(indexName, -50, 50, false, false, 100, true, (bsList, _) -> {
             List<byte[]> bl = new ArrayList<>();
             for (byte[] bytes : bsList) {
                 int value = new Doc(bytes).getValue().asInt();
@@ -645,14 +648,14 @@ public class DBTests {
         }
         log.info("setAndGetTimes check success!");
 
-        IEngine.Search search = new IEngine.Search(indexName, -100, 100, false, false, 200, true);
+        Search search = new Search(indexName, -100, 100, false, false, 200, true);
         List<byte[]> bytesList = db.delete(dbName, search);
         assert 199 == bytesList.size() : "199 != " + bytesList.size(); // (-99 —— 0) + (1 —— 99) = 199
         for (int i = 0; i < bytesList.size(); i++) {
             int value = new Doc(bytesList.get(i)).getValue().asInt();
             assert (i - 99) == value : (i - 99) + " != " + value; // (-99 —— 0) + (1 —— 99) = 199
         }
-        search = new IEngine.Search(indexName, -120, 150, false, false, 100, true);
+        search = new Search(indexName, -120, 150, false, false, 100, true);
         bytesList = db.select(dbName, search); // -99 —— 99 上一轮已删
         assert 70 == bytesList.size() : "70 != " + bytesList.size(); // -120——150总计271个数字，减去上一轮的199，还剩70个数字
         for (int i = 0; i < bytesList.size(); i++) {
@@ -688,26 +691,26 @@ public class DBTests {
         byte[] bytes3 = ByteTools.fromString(value3);
         List<byte[]> bytesList = List.of(bytes1, bytes2, bytes3);
 
-        IEngine.Conditions conditions1 = new IEngine.Conditions();
+        Conditions conditions1 = new Conditions();
         conditions1.addCondition("name", "eq", "Lily");
         List<byte[]> resList = doFilter(bytesList, conditions1);
         resList.forEach(bytes -> System.out.println(ByteTools.toString(bytes)));
         System.out.println("===================================================");
 
-        IEngine.Conditions conditions2 = new IEngine.Conditions();
+        Conditions conditions2 = new Conditions();
         conditions2.addCondition("name", "ne", "Lily");
         resList = doFilter(bytesList, conditions2);
         resList.forEach(bytes -> System.out.println(ByteTools.toString(bytes)));
         System.out.println("===================================================");
 
-        IEngine.Conditions conditions3 = new IEngine.Conditions();
+        Conditions conditions3 = new Conditions();
         conditions3.addCondition("name", "ne", "Lily");
         conditions3.addCondition("age", "gt", 19);
         resList = doFilter(bytesList, conditions3);
         resList.forEach(bytes -> System.out.println(ByteTools.toString(bytes)));
         System.out.println("===================================================");
 
-        IEngine.Conditions conditions4 = new IEngine.Conditions();
+        Conditions conditions4 = new Conditions();
         conditions4.addCondition("name", "ne", "Lily");
         conditions4.addCondition("age", "ge", 19);
         resList = doFilter(bytesList, conditions4);
@@ -715,7 +718,7 @@ public class DBTests {
         System.out.println("===================================================");
     }
 
-    private List<byte[]> doFilter(List<byte[]> bytesList, IEngine.Conditions conditions) {
+    private List<byte[]> doFilter(List<byte[]> bytesList, Conditions conditions) {
         if (Objects.isNull(conditions)) {
             return bytesList;
         }
@@ -723,7 +726,7 @@ public class DBTests {
             return bytesList;
         }
         return bytesList.stream().filter(bytes -> {
-            for (IEngine.Conditions.Condition condition : conditions.getConditions()) {
+            for (Conditions.Condition condition : conditions.getConditions()) {
                 String value = ByteTools.toString(bytes);
                 if (!JsonTools.isJson(value)) {
                     continue;

@@ -19,6 +19,8 @@ import cn.aberic.tangduo.common.file.Filer;
 import cn.aberic.tangduo.db.entity.Doc;
 import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.IEngine;
+import cn.aberic.tangduo.index.engine.entity.Conditions;
+import cn.aberic.tangduo.index.engine.entity.Search;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -94,9 +96,9 @@ public class DBConditionTests {
             db.put(dbName, indexName, String.valueOf(i), false, role(i));
         }
 
-        IEngine.Conditions conditions = new IEngine.Conditions();
+        Conditions conditions = new Conditions();
         conditions.addCondition("user.age", "ge", 15);
-        IEngine.Search search = new IEngine.Search(indexName, -50, 50, true, false, 100, true, conditions);
+        Search search = new Search(indexName, -50, 50, true, false, 100, true, conditions);
         List<byte[]> bytesList = db.select(dbName, search);
         for (byte[] bytes : bytesList) {
             System.out.println(new Doc(bytes).getValue());
@@ -104,10 +106,10 @@ public class DBConditionTests {
 
         System.out.println();
 
-        IEngine.Conditions conditions2 = new IEngine.Conditions();
+        Conditions conditions2 = new Conditions();
         conditions2.addCondition("user.age", "ge", 20);
         conditions2.addCondition("user.age", "lt", 30);
-        search = new IEngine.Search(indexName, conditions2);
+        search = new Search(indexName, conditions2);
         bytesList = db.select(dbName, search);
         for (byte[] bytes : bytesList) {
             System.out.println(new Doc(bytes).getValue());
