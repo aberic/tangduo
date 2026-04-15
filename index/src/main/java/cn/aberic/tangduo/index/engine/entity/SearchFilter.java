@@ -28,6 +28,6 @@ public interface SearchFilter {
      *
      * @return 过滤后的数据集合
      */
-    List<byte[]> filter(List<byte[]> bytesList, Conditions conditions) throws JsonParseException;
+    List<byte[]> filter(List<byte[]> bytesList, List<Condition> conditions) throws JsonParseException;
 
 }

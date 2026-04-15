@@ -98,7 +98,7 @@ public class Response {
             return this.brief;
         }
 
-        private Status(int code, String brief) {
+        Status(int code, String brief) {
             this.code = code;
             this.brief = brief;
         }

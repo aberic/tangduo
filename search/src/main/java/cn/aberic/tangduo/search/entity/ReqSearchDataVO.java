@@ -21,6 +21,7 @@ import lombok.EqualsAndHashCode;
 @Data
 public class ReqSearchDataVO extends ReqSelectDataVO {
 
+    /** 查询的问题 */
     String query;
 
 }

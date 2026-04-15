@@ -58,3 +58,37 @@ Content-Type: application/json
   "database": "test",
   "query": "学习"
 }
+
+### search data condition
+GET /data/search HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "query": "学习",
+  "conditions": [
+    {
+      "param": "fees",
+      "compare": "EQ",
+      "compareValue": 3500
+    }
+  ]
+}
+
+### search data condition
+GET /data/search HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "query": "学习",
+  "conditions": [
+    {
+      "param": "fees",
+      "compare": "EQ",
+      "compareValue": 3501
+    }
+  ]
+}

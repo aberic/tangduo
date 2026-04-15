@@ -39,9 +39,6 @@ management:
     health:
       # 显示完整健康信息
       show-details: always
-    # 关闭危险端点
-    shutdown:
-      enabled: false
 
 custom:
   db:

@@ -19,36 +19,18 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.rmi.UnexpectedException;
-import java.util.ArrayList;
-import java.util.List;
 
 @NoArgsConstructor
+@AllArgsConstructor
 @Getter
-public class Conditions {
+public class Condition {
 
-    List<Conditions.Condition> conditions = new ArrayList<>();
-
-    /**
-     * 新增条件
-     *
-     * @param param        选中的key，目标为json对象中的key，通过.的方式拼接，允许指定深层次，如 name，school.student.name 等
-     * @param compare      条件 gt/ge/lt/le/eq/ne 大于/大于等于/小于/小于等于/等于/不等
-     * @param compareValue 要比较的值，大于或等于当前Object的内容
-     */
-    public void addCondition(String param, String compare, Object compareValue) throws UnexpectedException {
-        conditions.add(new Conditions.Condition(param, Conditions.Compare.getByType(compare), compareValue));
-    }
-
-    @AllArgsConstructor
-    @Getter
-    public static class Condition {
-        /// 选中的key，目标为json对象中的key，通过.的方式拼接，允许指定深层次，如 name，school.student.name 等
-        String param;
-        /// 条件 gt/ge/lt/le/eq/ne 大于/大于等于/小于/小于等于/等于/不等
-        Conditions.Compare compare;
-        /// 要比较的值，大于或等于当前Object的内容
-        Object compareValue;
-    }
+    /// 选中的key，目标为json对象中的key，通过.的方式拼接，允许指定深层次，如 name，school.student.name 等
+    String param;
+    /// 条件 gt/ge/lt/le/eq/ne 大于/大于等于/小于/小于等于/等于/不等
+    Compare compare;
+    /// 要比较的值，大于或等于当前Object的内容
+    Object compareValue;
 
     public enum Compare {
         GT("gt"),
@@ -74,8 +56,8 @@ public class Conditions {
          *
          * @return 处理枚举
          */
-        public static Conditions.Compare getByType(String type) throws UnexpectedException {
-            for (Conditions.Compare compare : values()) {
+        public static Compare getByType(String type) throws UnexpectedException {
+            for (Compare compare : values()) {
                 if (compare.type.equals(type)) {
                     return compare;
                 }
@@ -83,4 +65,5 @@ public class Conditions {
             throw new UnexpectedException(type);
         }
     }
+
 }

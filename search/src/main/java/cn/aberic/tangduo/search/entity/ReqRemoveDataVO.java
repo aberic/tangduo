@@ -14,7 +14,18 @@
 
 package cn.aberic.tangduo.search.entity;
 
-import lombok.EqualsAndHashCode;
+import lombok.Data;
 
-@EqualsAndHashCode(callSuper = true)
-public class ReqDeleteDataVO extends ReqSelectDataVO {}
+@Data
+public class ReqRemoveDataVO {
+
+    /// 数据库名
+    String database;
+    /// 索引名
+    String index;
+    /// 唯一键名
+    String key;
+    /// 度
+    Long degree;
+
+}

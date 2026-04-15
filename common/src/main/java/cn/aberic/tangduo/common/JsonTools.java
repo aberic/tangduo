@@ -50,20 +50,6 @@ public class JsonTools {
         }
     }
 
-    /** 判断字节数组是否是合法的 JSON */
-    public static boolean isJson(byte[] bytes) {
-        if (bytes == null || bytes.length == 0) {
-            return false;
-        }
-        try {
-            // 尝试解析，能解析就是合法 JSON
-            OBJECT_MAPPER.readTree(bytes);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
     /// 对象 → JSON 字符串
     public static String toJson(Object obj) {
         try {
@@ -83,18 +69,8 @@ public class JsonTools {
         }
     }
 
-    // 工具方法：JsonNode → 普通 Map/List（可直接序列化）
-    public static Object jsonNodeToNormalObject(JsonNode jsonNode) {
-        if (jsonNode == null) return null;
-        try {
-            return new ObjectMapper().convertValue(jsonNode, Object.class);
-        } catch (Exception e) {
-            return jsonNode;
-        }
-    }
-
     /// JSON → List<T> 对象
-    public static <T> List<T> toList(String json, Class<T> clazz) {
+    public static <T> List<T> toList(String json) {
         try {
             return OBJECT_MAPPER.readValue(json, new TypeReference<>() {});
         } catch (Exception e) {
@@ -121,11 +97,8 @@ public class JsonTools {
                 if (isJson(objStr)) {
                     return OBJECT_MAPPER.readTree(objStr);
                 }
-                return OBJECT_MAPPER.valueToTree(obj);
-            } else {
-                // 如果是Map/对象，直接转成JsonNode
-                return OBJECT_MAPPER.valueToTree(obj);
             }
+            return OBJECT_MAPPER.valueToTree(obj);
         } catch (Exception e) {
             log.error("Object转JsonNode失败", e);
             return null;
@@ -172,7 +145,7 @@ public class JsonTools {
             return currentNode.asBoolean();
         } else if (currentNode.isObject() || currentNode.isArray()) {
             // 转成普通 Map / List
-            return OBJECT_MAPPER.convertValue(currentNode, new TypeReference<Object>() {});
+            return OBJECT_MAPPER.convertValue(currentNode, new TypeReference<>() {});
         } else {
             return currentNode.asText();
         }

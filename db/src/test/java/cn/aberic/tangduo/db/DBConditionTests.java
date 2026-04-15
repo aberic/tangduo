@@ -16,10 +16,9 @@ package cn.aberic.tangduo.db;
 
 import cn.aberic.tangduo.common.JsonTools;
 import cn.aberic.tangduo.common.file.Filer;
-import cn.aberic.tangduo.db.entity.Doc;
+import cn.aberic.tangduo.db.entity.DocSearchResponseVO;
 import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.IEngine;
-import cn.aberic.tangduo.index.engine.entity.Conditions;
 import cn.aberic.tangduo.index.engine.entity.Search;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.MethodOrderer;
@@ -96,23 +95,21 @@ public class DBConditionTests {
             db.put(dbName, indexName, String.valueOf(i), false, role(i));
         }
 
-        Conditions conditions = new Conditions();
-        conditions.addCondition("user.age", "ge", 15);
-        Search search = new Search(indexName, -50, 50, true, false, 100, true, conditions);
-        List<byte[]> bytesList = db.select(dbName, search);
-        for (byte[] bytes : bytesList) {
-            System.out.println(new Doc(bytes).getValue());
+        Search search = new Search(indexName, -50, 50, true, false, 100, true);
+        search.addCondition("user.age", "ge", 15);
+        List<DocSearchResponseVO> bytesList = db.select(dbName, search);
+        for (DocSearchResponseVO bytes : bytesList) {
+            System.out.println(bytes.getValue());
         }
 
         System.out.println();
 
-        Conditions conditions2 = new Conditions();
-        conditions2.addCondition("user.age", "ge", 20);
-        conditions2.addCondition("user.age", "lt", 30);
-        search = new Search(indexName, conditions2);
+        search = new Search(indexName);
+        search.addCondition("user.age", "ge", 20);
+        search.addCondition("user.age", "lt", 30);
         bytesList = db.select(dbName, search);
-        for (byte[] bytes : bytesList) {
-            System.out.println(new Doc(bytes).getValue());
+        for (DocSearchResponseVO bytes : bytesList) {
+            System.out.println(bytes.getValue());
         }
     }
 

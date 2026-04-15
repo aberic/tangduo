@@ -16,6 +16,9 @@ package cn.aberic.tangduo.search.controller;
 
 import cn.aberic.tangduo.common.http.Response;
 import cn.aberic.tangduo.db.DB;
+import cn.aberic.tangduo.index.Index;
+import cn.aberic.tangduo.index.engine.IEngine;
+import cn.aberic.tangduo.search.entity.ReqCreateIndexVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
@@ -25,8 +28,8 @@ import java.io.IOException;
 
 @Slf4j
 @RestController
-@RequestMapping("db")
-public class DBController {
+@RequestMapping("index")
+public class IndexController {
 
     /// 数据库根路径
     @Value("${custom.db.DB_ROOT_PATH}")
@@ -41,24 +44,25 @@ public class DBController {
     @Value("${custom.db.DB_SEARCH_MAX_COUNT}")
     int searchMaxCount;
 
-    @PutMapping({"{dbName}"})
-    public Response create(@PathVariable String dbName) {
-        log.trace("PUT db/{} 建库，库名：{}", dbName, dbName);
+    @PutMapping({""})
+    public Response create(@RequestBody() ReqCreateIndexVO vo) {
+        log.trace("PUT index/{}/{} 建索引，库名：{}，索引名：{}", vo.getDatabase(), vo.getIndex(), vo.getDatabase(), vo.getIndex());
         try {
-            DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).createDB(dbName);
+            Index.Info info = new Index.Info(vo.getVersion(), vo.getName(), vo.isPrimary(), vo.isUnique(), vo.isNullable());
+            DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).createIndex(vo.getDatabase(), IEngine.UNITY, info);
             return Response.success();
-        } catch (IOException | NoSuchFieldException | InstanceAlreadyExistsException e) {
+        } catch (IOException | NoSuchFieldException | InstanceAlreadyExistsException | NoSuchMethodException e) {
             return Response.failed(e);
         }
     }
 
-    @DeleteMapping({"{dbName}"})
-    public Response delete(@PathVariable String dbName) {
-        log.trace("DELETE db/{} 删库，库名：{}", dbName, dbName);
+    @DeleteMapping({"{dbName}/{indexName}"})
+    public Response delete(@PathVariable String dbName, @PathVariable String indexName) {
+        log.trace("DELETE {}/{} 删索引，库名：{}，索引名：{}", dbName, indexName, dbName, indexName);
         try {
-            DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).removeDB(dbName);
+            DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).removeIndex(dbName, indexName);
             return Response.success();
-        } catch (IOException | NoSuchFieldException e) {
+        } catch (IOException | NoSuchFieldException | InstanceAlreadyExistsException | NoSuchMethodException e) {
             return Response.failed(e);
         }
     }

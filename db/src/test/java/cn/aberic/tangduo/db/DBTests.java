@@ -19,13 +19,10 @@ import cn.aberic.tangduo.common.JsonTools;
 import cn.aberic.tangduo.common.file.Filer;
 import cn.aberic.tangduo.db.common.CommonTools;
 import cn.aberic.tangduo.db.common.IkTokenizerTools;
-import cn.aberic.tangduo.db.entity.Doc;
-import cn.aberic.tangduo.db.entity.DocGetResponseVO;
-import cn.aberic.tangduo.db.entity.DocPutBatchRequestVO;
-import cn.aberic.tangduo.db.entity.DocPutResponseVO;
+import cn.aberic.tangduo.db.entity.*;
 import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.IEngine;
-import cn.aberic.tangduo.index.engine.entity.Conditions;
+import cn.aberic.tangduo.index.engine.entity.Condition;
 import cn.aberic.tangduo.index.engine.entity.Content;
 import cn.aberic.tangduo.index.engine.entity.Search;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -465,10 +462,10 @@ public class DBTests {
         log.info("setAndGetTimes check over! wrongCount =  {}", wrongCount);
 
         Search search = new Search(indexName, -500, 500, true, true, 100, true);
-        List<byte[]> bytesList = db.select(dbName, search);
+        List<DocSearchResponseVO> bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
-            int value = new Doc(bytesList.get(i)).getValue().asInt();
+            int value = (int) bytesList.get(i).getValue();
             assert value == -500 + i : value + " != " + (-500 + i);
         }
 
@@ -476,7 +473,7 @@ public class DBTests {
         bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
-            int value = new Doc(bytesList.get(i)).getValue().asInt();
+            int value = (int) bytesList.get(i).getValue();
             assert value == -499 + i : value + " != " + (-499 + i);
         }
 
@@ -484,7 +481,7 @@ public class DBTests {
         bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
-            int value = new Doc(bytesList.get(i)).getValue().asInt();
+            int value = (int) bytesList.get(i).getValue();
             assert value == 500 - i : value + " != " + (500 - i);
         }
 
@@ -492,7 +489,7 @@ public class DBTests {
         bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
-            int value = new Doc(bytesList.get(i)).getValue().asInt();
+            int value = (int) bytesList.get(i).getValue();
             assert value == 499 - i : value + " != " + (499 - i);
         }
 
@@ -500,7 +497,7 @@ public class DBTests {
         bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
-            int value = new Doc(bytesList.get(i)).getValue().asInt();
+            int value = (int) bytesList.get(i).getValue();
             assert value == -50 + i : value + " != " + (-50 + i);
         }
 
@@ -508,7 +505,7 @@ public class DBTests {
         bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
-            int value = new Doc(bytesList.get(i)).getValue().asInt();
+            int value = (int) bytesList.get(i).getValue();
             System.out.print(value + " ");
             assert value == -49 + i : value + " != " + (-49 + i);
         }
@@ -527,7 +524,7 @@ public class DBTests {
         bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
-            int value = new Doc(bytesList.get(i)).getValue().asInt();
+            int value = (int) bytesList.get(i).getValue();
             System.out.print(value + " ");
             if (i < 49) {
                 assert value == -49 + i : value + " != " + (-49 + i);
@@ -649,17 +646,17 @@ public class DBTests {
         log.info("setAndGetTimes check success!");
 
         Search search = new Search(indexName, -100, 100, false, false, 200, true);
-        List<byte[]> bytesList = db.delete(dbName, search);
+        List<DocSearchResponseVO> bytesList = db.delete(dbName, search);
         assert 199 == bytesList.size() : "199 != " + bytesList.size(); // (-99 —— 0) + (1 —— 99) = 199
         for (int i = 0; i < bytesList.size(); i++) {
-            int value = new Doc(bytesList.get(i)).getValue().asInt();
+            int value = (int) bytesList.get(i).getValue();
             assert (i - 99) == value : (i - 99) + " != " + value; // (-99 —— 0) + (1 —— 99) = 199
         }
         search = new Search(indexName, -120, 150, false, false, 100, true);
         bytesList = db.select(dbName, search); // -99 —— 99 上一轮已删
         assert 70 == bytesList.size() : "70 != " + bytesList.size(); // -120——150总计271个数字，减去上一轮的199，还剩70个数字
         for (int i = 0; i < bytesList.size(); i++) {
-            int value = new Doc(bytesList.get(i)).getValue().asInt();
+            int value = (int) bytesList.get(i).getValue();
             // (-99 —— 0) + (1 —— 99) 因获取不到，被过滤掉
             if (i < 20) { // 即 -120 —— -100 是可查到数字，但不包含 -120
                 assert (i - 119) == value : (i - 119) + " != " + value;
@@ -691,42 +688,39 @@ public class DBTests {
         byte[] bytes3 = ByteTools.fromString(value3);
         List<byte[]> bytesList = List.of(bytes1, bytes2, bytes3);
 
-        Conditions conditions1 = new Conditions();
-        conditions1.addCondition("name", "eq", "Lily");
+        List<Condition> conditions1 = new ArrayList<>();
+        conditions1.add(new Condition("name", Condition.Compare.EQ, "Lily"));
         List<byte[]> resList = doFilter(bytesList, conditions1);
         resList.forEach(bytes -> System.out.println(ByteTools.toString(bytes)));
         System.out.println("===================================================");
 
-        Conditions conditions2 = new Conditions();
-        conditions2.addCondition("name", "ne", "Lily");
+        List<Condition> conditions2 = new ArrayList<>();
+        conditions2.add(new Condition("name", Condition.Compare.NE, "Lily"));
         resList = doFilter(bytesList, conditions2);
         resList.forEach(bytes -> System.out.println(ByteTools.toString(bytes)));
         System.out.println("===================================================");
 
-        Conditions conditions3 = new Conditions();
-        conditions3.addCondition("name", "ne", "Lily");
-        conditions3.addCondition("age", "gt", 19);
+        List<Condition> conditions3 = new ArrayList<>();
+        conditions3.add(new Condition("name", Condition.Compare.EQ, "Lily"));
+        conditions3.add(new Condition("age", Condition.Compare.GT, 19));
         resList = doFilter(bytesList, conditions3);
         resList.forEach(bytes -> System.out.println(ByteTools.toString(bytes)));
         System.out.println("===================================================");
 
-        Conditions conditions4 = new Conditions();
-        conditions4.addCondition("name", "ne", "Lily");
-        conditions4.addCondition("age", "ge", 19);
+        List<Condition> conditions4 = new ArrayList<>();
+        conditions4.add(new Condition("name", Condition.Compare.NE, "Lily"));
+        conditions3.add(new Condition("age", Condition.Compare.GE, 19));
         resList = doFilter(bytesList, conditions4);
         resList.forEach(bytes -> System.out.println(ByteTools.toString(bytes)));
         System.out.println("===================================================");
     }
 
-    private List<byte[]> doFilter(List<byte[]> bytesList, Conditions conditions) {
-        if (Objects.isNull(conditions)) {
-            return bytesList;
-        }
-        if (CollectionUtils.isEmpty(conditions.getConditions())) {
+    private List<byte[]> doFilter(List<byte[]> bytesList, List<Condition> conditions) {
+        if (CollectionUtils.isEmpty(conditions)) {
             return bytesList;
         }
         return bytesList.stream().filter(bytes -> {
-            for (Conditions.Condition condition : conditions.getConditions()) {
+            for (Condition condition : conditions) {
                 String value = ByteTools.toString(bytes);
                 if (!JsonTools.isJson(value)) {
                     continue;

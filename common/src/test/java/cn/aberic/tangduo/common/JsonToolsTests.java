@@ -16,7 +16,6 @@ package cn.aberic.tangduo.common;
 
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +32,7 @@ public class JsonToolsTests {
         String json = JsonTools.toJson(list);
         System.out.println(json);
 
-        List<Student> list1 = JsonTools.toList(json, Student.class);
+        List<Student> list1 = JsonTools.toList(json);
         assert list1 != null;
         System.out.println(Arrays.toString(list1.toArray()));
     }
@@ -110,7 +109,7 @@ public class JsonToolsTests {
 
         obj = JsonTools.getValueByPath(jsonStr, "student.age");
         assert obj instanceof Integer;
-        assert (int)JsonTools.getValueByPath(jsonStr, "student.age") == 12;
+        assert (int) JsonTools.getValueByPath(jsonStr, "student.age") == 12;
 
         obj = JsonTools.getValueByPath(jsonStr, "values");
         assert obj instanceof List<?>;
@@ -122,9 +121,9 @@ public class JsonToolsTests {
         obj = JsonTools.getValueByPath(jsonStr, "student.age");
         assert obj instanceof Number;
         obj = JsonTools.getValueByPath(jsonStr, "rating1");
-        assert obj instanceof Number: obj;
+        assert obj instanceof Number : obj;
         obj = JsonTools.getValueByPath(jsonStr, "rating2");
-        assert obj instanceof Double: obj;
+        assert obj instanceof Double : obj;
 
 
     }

@@ -14,12 +14,9 @@
 
 package cn.aberic.tangduo.index.engine;
 
-import cn.aberic.tangduo.common.JsonTools;
-import cn.aberic.tangduo.index.engine.entity.Conditions;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
-import java.rmi.UnexpectedException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,28 +42,6 @@ public class CommonTests {
                 }
             }
         }
-    }
-
-    @Test
-    void conditions2json() throws UnexpectedException {
-        Conditions conditions = new Conditions();
-        conditions.addCondition("param1", "gt", "cv1");
-        conditions.addCondition("param2", "lt", "cv2");
-        System.out.println(JsonTools.toJson(conditions));
-        // {
-        //    "conditions": [
-        //        {
-        //            "param": "param1",
-        //            "compare": "GT",
-        //            "compareValue": "cv1"
-        //        },
-        //        {
-        //            "param": "param2",
-        //            "compare": "LT",
-        //            "compareValue": "cv2"
-        //        }
-        //    ]
-        //}
     }
 
 }

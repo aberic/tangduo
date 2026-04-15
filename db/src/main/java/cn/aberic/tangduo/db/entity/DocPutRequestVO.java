@@ -25,6 +25,6 @@ public class DocPutRequestVO {
     String index;
     Long degree;
     String key;
-    boolean seg = false;
+    boolean seg;
     Object value;
 }

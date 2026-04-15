@@ -42,7 +42,7 @@ public class Content {
     byte[] value;
 
     /** 默认不允许自动创建索引 */
-    boolean autoCreateIndex = false;
+    boolean autoCreateIndex;
 
     /** 同一索引允许多个kv */
     List<Item> items = new ArrayList<>();

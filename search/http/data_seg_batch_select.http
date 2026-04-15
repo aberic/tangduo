@@ -122,7 +122,7 @@ Content-Type: application/json
   ]
 }
 
-### search data
+### select data
 GET /data/select HTTP/1.1
 Host: {{host}}
 Content-Type: application/json
@@ -130,18 +130,43 @@ Content-Type: application/json
 {
   "database": "test",
   "index": "schools",
-  "conditions": {
-    "conditions": [
-      {
-        "param": "param1",
-        "compare": "GT",
-        "compareValue": "cv1"
-      },
-      {
-        "param": "param2",
-        "compare": "LT",
-        "compareValue": "cv2"
-      }
-    ]
-  }
+  "conditions": [
+    {
+      "param": "name",
+      "compare": "EQ",
+      "compareValue": "City1"
+    },
+    {
+      "param": "zip",
+      "compare": "LT",
+      "compareValue": 250010
+    }
+  ]
+}
+
+### delete data
+DELETE /data/delete HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "conditions": [
+    {
+      "param": "name",
+      "compare": "EQ",
+      "compareValue": "City1"
+    },
+    {
+      "param": "zip",
+      "compare": "LT",
+      "compareValue": 250009
+    },
+    {
+      "param": "zip",
+      "compare": "GT",
+      "compareValue": 250005
+    }
+  ]
 }

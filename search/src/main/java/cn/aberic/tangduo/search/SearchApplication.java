@@ -10,7 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 public class SearchApplication {
 
-    public static void main(String[] args) {
+    static void main(String[] args) {
         try {
             SpringApplication.run(SearchApplication.class, args);
         } catch (Exception e) {

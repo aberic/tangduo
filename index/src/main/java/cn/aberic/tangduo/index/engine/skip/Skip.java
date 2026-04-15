@@ -124,7 +124,6 @@ public class Skip extends IEngine {
                 }
                 default -> throw new UnexpectedException("计算主键差的长度不在[1-13]范围内，len=" + len);
             }
-            ;
             Node matchNode;
             long matchNodePositionInFile; // 匹配上的节点在文件中的起始坐标
             if (matchNodePosition == 0) { // 如果下一节点坐标为0，则表示不存在，新建该节点

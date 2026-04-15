@@ -259,9 +259,7 @@ public class Channel {
                                     }
                                 }
                             }
-                            default -> {
-                                throw new UnexpectedException("Writer");
-                            }
+                            default -> throw new UnexpectedException("Writer");
                         }
                         // 按需刷盘，不要每次都 force，非常慢
                     }

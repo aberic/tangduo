@@ -21,21 +21,23 @@ import java.util.List;
 @Data
 public class ReqPutDataBatchVO {
 
-    /// 插入、读取
+    /// 数据库名
     String database;
-    /// 插入
+    /// 是否分词
     boolean seg = true;
     /// 批量插入
     List<Value> values;
 
     @Data
     public static class Value {
-        /// 插入、读取
+
+        /// 索引名
         String index;
-        /// 插入、读取
+        /// 唯一键名
         String key;
         /// 插入
         Object value;
+
     }
 
 }

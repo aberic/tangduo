@@ -27,6 +27,7 @@ import cn.aberic.tangduo.index.engine.unity.entity.Leaf;
 import cn.aberic.tangduo.index.engine.unity.entity.Node;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.CollectionUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,6 +40,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -603,15 +605,15 @@ public class Unity extends IEngine {
             nextPositionMax = includeMax ? (nextPositionMax + 1) : nextPositionMax;
             while (nextPositionMin < nextPositionMax) {
                 long position = nextPositionMin;
-                List<byte[]> bytesListFromNode = node.select(rootPath, position);
+                List<byte[]> bytesListFromNode = node.select(rootPath, position).stream().filter(Objects::nonNull).collect(Collectors.toList());
                 nextPositionMin += 1;
-                if (bytesListFromNode.isEmpty()) {
+                if (CollectionUtils.isEmpty(bytesListFromNode)) {
                     continue;
                 }
                 if (Objects.nonNull(search.getSearchFilter())) {
                     bytesListFromNode = search.getSearchFilter().filter(bytesListFromNode, search.getConditions());
                 }
-                if (search.isDelete() && !bytesListFromNode.isEmpty()) {
+                if (search.isDelete() && !CollectionUtils.isEmpty(bytesListFromNode)) {
                     long leafMateSeek = node.getSeek() + 2 + position * 8;
                     Channel.write(indexFilepath, leafMateSeek, new byte[8]);
                 }
@@ -669,15 +671,15 @@ public class Unity extends IEngine {
             nextPositionMax = includeMax ? nextPositionMax : (nextPositionMax - 1);
             while (nextPositionMin <= nextPositionMax) {
                 long position = nextPositionMax;
-                List<byte[]> bytesListFromNode = node.select(rootPath, position);
+                List<byte[]> bytesListFromNode = node.select(rootPath, position).stream().filter(Objects::nonNull).collect(Collectors.toList());
                 nextPositionMax -= 1;
-                if (bytesListFromNode.isEmpty()) {
+                if (CollectionUtils.isEmpty(bytesListFromNode)) {
                     continue;
                 }
                 if (Objects.nonNull(search.getSearchFilter())) {
                     bytesListFromNode = search.getSearchFilter().filter(bytesListFromNode, search.getConditions());
                 }
-                if (search.isDelete() && !bytesListFromNode.isEmpty()) {
+                if (search.isDelete() && !CollectionUtils.isEmpty(bytesListFromNode)) {
                     long leafMateSeek = node.getSeek() + 2 + position * 8;
                     Channel.write(indexFilepath, leafMateSeek, new byte[8]);
                 }
@@ -775,8 +777,8 @@ public class Unity extends IEngine {
         public ChildIndex(byte[] dataBytes) {
             versionBytes = ByteTools.read(dataBytes, 0, 4);
             primaryByte = ByteTools.read(dataBytes, 4, 1)[0];
-            uniqueByte =  ByteTools.read(dataBytes, 5, 1)[0];
-            nullableByte =  ByteTools.read(dataBytes, 6, 1)[0];
+            uniqueByte = ByteTools.read(dataBytes, 5, 1)[0];
+            nullableByte = ByteTools.read(dataBytes, 6, 1)[0];
             localDateTimeBytes = ByteTools.read(dataBytes, 7, 8);
 
             version = ByteTools.toInt(versionBytes);

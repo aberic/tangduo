@@ -17,12 +17,18 @@ package cn.aberic.tangduo.index.engine.entity;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.beans.BeanUtils;
+
+import java.rmi.UnexpectedException;
+import java.util.ArrayList;
+import java.util.List;
 
 /** 查询对象 */
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class Search {
+
     /** 索引名（全名组合确保唯一性，如：库名+表名+索引名） */
     String indexName;
     /** 最小主键（-9223372036854775807 —— 9223372036854775808） */
@@ -38,16 +44,23 @@ public class Search {
     boolean delete = false;
 
     SearchFilter searchFilter;
-    Conditions conditions;
+    List<Condition> conditions = new ArrayList<>();
+
+    public Search(String indexName) {
+        this.indexName = indexName;
+    }
 
     public Search(String indexName, Integer limit) {
         this.indexName = indexName;
         this.limit = limit;
     }
 
-    public Search(String indexName, Conditions conditions) {
+    public Search(Search search, String indexName, Integer limit, boolean asc, SearchFilter searchFilter) {
+        BeanUtils.copyProperties(search, this);
         this.indexName = indexName;
-        this.conditions = conditions;
+        this.limit = limit;
+        this.asc = asc;
+        this.searchFilter = searchFilter;
     }
 
     public Search(String indexName, Integer limit, boolean asc) {
@@ -86,24 +99,15 @@ public class Search {
         this.searchFilter = searchFilter;
     }
 
-    public Search(String indexName, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, Integer limit, SearchFilter searchFilter) {
-        this.indexName = indexName;
-        this.degreeMin = degreeMin;
-        this.degreeMax = degreeMax;
-        this.includeMin = includeMin;
-        this.includeMax = includeMax;
-        this.limit = limit;
-        this.searchFilter = searchFilter;
+    /**
+     * 新增条件
+     *
+     * @param param        选中的key，目标为json对象中的key，通过.的方式拼接，允许指定深层次，如 name，school.student.name 等
+     * @param compare      条件 gt/ge/lt/le/eq/ne 大于/大于等于/小于/小于等于/等于/不等
+     * @param compareValue 要比较的值，大于或等于当前Object的内容
+     */
+    public void addCondition(String param, String compare, Object compareValue) throws UnexpectedException {
+        conditions.add(new Condition(param, Condition.Compare.getByType(compare), compareValue));
     }
 
-    public Search(String indexName, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, int limit, boolean asc, Conditions conditions) {
-        this.indexName = indexName;
-        this.degreeMin = degreeMin;
-        this.degreeMax = degreeMax;
-        this.includeMin = includeMin;
-        this.includeMax = includeMax;
-        this.limit = limit;
-        this.asc = asc;
-        this.conditions = conditions;
-    }
 }

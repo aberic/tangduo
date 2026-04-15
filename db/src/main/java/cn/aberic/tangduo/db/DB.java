@@ -24,7 +24,7 @@ import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.Common;
 import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.Transaction;
-import cn.aberic.tangduo.index.engine.entity.Conditions;
+import cn.aberic.tangduo.index.engine.entity.Condition;
 import cn.aberic.tangduo.index.engine.entity.Content;
 import cn.aberic.tangduo.index.engine.entity.Search;
 import com.fasterxml.jackson.core.JsonParseException;
@@ -46,6 +46,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -259,6 +261,15 @@ public class DB {
         index.createIndex(engine, info);
     }
 
+    /** 删除索引 */
+    public void removeIndex(String dbName, String indexName) throws IOException, InstanceAlreadyExistsException, NoSuchFieldException, NoSuchMethodException {
+        if (!dbMap.containsKey(dbName)) {
+            throw new NoSuchElementException("数据库实例不存在");
+        }
+        Index index = dbMap.get(dbName).index;
+        index.removeIndex(CommonTools.indexName(indexName));
+    }
+
     /**
      * Node插入数据data，主流方法
      *
@@ -312,7 +323,7 @@ public class DB {
     /** Node插入数据data */
     public DocPutResponseVO put(@Nonnull DocPutRequestVO batchVO) throws IOException {
         String dbName = StringUtils.isEmpty(batchVO.getDatabase()) ? DATABASE_NAME_DEFAULT : batchVO.getDatabase();
-        String indexName = StringUtils.isEmpty(batchVO.getIndex()) ? INDEX_NAME_DEFAULT : batchVO.getIndex();
+        String indexName = CommonTools.indexName(StringUtils.isEmpty(batchVO.getIndex()) ? INDEX_NAME_DEFAULT : batchVO.getIndex()).toLowerCase();
         String key = StringUtils.isEmpty(batchVO.getKey()) ? UUID.randomUUID().toString() : batchVO.getKey();
         long degree = Objects.isNull(batchVO.getDegree()) ? KeyHashTools.toLongKey(key) : batchVO.getDegree();
         Doc doc = new Doc(dbName, indexName, key, degree, batchVO.getValue());
@@ -387,8 +398,9 @@ public class DB {
         Index index = segIndex.index;
         doc.setSegList(indexNameList);
         content = new Content(new Transaction(), indexName, degree, key, doc.toBytes());
-        list.forEach(indexName4KeyAndDegree ->
-                content.addItem(indexName4KeyAndDegree.indexName(), indexName4KeyAndDegree.degree(), indexName4KeyAndDegree.key()));
+        list.stream().filter(indexName4KeyAndDegree -> !indexName4KeyAndDegree.indexName.equals(indexName))
+                .forEach(indexName4KeyAndDegree ->
+                        content.addItem(indexName4KeyAndDegree.indexName(), indexName4KeyAndDegree.degree(), indexName4KeyAndDegree.key()));
         index.put(content);
         return new DocPutResponseVO(doc, content);
     }
@@ -399,7 +411,7 @@ public class DB {
         Index baseIndex = null;
         for (DocPutBatchRequestVO batchRequestVO : batchRequestVOS) {
             String dbName = StringUtils.isEmpty(database) ? DATABASE_NAME_DEFAULT : database;
-            String indexName = StringUtils.isEmpty(batchRequestVO.getIndex()) ? INDEX_NAME_DEFAULT : batchRequestVO.getIndex();
+            String indexName = CommonTools.indexName(StringUtils.isEmpty(batchRequestVO.getIndex()) ? INDEX_NAME_DEFAULT : batchRequestVO.getIndex()).toLowerCase();
             String key = StringUtils.isEmpty(batchRequestVO.getKey()) ? UUID.randomUUID().toString() : batchRequestVO.getKey();
             long degree = Objects.isNull(batchRequestVO.getDegree()) ? KeyHashTools.toLongKey(key) : batchRequestVO.getDegree();
             Doc doc = new Doc(dbName, indexName, key, degree, batchRequestVO.getValue());
@@ -479,8 +491,9 @@ public class DB {
             }
             doc.setSegList(indexNameList);
             content = new Content(new Transaction(), indexName, degree, key, doc.toBytes());
-            list.forEach(indexName4KeyAndDegree ->
-                    content.addItem(indexName4KeyAndDegree.indexName(), indexName4KeyAndDegree.degree(), indexName4KeyAndDegree.key()));
+            list.stream().filter(indexName4KeyAndDegree -> !indexName4KeyAndDegree.indexName.equals(indexName))
+                    .forEach(indexName4KeyAndDegree ->
+                            content.addItem(indexName4KeyAndDegree.indexName(), indexName4KeyAndDegree.degree(), indexName4KeyAndDegree.key()));
             contentList.add(content);
         }
         if (Objects.isNull(baseIndex)) {
@@ -587,11 +600,11 @@ public class DB {
      */
     public List<DocGetResponseVO> get(@Nullable String dbName, @Nullable String indexName, @Nullable Long degree, @Nullable String key) throws IOException {
         dbName = StringUtils.isEmpty(dbName) ? DATABASE_NAME_DEFAULT : dbName;
-        indexName = StringUtils.isEmpty(indexName) ? INDEX_NAME_DEFAULT : indexName;
+        indexName = CommonTools.indexName(StringUtils.isEmpty(indexName) ? INDEX_NAME_DEFAULT : indexName).toLowerCase();
         List<DocGetResponseVO> docGetResponseVOList = new ArrayList<>();
         if (StringUtils.isEmpty(key)) {
             Search search = new Search(indexName, 10);
-            List<byte[]> bytesList = select(dbName, search);
+            List<byte[]> bytesList = selectBytesList(dbName, search);
             bytesList.forEach(bytes -> {
                 if (Objects.nonNull(bytes) && bytes.length > 0) {
                     try {
@@ -650,7 +663,7 @@ public class DB {
      * @param query 检索字符串
      */
     public List<DocSearchResponseVO> search(String dbName, String indexName, String query, int callbackCount) throws IOException {
-        return search(dbName, query, new Search(indexName, callbackCount));
+        return search(dbName, query, new Search(CommonTools.indexName(indexName).toLowerCase(), callbackCount));
     }
 
     /** 查询集合 */
@@ -676,8 +689,7 @@ public class DB {
                 for (String idxName : indexNameList) {
                     Future<?> parentFuture = parentExecutor.submit(() -> {
                         try {
-                            List<byte[]> bytesList = segIndex.index.select(new Search(idxName, search.getDegreeMin(), search.getDegreeMax(),
-                                    search.isIncludeMin(), search.isIncludeMax(), searchMaxCount, false, this::doFilter));
+                            List<byte[]> bytesList = segIndex.index.select(new Search(search, idxName, searchMaxCount, false, this::doFilter));
                             if (!CollectionUtils.isEmpty(bytesList)) {
                                 bytesList.forEach(bytes -> {
                                     try {
@@ -702,8 +714,7 @@ public class DB {
                 }
             }
         } else {
-            List<byte[]> bytesList = segIndex.index.select(new Search(search.getIndexName(), search.getDegreeMin(), search.getDegreeMax(),
-                    search.isIncludeMin(), search.isIncludeMax(), searchMaxCount, false, this::doFilter));
+            List<byte[]> bytesList = segIndex.index.select(new Search(search, search.getIndexName(), searchMaxCount, false, this::doFilter));
             if (!CollectionUtils.isEmpty(bytesList)) {
                 bytesList.forEach(bytes -> {
                     try {
@@ -718,11 +729,8 @@ public class DB {
         return docItems.subList(0, Math.min(search.getLimit(), docItems.size()));
     }
 
-    private List<byte[]> doFilter(List<byte[]> bytesList, Conditions conditions) {
-        if (Objects.isNull(conditions)) {
-            return bytesList;
-        }
-        if (CollectionUtils.isEmpty(conditions.getConditions())) {
+    private List<byte[]> doFilter(List<byte[]> bytesList, List<Condition> conditions) {
+        if (CollectionUtils.isEmpty(conditions)) {
             return bytesList;
         }
         return bytesList.stream().filter(bytes -> {
@@ -744,7 +752,7 @@ public class DB {
                     return false;
                 }
             }
-            for (Conditions.Condition condition : conditions.getConditions()) {
+            for (Condition condition : conditions) {
                 Object obj;
                 try {
                     obj = JsonTools.getValueByPath(JsonTools.toJson(docItem.getValue()), condition.getParam());
@@ -801,24 +809,28 @@ public class DB {
     }
 
     /** 查询集合 */
-    public List<DocSearchResponseVO> select1(String dbName, Search search) throws IOException {
-        Map<String, DocSearchResponseVO> valueWithSegMap = new ConcurrentHashMap<>();
-        List<byte[]> bytesList = select(dbName, search);
+    public List<DocSearchResponseVO> select(String dbName, Search search) throws IOException {
+        List<DocSearchResponseVO> voList = new ArrayList<>();
+        List<byte[]> bytesList = selectBytesList(dbName, search);
         if (!CollectionUtils.isEmpty(bytesList)) {
             bytesList.forEach(bytes -> {
                 try {
                     Doc doc = new Doc(bytes);
                     DocSearchResponseVO valueWithSeg = new DocSearchResponseVO(doc);
-                    valueWithSegMap.put(valueWithSeg.getDigests(), valueWithSeg);
+                    voList.add(valueWithSeg);
                 } catch (JsonParseException ignore) {}
             });
         }
-        List<DocSearchResponseVO> docItems = valueWithSegMap.values().stream().toList();
-        return docItems.subList(0, Math.min(search.getLimit(), docItems.size()));
+        return voList.stream().filter(distinctById(DocSearchResponseVO::getDigests)).collect(Collectors.toList()).subList(0, Math.min(search.getLimit(), voList.size()));
+    }
+
+    private static <T> Predicate<T> distinctById(Function<? super T, ?> idExtractor) {
+        Set<Object> seen = ConcurrentHashMap.newKeySet();
+        return t -> seen.add(idExtractor.apply(t));
     }
 
     /** 查询集合 */
-    public List<byte[]> select(String dbName, Search search) throws IOException {
+    private List<byte[]> selectBytesList(String dbName, Search search) throws IOException {
         Index index = getIndex(dbName);
         if (index == null) {
             throw new NoSuchFileException("数据库实例不存在");
@@ -847,6 +859,8 @@ public class DB {
      * @param key       原始key
      */
     public void remove(String dbName, String indexName, @Nullable Long degree, String key) throws IOException {
+        dbName = StringUtils.isEmpty(dbName) ? DATABASE_NAME_DEFAULT : dbName;
+        indexName = CommonTools.indexName(StringUtils.isEmpty(indexName) ? INDEX_NAME_DEFAULT : indexName).toLowerCase();
         degree = Objects.isNull(degree) ? KeyHashTools.toLongKey(key) : degree;
         Index index = getIndex(dbName);
         if (index == null) {
@@ -855,11 +869,30 @@ public class DB {
         index.remove(indexName, degree, key);
     }
 
+    /** 查询集合 */
+    public List<DocSearchResponseVO> delete(String dbName, Search search) throws IOException {
+        List<DocSearchResponseVO> voList = new ArrayList<>();
+        List<byte[]> bytesList = deleteBytesList(dbName, search);
+        if (!CollectionUtils.isEmpty(bytesList)) {
+            bytesList.forEach(bytes -> {
+                try {
+                    Doc doc = new Doc(bytes);
+                    DocSearchResponseVO valueWithSeg = new DocSearchResponseVO(doc);
+                    voList.add(valueWithSeg);
+                } catch (JsonParseException ignore) {}
+            });
+        }
+        return voList.stream().filter(distinctById(DocSearchResponseVO::getDigests)).collect(Collectors.toList()).subList(0, Math.min(search.getLimit(), voList.size()));
+    }
+
     /** 删除集合 */
-    public List<byte[]> delete(String dbName, Search search) throws IOException {
+    private List<byte[]> deleteBytesList(String dbName, Search search) throws IOException {
         Index index = getIndex(dbName);
         if (index == null) {
-            throw new NoSuchFileException("索引实例不存在");
+            throw new NoSuchFileException("数据库实例不存在");
+        }
+        if (Objects.isNull(search.getSearchFilter())) {
+            search.setSearchFilter(this::doFilter);
         }
         return index.delete(search);
     }

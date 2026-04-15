@@ -19,15 +19,15 @@ import lombok.Data;
 @Data
 public class ReqPutDataVO {
 
-    /// 插入、读取
+    /// 数据库名
     String database;
-    /// 插入、读取
+    /// 索引名
     String index;
-    /// 插入、读取
+    /// 唯一键名
     String key;
-    /// 插入
+    /// 是否分词
     boolean seg = true;
-    /// 插入
+    /// 数据
     Object value;
 
 }

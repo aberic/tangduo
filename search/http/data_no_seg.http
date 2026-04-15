@@ -38,6 +38,17 @@ Content-Type: application/json
   "key": "key"
 }
 
+### remove data kv object
+DELETE /data HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "key": "key"
+}
+
 ### put data kv string，无分词
 PUT /data HTTP/1.1
 Host: {{host}}

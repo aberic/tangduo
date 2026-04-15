@@ -14,13 +14,15 @@
 
 package cn.aberic.tangduo.search.entity;
 
-import cn.aberic.tangduo.index.engine.entity.Conditions;
+import cn.aberic.tangduo.index.engine.entity.Condition;
 import lombok.Data;
+
+import java.util.List;
 
 @Data
 public class ReqSelectDataVO {
 
-    /// 插入、读取
+    /// 数据库名
     String database;
     /** 索引名（全名组合确保唯一性，如：库名+表名+索引名） */
     String index;
@@ -35,6 +37,6 @@ public class ReqSelectDataVO {
     Integer limit = 10;
     boolean asc = true;
 
-    Conditions conditions;
+    List<Condition> conditions;
 
 }

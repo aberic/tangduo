@@ -17,6 +17,7 @@ package cn.aberic.tangduo.search.controller;
 import cn.aberic.tangduo.common.SHA256Tools;
 import cn.aberic.tangduo.common.http.Response;
 import cn.aberic.tangduo.db.DB;
+import cn.aberic.tangduo.db.common.CommonTools;
 import cn.aberic.tangduo.db.common.KeyHashTools;
 import cn.aberic.tangduo.db.entity.DocPutBatchRequestVO;
 import cn.aberic.tangduo.db.entity.DocPutRequestVO;
@@ -88,10 +89,10 @@ public class DataController {
     }
 
     @GetMapping("search")
-    public Response search(@RequestBody ReqSearchDataVO searchVO) {
-        log.debug("GET data 从 {}/{} 中search数据", searchVO.getDatabase(), searchVO.getIndex());
+    public Response search(@RequestBody ReqSearchDataVO vo) {
+        log.debug("GET data 从 {}/{} 中search数据", vo.getDatabase(), vo.getIndex());
         try {
-            List<DocSearchResponseVO> list = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).search(searchVO.getDatabase(), searchVO.getQuery(), createSearch(searchVO));
+            List<DocSearchResponseVO> list = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).search(vo.getDatabase(), vo.getQuery(), createSearch(vo, false));
             return Response.success(list);
         } catch (IOException | NoSuchFieldException e) {
             return Response.failed(e);
@@ -99,27 +100,50 @@ public class DataController {
     }
 
     @GetMapping("select")
-    public Response select(@RequestBody ReqSelectDataVO data) {
-        log.debug("GET data 从 {}/{} 中select数据", data.getDatabase(), data.getIndex());
+    public Response select(@RequestBody ReqSelectDataVO vo) {
+        log.debug("GET data 从 {}/{} 中select数据", vo.getDatabase(), vo.getIndex());
         try {
-            DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).select(data.getDatabase(), createSearch(data));
+            List<DocSearchResponseVO> list = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).select(vo.getDatabase(), createSearch(vo, false));
+            return Response.success(list);
+        } catch (IOException | NoSuchFieldException e) {
+            return Response.failed(e);
+        }
+    }
+
+    private Search createSearch(ReqSelectDataVO vo, boolean delete) {
+        Search search = new Search();
+        search.setIndexName(CommonTools.indexName(vo.getIndex()));
+        search.setDegreeMin(vo.getDegreeMin());
+        search.setDegreeMax(vo.getDegreeMax());
+        search.setIncludeMin(vo.isIncludeMin());
+        search.setIncludeMax(vo.isIncludeMax());
+        search.setLimit(vo.getLimit());
+        search.setAsc(vo.isAsc());
+        search.setConditions(vo.getConditions());
+        search.setDelete(delete);
+        return search;
+    }
+
+    @DeleteMapping()
+    public Response removeData(@RequestBody ReqRemoveDataVO vo) {
+        log.debug("DELETE data 从 {}/{} 中删除数据，key={},degree={}", vo.getDatabase(), vo.getIndex(), vo.getKey(), vo.getDegree());
+        try {
+            DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).remove(vo.getDatabase(), vo.getIndex(), vo.getDegree(), vo.getKey());
             return Response.success();
         } catch (IOException | NoSuchFieldException e) {
             return Response.failed(e);
         }
     }
 
-    private Search createSearch(ReqSelectDataVO data) {
-        Search search = new Search();
-        search.setIndexName(data.getIndex());
-        search.setDegreeMin(data.getDegreeMin());
-        search.setDegreeMax(data.getDegreeMax());
-        search.setIncludeMin(data.isIncludeMin());
-        search.setIncludeMax(data.isIncludeMax());
-        search.setLimit(data.getLimit());
-        search.setAsc(data.isAsc());
-        search.setConditions(data.getConditions());
-        return search;
+    @DeleteMapping("delete")
+    public Response delete(@RequestBody ReqDeleteDataVO vo) {
+        log.debug("DELETE data 从 {}/{} 中delete数据", vo.getDatabase(), vo.getIndex());
+        try {
+            List<DocSearchResponseVO> list = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).delete(vo.getDatabase(), createSearch(vo, true));
+            return Response.success(list);
+        } catch (IOException | NoSuchFieldException e) {
+            return Response.failed(e);
+        }
     }
 
 }
