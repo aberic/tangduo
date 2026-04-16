@@ -17,11 +17,12 @@ package cn.aberic.tangduo.search.entity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+/// 查询数据请求体
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class ReqSearchDataVO extends ReqSelectDataVO {
 
-    /** 查询的问题 */
+    /// 查询的问题
     String query;
 
 }

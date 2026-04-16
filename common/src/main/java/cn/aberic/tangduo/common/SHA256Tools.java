@@ -22,12 +22,22 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-public class SHA256Tools {
+/// SHA-256 工具类
+public final class SHA256Tools {
 
+    private SHA256Tools() {
+        throw new AssertionError("工具类禁止实例化");
+    }
+
+    /// SHA-256 算法名称
+    /// @see MessageDigest#getInstance(String)
+    /// @throws NoSuchAlgorithmException 如果不支持 SHA-256 算法
     private static final String SHA256 = "SHA-256";
 
     /**
      * 字符串 SHA-256 摘要（UTF-8）
+     * @param input 待摘要的字符串
+     * @return 摘要后的字符串
      */
     public static String sha256(String input) {
         if (input == null) {
@@ -38,6 +48,8 @@ public class SHA256Tools {
 
     /**
      * 字节数组 SHA-256 摘要
+     * @param bytes 待摘要的字节数组
+     * @return 摘要后的字符串
      */
     public static String sha256(byte[] bytes) {
         try {
@@ -51,6 +63,8 @@ public class SHA256Tools {
 
     /**
      * 字节数组 SHA-256 摘要
+     * @param l 待摘要的长整数
+     * @return 摘要后的字符串
      */
     public static String sha256(long l) {
         try {
@@ -64,6 +78,8 @@ public class SHA256Tools {
 
     /**
      * 文件 SHA-256（使用 FileChannel 高效读取，适合大文件）
+     * @param filePath 待摘要的文件路径
+     * @return 摘要后的字符串
      */
     public static String sha256File(String filePath) throws IOException {
         try (FileInputStream in = new FileInputStream(filePath);
@@ -87,6 +103,8 @@ public class SHA256Tools {
 
     /**
      * 字节数组转十六进制小写
+     * @param bytes 待转换的字节数组
+     * @return 十六进制小写字符串
      */
     private static String bytesToHex(byte[] bytes) {
         StringBuilder sb = new StringBuilder();
@@ -102,6 +120,8 @@ public class SHA256Tools {
 
     /**
      * 字节数组转十六进制大写
+     * @param bytes 待转换的字节数组
+     * @return 十六进制大写字符串
      */
     public static String bytesToHexUpperCase(byte[] bytes) {
         return bytesToHex(bytes).toUpperCase();

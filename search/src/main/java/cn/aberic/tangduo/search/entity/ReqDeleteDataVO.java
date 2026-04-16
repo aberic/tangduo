@@ -16,5 +16,6 @@ package cn.aberic.tangduo.search.entity;
 
 import lombok.EqualsAndHashCode;
 
+/// 删除数据请求体
 @EqualsAndHashCode(callSuper = true)
 public class ReqDeleteDataVO extends ReqSelectDataVO {}

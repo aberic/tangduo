@@ -44,6 +44,7 @@ public class IndexController {
     @Value("${custom.db.DB_SEARCH_MAX_COUNT}")
     int searchMaxCount;
 
+    /// 创建索引
     @PutMapping({""})
     public Response create(@RequestBody() ReqCreateIndexVO vo) {
         log.trace("PUT index/{}/{} 建索引，库名：{}，索引名：{}", vo.getDatabase(), vo.getIndex(), vo.getDatabase(), vo.getIndex());
@@ -56,6 +57,7 @@ public class IndexController {
         }
     }
 
+    /// 删除索引
     @DeleteMapping({"{dbName}/{indexName}"})
     public Response delete(@PathVariable String dbName, @PathVariable String indexName) {
         log.trace("DELETE {}/{} 删索引，库名：{}，索引名：{}", dbName, indexName, dbName, indexName);

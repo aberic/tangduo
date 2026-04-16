@@ -16,6 +16,7 @@ package cn.aberic.tangduo.search.entity;
 
 import lombok.Data;
 
+/// 删除数据请求体
 @Data
 public class ReqRemoveDataVO {
 
@@ -25,7 +26,7 @@ public class ReqRemoveDataVO {
     String index;
     /// 唯一键名
     String key;
-    /// 度
+    /// 度数
     Long degree;
 
 }

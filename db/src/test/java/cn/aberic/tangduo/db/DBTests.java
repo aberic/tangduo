@@ -25,7 +25,6 @@ import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.entity.Condition;
 import cn.aberic.tangduo.index.engine.entity.Content;
 import cn.aberic.tangduo.index.engine.entity.Search;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -180,7 +179,7 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void putPre() throws JsonProcessingException {
+    void putPre() {
         long degree = System.currentTimeMillis();
         String key = String.valueOf(degree);
         List<DB.IndexName4KeyAndDegree> list = DB.parseJsonStr2IndexName4KeyAndDegree(value);
@@ -222,7 +221,7 @@ public class DBTests {
         content.getItems().forEach(item -> {
             List<DocGetResponseVO> docGetResponseVOList;
             try {
-                docGetResponseVOList = db.get(dbName, item.getIndexName(), item.getDegree(), item.getKey());
+                docGetResponseVOList = db.getForceIndex(dbName, item.getIndexName(), item.getDegree(), item.getKey());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -265,7 +264,7 @@ public class DBTests {
         content.getItems().forEach(item -> {
             List<DocGetResponseVO> docGetResponseVOList;
             try {
-                docGetResponseVOList = db.get(dbName, item.getIndexName(), item.getDegree(), item.getKey());
+                docGetResponseVOList = db.getForceIndex(dbName, item.getIndexName(), item.getDegree(), item.getKey());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -307,7 +306,7 @@ public class DBTests {
         content.getItems().forEach(item -> {
             List<DocGetResponseVO> docGetResponseVOList;
             try {
-                docGetResponseVOList = db.get(dbName, item.getIndexName(), item.getDegree(), item.getKey());
+                docGetResponseVOList = db.getForceIndex(dbName, item.getIndexName(), item.getDegree(), item.getKey());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -343,7 +342,7 @@ public class DBTests {
         content.getItems().forEach(item -> {
             List<DocGetResponseVO> docGetResponseVOList;
             try {
-                docGetResponseVOList = db.get(DB.DATABASE_NAME_DEFAULT, item.getIndexName(), item.getDegree(), item.getKey());
+                docGetResponseVOList = db.getForceIndex(DB.DATABASE_NAME_DEFAULT, item.getIndexName(), item.getDegree(), item.getKey());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -511,7 +510,7 @@ public class DBTests {
         }
         System.out.println();
 
-        search = new Search(indexName, -50, 50, false, false, 100, true, (bsList, _) -> {
+        search = new Search(indexName, -50, 50, false, false, 100, true, (bsList, conditionList) -> {
             List<byte[]> bl = new ArrayList<>();
             for (byte[] bytes : bsList) {
                 int value = new Doc(bytes).getValue().asInt();
@@ -645,14 +644,14 @@ public class DBTests {
         }
         log.info("setAndGetTimes check success!");
 
-        Search search = new Search(indexName, -100, 100, false, false, 200, true);
+        Search search = new Search(CommonTools.indexName(indexName), -100, 100, false, false, 200, true);
         List<DocSearchResponseVO> bytesList = db.delete(dbName, search);
         assert 199 == bytesList.size() : "199 != " + bytesList.size(); // (-99 —— 0) + (1 —— 99) = 199
         for (int i = 0; i < bytesList.size(); i++) {
             int value = (int) bytesList.get(i).getValue();
             assert (i - 99) == value : (i - 99) + " != " + value; // (-99 —— 0) + (1 —— 99) = 199
         }
-        search = new Search(indexName, -120, 150, false, false, 100, true);
+        search = new Search(CommonTools.indexName(indexName), -120, 150, false, false, 100, true);
         bytesList = db.select(dbName, search); // -99 —— 99 上一轮已删
         assert 70 == bytesList.size() : "70 != " + bytesList.size(); // -120——150总计271个数字，减去上一轮的199，还剩70个数字
         for (int i = 0; i < bytesList.size(); i++) {

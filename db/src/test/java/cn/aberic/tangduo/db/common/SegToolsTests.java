@@ -16,7 +16,6 @@ package cn.aberic.tangduo.db.common;
 
 import cn.aberic.tangduo.common.JsonTools;
 import cn.aberic.tangduo.db.DB;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -100,7 +99,7 @@ public class SegToolsTests {
     }
 
     @Test
-    void hanlp() throws JsonProcessingException {
+    void hanlp() {
         String text = """
                 {
                     "code":200,

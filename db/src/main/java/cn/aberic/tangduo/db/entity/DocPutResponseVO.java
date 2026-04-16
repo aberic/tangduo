@@ -14,7 +14,6 @@
 
 package cn.aberic.tangduo.db.entity;
 
-import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.entity.Content;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -23,20 +22,29 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.beans.BeanUtils;
 
+/// 文档插入响应VO
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL) // 为null的字段不序列化
 @Data
 @NoArgsConstructor
 public class DocPutResponseVO {
-
+    /// 数据库名称
     String database;
+    /// 索引名称
     String index;
+    /// 键值
     String key;
+    /// 度数
     long degree;
+    /// 摘要
     String digests;
+    /// 内容
     @JsonIgnore
     Content content;
 
+    /// 构造函数
+    /// @param doc 文档
+    /// @param content 内容
     public DocPutResponseVO(Doc doc, Content content) {
         BeanUtils.copyProperties(doc, this);
         this.content = content;

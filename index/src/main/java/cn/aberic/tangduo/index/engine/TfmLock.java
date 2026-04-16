@@ -29,13 +29,17 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 @Slf4j
 public class TfmLock {
 
-    /** [filepath + MateSeekLock] */
+    /// [filepath + MateSeekLock]
     private static final Map<String, FileMate> tfm = new ConcurrentHashMap<>();
 
     final static ReadWriteLock rwLock = new ReentrantReadWriteLock();
     final static Lock readLock = rwLock.readLock();  // 多线程可同时加锁
     final static Lock writeLock = rwLock.writeLock();// 独占锁
 
+    /// 加锁
+    /// @param transactionId 事务ID
+    /// @param filepath 文件路径
+    /// @param mateSeek 索引偏移量
     public static void lock(long transactionId, String filepath, long mateSeek) {
         FileMate fileMate = getFileMate(filepath);
         if (Objects.isNull(fileMate)) {
@@ -44,15 +48,24 @@ public class TfmLock {
         getFileMate(filepath).lock(transactionId, mateSeek);
     }
 
+    /// 解锁
+    /// @param transactionId 事务ID
+    /// @param filepath 文件路径
+    /// @param mateSeek 索引偏移量
     public static void unlock(long transactionId, String filepath, long mateSeek) {
         FileMate fileMate = getFileMate(filepath);
         if (Objects.nonNull(fileMate)) {
             fileMate.unlock(transactionId, mateSeek);
         } else {
-            log.warn("TfmLock unlock transactionId = {}, mateSeek = {}", transactionId, mateSeek);
+            /// 解锁失败，文件路径不存在
+            log.warn("TfmLock unlock transactionId = {}, filepath = {}, mateSeek = {}", transactionId, filepath, mateSeek);
         }
     }
 
+    /// 新建文件索引锁
+    /// @param transactionId 事务ID
+    /// @param filepath 文件路径
+    /// @param mateSeek 索引偏移量
     private static void put(long transactionId, String filepath, long mateSeek) {
         writeLock.lock();
         try {
@@ -64,6 +77,9 @@ public class TfmLock {
         }
     }
 
+    /// 获取文件索引锁
+    /// @param filepath 文件路径
+    /// @return 文件索引锁
     private static FileMate getFileMate(String filepath) {
         readLock.lock();
         try {
@@ -73,6 +89,7 @@ public class TfmLock {
         }
     }
 
+    /// 文件索引锁
     static class FileMate {
 
         private static final Map<Long, ReentrantLock> fm = new ConcurrentHashMap<>();
@@ -83,11 +100,16 @@ public class TfmLock {
 
         List<Long> transactionIdList = new CopyOnWriteArrayList<>();
 
+        /// 文件索引锁
+        /// @param transactionId 事务ID
+        /// @param mateSeek 索引偏移量
         public FileMate(long transactionId, long mateSeek) {
             transactionIdList.add(transactionId);
             put(mateSeek);
         }
 
+        /// 新建索引锁
+        /// @param mateSeek 索引偏移量
         private void put(Long mateSeek) {
             writeLock.lock();
             try {
@@ -99,6 +121,9 @@ public class TfmLock {
             }
         }
 
+        /// 新建索引锁
+        /// @param mateSeek 索引偏移量
+        /// @param lock 索引锁
         private void put(Long mateSeek, ReentrantLock lock) {
             writeLock.lock();
             try {
@@ -110,6 +135,9 @@ public class TfmLock {
             }
         }
 
+        /// 获取索引锁
+        /// @param mateSeek 索引偏移量
+        /// @return 索引锁
         private ReentrantLock getReentrantLock(Long mateSeek) {
             readLock.lock();
             try {
@@ -119,6 +147,9 @@ public class TfmLock {
             }
         }
 
+        /// 加锁
+        /// @param transactionId 事务ID
+        /// @param mateSeek 索引偏移量
         public void lock(long transactionId, long mateSeek) {
             ReentrantLock reentrantLock = getReentrantLock(mateSeek);
             if (Objects.isNull(reentrantLock)) {
@@ -139,6 +170,9 @@ public class TfmLock {
             }
         }
 
+        /// 解锁
+        /// @param transactionId 事务ID
+        /// @param mateSeek 索引偏移量
         public void unlock(long transactionId, long mateSeek) {
             ReentrantLock reentrantLock = getReentrantLock(mateSeek);
             if (Objects.nonNull(reentrantLock) && reentrantLock.isHeldByCurrentThread()) {

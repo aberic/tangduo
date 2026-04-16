@@ -21,9 +21,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import static cn.aberic.tangduo.common.http.Response.failed;
 
+/// 全局异常处理
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    /// 处理所有异常
+    /// @param e 异常
+    /// @return 响应对象
     @ExceptionHandler(Exception.class)
     public Response handle(Exception e) {
         String traceId = MDC.get("traceId");
@@ -38,6 +42,9 @@ public class GlobalExceptionHandler {
         }
     }
 
+    /// 获取异常根原因
+    /// @param e 异常
+    /// @return 异常根原因
     private Throwable getRootCause(Throwable e) {
         while (e.getCause() != null && e.getCause() != e) {
             e = e.getCause();

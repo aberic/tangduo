@@ -356,7 +356,7 @@ public class IndexTests {
         }
         System.out.println();
 
-        search = new Search(indexName, -50, 50, false, false, 100, true, (bsList, _) -> {
+        search = new Search(indexName, -50, 50, false, false, 100, true, (bsList, conditionList) -> {
             List<byte[]> bl = new ArrayList<>();
             for (byte[] bytes : bsList) {
                 if (0 != ByteTools.toInt(bytes)) {
@@ -434,7 +434,7 @@ public class IndexTests {
     }
 
     @Test
-    @Order(3)
+    @Order(4)
     void putAndGetFirstBatchTmp() throws IOException, NoSuchFieldException {
         String indexName = "putAndGetFirstBatch";
         Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);

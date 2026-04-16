@@ -21,13 +21,15 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+/// 公共类
+/// 用于存储公共方法
 public class Common {
 
     public Common() {
         throw new IllegalStateException("Common class");
     }
 
-    /** 联合索引的索引文件和数据文件名默认前缀 */
+    /// 联合索引的索引文件和数据文件名默认前缀
     public static final String UNITY_PATH = "unity";
 
     /**

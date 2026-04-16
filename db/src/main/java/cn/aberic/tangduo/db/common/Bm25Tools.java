@@ -23,27 +23,32 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class Bm25Tools {
+/// BM25 排序工具类
+/// 用于计算文档的BM25分数
+public final class Bm25Tools {
+
+    private Bm25Tools() {
+        throw new AssertionError("工具类禁止实例化");
+    }
 
     // ===================== Lucene 官方默认参数 =====================
+    /// BM25 模型参数 K1
     private static final double K1 = 1.2;
+    /// BM25 模型参数 B
     private static final double B = 0.75;
     // ===============================================================
 
-    /**
-     * 纯Java BM25 排序（结果 = Lucene原生BM25）
-     *
-     * @param docs  文档列表
-     * @param query 搜索词
-     *
-     * @return 按BM25分数降序排列
-     */
+    /// 纯Java BM25 排序（结果 = Lucene原生BM25）
+    /// @param docs 文档列表
+    /// @param query 搜索词
+    /// @param seg   分词器，可选"ik"或"hanlp"
+    /// @return 按BM25分数降序排列的文档列表
     public static List<DocSearchResponseVO> rank(List<DocSearchResponseVO> docs, String query, String seg) {
         if (docs == null || docs.isEmpty() || query == null || query.isBlank()) {
             return docs;
         }
 
-        // ========== 1. 分词（你可替换成IK/HanLP，这里用空格/通用分词保持通用）==========
+        // ========== 1. 分词（可替换成IK/HanLP，这里用空格/通用分词保持通用）==========
         List<String> queryTerms;
         if (seg.equals("ik")) {
             queryTerms = IkTokenizerTools.tokenize(query.toLowerCase());

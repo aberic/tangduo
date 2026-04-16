@@ -28,10 +28,11 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Arrays;
 
-public class Writer {
+/// 文件写入工具类
+public final class Writer {
 
-    public Writer() {
-        throw new IllegalStateException("Writer class");
+    private Writer() {
+        throw new AssertionError("工具类禁止实例化");
     }
 
     /**

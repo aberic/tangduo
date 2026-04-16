@@ -40,7 +40,8 @@ public class DBController {
     /// 每条索引检索的最大数据量
     @Value("${custom.db.DB_SEARCH_MAX_COUNT}")
     int searchMaxCount;
-
+    
+    /// 创建数据库
     @PutMapping({"{dbName}"})
     public Response create(@PathVariable String dbName) {
         log.trace("PUT db/{} 建库，库名：{}", dbName, dbName);
@@ -52,6 +53,7 @@ public class DBController {
         }
     }
 
+    /// 删除数据库
     @DeleteMapping({"{dbName}"})
     public Response delete(@PathVariable String dbName) {
         log.trace("DELETE db/{} 删库，库名：{}", dbName, dbName);

@@ -24,13 +24,23 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 
-public class Converts {
+/// 对象转换工具类
+public final class Converts {
 
     private Converts() {
-        throw new IllegalStateException("Converts class");
+        throw new AssertionError("工具类禁止实例化");
     }
 
-    // ==================== int ====================
+    /// 将对象转换为整数，默认值为指定值
+    /// @param val 待转换的对象
+    /// @param defaultValue 默认值
+    /// @return 转换后的整数，若转换失败则返回默认值
+    /// <p>
+    /// 转换规则：
+    /// 1. 如果对象为 null，则返回默认值。
+    /// 2. 如果对象为 Number 类型，则直接调用 intValue() 方法返回整数。
+    /// 3. 否则，尝试将对象转换为字符串并解析为整数。
+    /// </p>
     public static int toInt(Object val, int defaultValue) {
         if (val == null) return defaultValue;
         try {
@@ -40,6 +50,14 @@ public class Converts {
             return defaultValue;
         }
     }
+    /// @param val 待转换的对象
+    /// @return 转换后的整数，转换失败返回 null
+    /// <p>
+    /// 转换规则：如果对象为 null，则返回 null；如果对象为数字类型，则直接调用 intValue() 方法；否则，尝试将对象转换为整数。
+    /// </p>
+    /// <p>
+    /// 注意：本方法仅支持将整数类型的对象转换为整数，不支持将其他类型的对象转换为整数。
+    /// </p>
     public static Integer toInt(Object val) {
         if (val == null) return null;
         try {
@@ -50,15 +68,38 @@ public class Converts {
         }
     }
 
-    public static int toIntDefaultMaxValue(Object val) {
+    /// @param val 待转换的对象
+    /// @return 转换后的整数，转换失败返回 null
+    /// <p>
+    /// 转换规则：如果对象为 null，则返回 null；如果对象为数字类型，则直接调用 intValue() 方法；否则，尝试将对象转换为整数。
+    /// </p>
+    /// <p>
+    /// 注意：本方法仅支持将整数类型的对象转换为整数，不支持将其他类型的对象转换为整数。
+    /// </p>
+    public static Integer toIntDefaultMaxValue(Object val) {
         return toInt(val, Integer.MAX_VALUE);
     }
-
+    /// @param val 待转换的对象
+    /// @return 转换后的整数，转换失败返回默认值
+    /// <p>
+    /// 转换规则：如果对象为 null，则返回默认值；如果对象为数字类型，则直接调用 intValue() 方法；否则，尝试将对象转换为整数。
+    /// </p>
+    /// <p>
+    /// 注意：本方法仅支持将整数类型的对象转换为整数，不支持将其他类型的对象转换为整数。
+    /// </p>
     public static int toIntDefaultMinValue(Object val) {
         return toInt(val, Integer.MIN_VALUE);
     }
 
-    // ==================== long ====================
+    /// @param val 待转换的对象
+    /// @param defaultValue 默认值
+    /// @return 转换后的长整数，若转换失败则返回默认值
+    /// <p>
+    /// 转换规则：
+    /// 1. 如果对象为 null，则返回默认值。
+    /// 2. 如果对象为 Number 类型，则直接调用 longValue() 方法返回长整数。
+    /// 3. 否则，尝试将对象转换为字符串并解析为长整数。
+    /// </p>
     public static long toLong(Object val, long defaultValue) {
         if (val == null) return defaultValue;
         try {
@@ -68,6 +109,16 @@ public class Converts {
             return defaultValue;
         }
     }
+
+    /// 将对象转换为长整数
+    /// @param val 待转换的对象
+    /// @return 转换后的长整数，若转换失败则返回 null
+    /// <p>
+    /// 转换规则：
+    /// 1. 如果对象为 null，则返回 null。
+    /// 2. 如果对象为 Number 类型，则直接调用 longValue() 方法返回长整数。
+    /// 3. 否则，尝试将对象转换为字符串并解析为长整数。
+    /// </p>
     public static Long toLong(Object val) {
         if (val == null) return null;
         try {
@@ -78,15 +129,41 @@ public class Converts {
         }
     }
 
+    /// 将对象转换为长整数，默认值为最大长整数
+    /// @param val 待转换的对象
+    /// @return 转换后的长整数，若转换失败则返回默认值
+    /// <p>
+    /// 转换规则：
+    /// 1. 如果对象为 null，则返回默认值。
+    /// 2. 如果对象为 Number 类型，则直接调用 longValue() 方法返回长整数。
+    /// 3. 否则，尝试将对象转换为字符串并解析为长整数。
+    /// </p>
     public static long toLongDefaultMaxValue(Object val) {
         return toLong(val, Long.MAX_VALUE);
     }
 
+    /// 将对象转换为长整数，默认值为最小长整数
+    /// @param val 待转换的对象
+    /// @return 转换后的长整数，若转换失败则返回默认值
+    /// <p>
+    /// 转换规则：
+    /// 1. 如果对象为 null，则返回默认值。
+    /// 2. 如果对象为 Number 类型，则直接调用 longValue() 方法返回长整数。
+    /// 3. 否则，尝试将对象转换为字符串并解析为长整数。
+    /// </p>
     public static long toLongDefaultMinValue(Object val) {
         return toLong(val, Long.MIN_VALUE);
     }
 
-    // ==================== float ====================
+    /// @param val 待转换的对象
+    /// @param defaultValue 默认值
+    /// @return 转换后的浮点数，若转换失败则返回默认值
+    /// <p>
+    /// 转换规则：
+    /// 1. 如果对象为 null，则返回默认值。
+    /// 2. 如果对象为 Number 类型，则直接调用 floatValue() 方法返回浮点数。
+    /// 3. 否则，尝试将对象转换为字符串并解析为浮点数。
+    /// </p>
     public static float toFloat(Object val, float defaultValue) {
         if (val == null) return defaultValue;
         try {
@@ -97,6 +174,15 @@ public class Converts {
         }
     }
 
+    /// 将对象转换为浮点数
+    /// @param val 待转换的对象
+    /// @return 转换后的浮点数，若转换失败则返回 null
+    /// <p>
+    /// 转换规则：
+    /// 1. 如果对象为 null，则返回 null。
+    /// 2. 如果对象为 Number 类型，则直接调用 floatValue() 方法返回浮点数。
+    /// 3. 否则，尝试将对象转换为字符串并解析为浮点数。
+    /// </p>
     public static Float toFloat(Object val) {
         if (val == null) return null;
         try {
@@ -107,7 +193,15 @@ public class Converts {
         }
     }
 
-    // ==================== double ====================
+    /// @param val 待转换的对象
+    /// @param defaultValue 默认值
+    /// @return 转换后的浮点数，若转换失败则返回默认值
+    /// <p>
+    /// 转换规则：
+    /// 1. 如果对象为 null，则返回默认值。
+    /// 2. 如果对象为 Number 类型，则直接调用 doubleValue() 方法返回浮点数。
+    /// 3. 否则，尝试将对象转换为字符串并解析为浮点数。
+    /// </p>
     public static double toDouble(Object val, double defaultValue) {
         if (val == null) return defaultValue;
         try {
@@ -118,6 +212,15 @@ public class Converts {
         }
     }
 
+    /// 将对象转换为浮点数
+    /// @param val 待转换的对象
+    /// @return 转换后的浮点数，若转换失败则返回 null
+    /// <p>
+    /// 转换规则：
+    /// 1. 如果对象为 null，则返回 null。
+    /// 2. 如果对象为 Number 类型，则直接调用 doubleValue() 方法返回浮点数。
+    /// 3. 否则，尝试将对象转换为字符串并解析为浮点数。
+    /// </p>
     public static Double toDouble(Object val) {
         if (val == null) return null;
         try {
@@ -128,7 +231,16 @@ public class Converts {
         }
     }
 
-    // ==================== boolean ====================
+    /// 将对象转换为布尔值
+    /// @param val 待转换的对象
+    /// @param defaultValue 默认值
+    /// @return 转换后的布尔值，若转换失败则返回默认值
+    /// <p>
+    /// 转换规则：
+    /// 1. 如果对象为 null，则返回默认值。
+    /// 2. 如果对象为 String 类型，则将字符串转换为小写后判断是否为 "true" 或 "1"。
+    /// 3. 否则，返回默认值。
+    /// </p>
     public static boolean toBoolean(Object val, boolean defaultValue) {
         if (val == null) return defaultValue;
         try {
@@ -139,11 +251,21 @@ public class Converts {
         }
     }
 
+    /// 将对象转换为布尔值，默认值为 false
+    /// @param val 待转换的对象
+    /// @return 转换后的布尔值，若转换失败则返回 false
     public static boolean toBoolean(Object val) {
         return toBoolean(val, false);
     }
 
-    // ==================== String ====================
+    /// 将对象转换为字符串，默认值为空字符串
+    /// @param val 待转换的对象
+    /// @return 转换后的字符串，若转换失败则返回默认值
+    /// <p>
+    /// 转换规则：
+    /// 1. 如果对象为 null，则返回默认值。
+    /// 2. 否则，返回对象的字符串表示。
+    /// </p>
     public static String toString(Object val, String defaultValue) {
         if (val == null) return defaultValue;
         try {
@@ -153,11 +275,29 @@ public class Converts {
         }
     }
 
+    /// 将对象转换为字符串，默认值为空字符串
+    /// @param val 待转换的对象
+    /// @return 转换后的字符串，若转换失败则返回空字符串
+    /// <p>
+    /// 转换规则：
+    /// 1. 如果对象为 null，则返回空字符串。
+    /// 2. 否则，返回对象的字符串表示。
+    /// </p>
     public static String toString(Object val) {
         return toString(val, "");
     }
 
-    // ==================== BigDecimal ====================
+    /// 将对象转换为 BigDecimal
+    /// @param val 待转换的对象
+    /// @param defaultValue 默认值
+    /// @return 转换后的 BigDecimal，若转换失败则返回默认值
+    /// <p>
+    /// 转换规则：
+    /// 1. 如果对象为 null，则返回默认值。
+    /// 2. 如果对象为 BigDecimal 类型，则直接返回对象。
+    /// 3. 如果对象为 Number 类型，则直接调用 doubleValue() 方法返回 BigDecimal。
+    /// 4. 否则，尝试将对象转换为字符串并解析为 BigDecimal。
+    /// </p>
     public static BigDecimal toBigDecimal(Object val, BigDecimal defaultValue) {
         if (val == null) return defaultValue;
         try {
@@ -169,9 +309,18 @@ public class Converts {
         }
     }
 
-    // ==================== Date & java.time ====================
 
-    // 转 Date（兼容时间戳、标准字符串）
+    /// 将对象转换为 Date（兼容时间戳、标准字符串）
+    /// @param val 待转换的对象
+    /// @param defaultValue 默认值
+    /// @return 转换后的 Date，若转换失败则返回默认值
+    /// <p>
+    /// 转换规则：
+    /// 1. 如果对象为 null，则返回默认值。
+    /// 2. 如果对象为 Date 类型，则直接返回对象。
+    /// 3. 如果对象为 Long 类型，则直接调用 Date() 构造函数返回 Date。
+    /// 4. 否则，尝试将对象转换为字符串并解析为 Date。
+    /// </p>
     public static Date toDate(Object val, Date defaultValue) {
         if (val == null) return defaultValue;
         try {
@@ -184,7 +333,18 @@ public class Converts {
         }
     }
 
-    // LocalDateTime
+    /// 将对象转换为 LocalDateTime（兼容时间戳、标准字符串）
+    /// @param val 待转换的对象
+    /// @param defaultValue 默认值
+    /// @return 转换后的 LocalDateTime，若转换失败则返回默认值
+    /// <p>
+    /// 转换规则：
+    /// 1. 如果对象为 null，则返回默认值。
+    /// 2. 如果对象为 LocalDateTime 类型，则直接返回对象。
+    /// 3. 如果对象为 Date 类型，则将 Date转换为 LocalDateTime。
+    /// 4. 如果对象为 Long 类型，则将 Long转换为 LocalDateTime。
+    /// 5. 否则，尝试将对象转换为字符串并解析为 LocalDateTime。
+    /// </p>
     public static LocalDateTime toLocalDateTime(Object val, LocalDateTime defaultValue) {
         if (val == null) return defaultValue;
         try {
@@ -208,7 +368,16 @@ public class Converts {
         }
     }
 
-    // LocalDate
+    /// 将对象转换为 LocalDate（兼容标准字符串）
+    /// @param val 待转换的对象
+    /// @param defaultValue 默认值
+    /// @return 转换后的 LocalDate，若转换失败则返回默认值
+    /// <p>
+    /// 转换规则：
+    /// 1. 如果对象为 null，则返回默认值。
+    /// 2. 如果对象为 LocalDate 类型，则直接返回对象。
+    /// 3. 否则，尝试将对象转换为字符串并解析为 LocalDate。
+    /// </p>
     public static LocalDate toLocalDate(Object val, LocalDate defaultValue) {
         if (val == null) return defaultValue;
         try {
@@ -220,7 +389,16 @@ public class Converts {
         }
     }
 
-    // LocalTime
+    /// 将对象转换为 LocalTime（兼容标准字符串）
+    /// @param val 待转换的对象
+    /// @param defaultValue 默认值
+    /// @return 转换后的 LocalTime，若转换失败则返回默认值
+    /// <p>
+    /// 转换规则：
+    /// 1. 如果对象为 null，则返回默认值。
+    /// 2. 如果对象为 LocalTime 类型，则直接返回对象。
+    /// 3. 否则，尝试将对象转换为字符串并解析为 LocalTime。
+    /// </p>
     public static LocalTime toLocalTime(Object val, LocalTime defaultValue) {
         if (val == null) return defaultValue;
         try {

@@ -50,33 +50,42 @@ import java.util.stream.Stream;
  */
 @Slf4j
 public class Unity extends IEngine {
-    /** 默认度 */
+    /// 默认度
     private static final long DEGREE = 4294967296L;
-    /** 索引根节点偏移量 */
+    /// 索引根节点偏移量
     private static final long ROOT_NODE_SEEK = 1024;
 
-    /** 节点默认声明，值非默认即异常 */
+    /// 节点默认声明，值非默认即异常
     public static byte[] startBytes = {0x00, 0x7A};
-    /** 索引详情：4个字节版本号、1个字节是否主键、1个字节是否唯一索引、1个字节是否允许为空、8个字节创建时间，总计15个字节，总计15个字节 */
+    /// 索引详情：4个字节版本号、1个字节是否主键、1个字节是否唯一索引、1个字节是否允许为空、8个字节创建时间，总计15个字节，总计15个字节
     byte[] childIndexBytes;
-    /** 1005个字节冗余 */
+    /// 1005个字节冗余
     byte[] bakBytes = new byte[1005];
-    /** 节点默认收尾，值非默认即异常 */
+    /// 节点默认收尾，值非默认即异常
     public static byte[] endBytes = {0x00, 0x7A};
 
-    /** 数据根路径 */
+    /// 数据根路径
     String rootPath;
-    /** 索引详情：4个字节版本号、1个字节是否主键、1个字节是否唯一索引、1个字节是否允许为空、8个字节创建时间，总计15个字节 */
+    /// 索引详情：4个字节版本号、1个字节是否主键、1个字节是否唯一索引、1个字节是否允许为空、8个字节创建时间，总计15个字节
     ChildIndex childIndex;
-    /** 数据文件版本号，如 1，与索引版本号结合使用，如1.1，区分相同索引下的不同数据文件 */
+    /// 数据文件版本号，如 1，与索引版本号结合使用，如1.1，区分相同索引下的不同数据文件
     int dataFileVersion = 1;
-    /** 数据文件大小阈值，单位byte */
+    /// 数据文件大小阈值，单位byte
     long dataFileMaxSize;
 
     // 无锁队列，线程安全
     private final LinkedBlockingQueue<Content> queue;
 
-    /** 新建索引文件内容 */
+    /// 新建索引文件内容
+    /// @param rootPath 数据根路径
+    /// @param degree   主键（-9223372036854775807 —— 9223372036854775808）
+    /// @param dataFileVersion 数据文件版本号，如 1，与索引版本号结合使用，如1.1，区分相同索引下的不同数据文件
+    /// @param dataFileMaxSize 数据文件大小阈值，单位byte
+    /// @param version 索引版本号，如 1.1，区分相同索引下的不同数据文件
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param primary 是否主键，如 true，区分主键索引和非主键索引
+    /// @param unique 是否唯一索引，如 true，区分唯一索引和非唯一索引
+    /// @param nullable 是否允许为空，如 true，区分允许为空和不允许为空
     public Unity(String rootPath, long degree, int dataFileVersion, long dataFileMaxSize, int version, String indexName, boolean primary, boolean unique, boolean nullable) throws IOException {
         this.rootPath = rootPath;
         this.dataFileVersion = dataFileVersion;
@@ -94,12 +103,10 @@ public class Unity extends IEngine {
         startSetThread(indexName);
     }
 
-    /**
-     * 根据索引文件解析初始索引信息
-     *
-     * @param rootPath        数据根路径
-     * @param dataFileMaxSize 数据文件大小阈值，单位byte
-     */
+    /// 根据索引文件解析初始索引信息
+    /// @param rootPath 数据根路径
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param dataFileMaxSize 数据文件大小阈值，单位byte
     public Unity(String rootPath, String indexName, long dataFileMaxSize) throws IOException {
         this.rootPath = rootPath;
         this.dataFileMaxSize = dataFileMaxSize;
@@ -112,7 +119,8 @@ public class Unity extends IEngine {
         startSetThread(indexName);
     }
 
-    // 单线程真正写入磁盘（无竞争，最快）
+    /// 单线程真正写入磁盘（无竞争，最快）
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
     private void startSetThread(String indexName) {
         new Thread(() -> {
             try {
@@ -138,6 +146,9 @@ public class Unity extends IEngine {
         }, indexName).start();
     }
 
+    /// 重映射度
+    /// @param degree 度
+    /// @return 重映射后的度
     private long reDegree(long degree) {
         if (degree >= DEGREE) {
             // degree = 64424581328      ——     4294967296 * 15 = 64424509440
@@ -154,7 +165,7 @@ public class Unity extends IEngine {
         }
     }
 
-    /** 获取度文件区间，如：0_4294967296 或 neg_9223371968135299072_9223371972430266367.idx */
+    /// 获取度文件区间，如：0_4294967296 或 neg_9223371968135299072_9223371972430266367.idx
     private String getDegreeInterval(long degree) {
         if (degree >= 0) {
             // degree = 64424581328      ——     4294967296 * 15 = 64424509440
@@ -174,39 +185,40 @@ public class Unity extends IEngine {
         }
     }
 
-    /** 如：tmp/unity/testIndex/1_4294967296.idx */
+    /// 如：tmp/unity/testIndex/1_4294967296.idx
     private Path getIndexFilepath(long degree, String indexName) {
         return Common.unityIndexFilepath(rootPath, indexName, getDegreeInterval(degree));
     }
 
-    /** 刷盘 */
+    /// 刷盘
     @Override
     public void force(long degree, String indexName) throws IOException {
         Path indexFilepath = getIndexFilepath(degree, indexName);
         Channel.force(indexFilepath.toString());
     }
 
-    /**
-     * Node插入数据data<p>
-     */
+    /// Node插入数据data<p>
+    /// @param content 数据内容
     @Override
     public void put(Content content) {
         queue.offer(content);
     }
 
-    /**
-     * Node插入数据data<p>
-     * -------------------------------------------------------------------------------------------------------------------------------------<p>
-     * | 1…256(16777216)                         | 1层：1个节点，每个节点含256个节点和16777216个数据坐标<p>
-     * -------------------------------------------------------------------------------------------------------------------------------------<p>
-     * | 1…256 | … | 65280…65536(65536)          | 2层：256个节点，每个节点含256个节点和65536个数据坐标<p>
-     * -------------------------------------------------------------------------------------------------------------------------------------<p>
-     * | 1…256 | … | 16776960…16777216(256)      | 3层：65536个节点，每个节点含256个节点和256个数据坐标<p>
-     * -------------------------------------------------------------------------------------------------------------------------------------<p>
-     * | 1…256 | … | 4294966940…4294967296       | 4层：16777216个节点，每个节点含256个数据坐标，总计4294967296个数据坐标<p>
-     * -------------------------------------------------------------------------------------------------------------------------------------<p>
-     * <p>
-     */
+    /// Node插入数据data<p>
+    /// -------------------------------------------------------------------------------------------------------------------------------------<p>
+    /// | 1…256(16777216)                         | 1层：1个节点，每个节点含256个节点和16777216个数据坐标<p>
+    /// -------------------------------------------------------------------------------------------------------------------------------------<p>
+    /// | 1…256 | … | 65280…65536(65536)          | 2层：256个节点，每个节点含256个节点和65536个数据坐标<p>
+    /// -------------------------------------------------------------------------------------------------------------------------------------<p>
+    /// | 1…256 | … | 16776960…16777216(256)      | 3层：65536个节点，每个节点含256个节点和256个数据坐标<p>
+    /// -------------------------------------------------------------------------------------------------------------------------------------<p>
+    /// | 1…256 | … | 4294966940…4294967296       | 4层：16777216个节点，每个节点含256个数据坐标，总计4294967296个数据坐标<p>
+    /// -------------------------------------------------------------------------------------------------------------------------------------<p>
+    /// <p>
+    /// @param content 数据内容
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param indexFilepath 索引文件路径
+    /// @throws Exception 数据写入磁盘过程中可能抛出的异常
     public void put(Content content, String indexName, String indexFilepath) throws Exception {
         long degree = reDegree(content.getDegree(indexName));
         // 获取2层节点
@@ -256,6 +268,15 @@ public class Unity extends IEngine {
         nextNode.put(content, childIndex, rootPath, indexName, nextPosition, leafMateSeek, dataFileVersion, dataFileMaxSize);
     }
 
+    /// 填充节点叶子
+    /// @param content 数据内容
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param indexFilepath 索引文件路径
+    /// @param degree 度（数据坐标值的范围）
+    /// @param nextPosition 下一个节点的位置（数据坐标值的范围）
+    /// @param nodeCount 节点数量
+    /// @param nodeMateSeek 节点在索引文件中的起始偏移量
+    /// @throws Exception 填充节点叶子过程中可能抛出的异常
     private void fillNodeLeaf(Content content, String indexName, String indexFilepath, long degree, long nextPosition, int nodeCount, long nodeMateSeek) throws Exception {
         byte[] data; // 待写入字节数组
         Node node = new Node(); // 单个节点
@@ -298,6 +319,14 @@ public class Unity extends IEngine {
         }
     }
 
+    /// 获取叶子节点在索引文件中的起始偏移量
+    /// @param indexFilepath 索引文件路径
+    /// @param degree 度（数据坐标值的范围）
+    /// @param nextPosition 下一个节点的位置（数据坐标值的范围）
+    /// @param nodeCount 节点数量
+    /// @param nodeSeek 节点在索引文件中的起始偏移量
+    /// @return 叶子节点在索引文件中的起始偏移量
+    /// @throws IOException 获取叶子节点在索引文件中的起始偏移量过程中可能抛出的异常
     private long getLeafMateSeek(String indexFilepath, long degree, long nextPosition, long nodeCount, long nodeSeek) throws IOException {
         degree = degree - nextPosition * nodeCount; // degree=4294967056-255*16777216=4294967056-4278190080=16776976
         long nextNodeCount = nodeCount / 256;
@@ -330,23 +359,23 @@ public class Unity extends IEngine {
         getOrDelete(getIndexFilepath(degree, indexName).toString(), reDegree(degree), key, true);
     }
 
-    /**
-     * 从Node中获取数据<p>
-     * -------------------------------------------------------------------------------------------------------------------------------------<p>
-     * | 1…65536(281474976710656)                                 | 1层：1个节点，每个节点含65536个节点和281474976710656个数据坐标<p>
-     * -------------------------------------------------------------------------------------------------------------------------------------<p>
-     * | 1…65536 | … | 4294901760…4294967296(4294967296)          | 2层：65536个节点，每个节点含65536个节点和4294967296个数据坐标<p>
-     * -------------------------------------------------------------------------------------------------------------------------------------<p>
-     * | 1…65536 | … | 281474976645120…281474976710656(65536)     | 3层：4294967296个节点，每个节点含65536个节点和65536个数据坐标<p>
-     * -------------------------------------------------------------------------------------------------------------------------------------<p>
-     * | 1…65536 | … | 18446744073709486080…18446744073709551616  | 4层：281474976710656个节点，每个节点含65536个数据坐标，总计18446744073709551616个数据坐标<p>
-     * -------------------------------------------------------------------------------------------------------------------------------------<p>
-     *
-     * @param degree 主键（-9223372036854775807 —— 9223372036854775808）
-     * @param key    原始key
-     *
-     * @return 数据
-     */
+    /// 从Node中获取/删除数据<p>
+    /// -------------------------------------------------------------------------------------------------------------------------------------<p>
+    /// | 1…65536(281474976710656)                                 | 1层：1个节点，每个节点含65536个节点和281474976710656个数据坐标<p>
+    /// -------------------------------------------------------------------------------------------------------------------------------------<p>
+    /// | 1…65536 | … | 4294901760…4294967296(4294967296)          | 2层：65536个节点，每个节点含65536个节点和4294967296个数据坐标<p>
+    /// -------------------------------------------------------------------------------------------------------------------------------------<p>
+    /// | 1…65536 | … | 281474976645120…281474976710656(65536)     | 3层：4294967296个节点，每个节点含65536个节点和65536个数据坐标<p>
+    /// -------------------------------------------------------------------------------------------------------------------------------------<p>
+    /// | 1…65536 | … | 18446744073709486080…18446744073709551616  | 4层：281474976710656个节点，每个节点含65536个数据坐标，总计18446744073709551616个数据坐标<p>
+    /// -------------------------------------------------------------------------------------------------------------------------------------<p>
+    /// <p>
+    /// @param indexFilepath 索引文件路径
+    /// @param degree 度（数据坐标值的范围）
+    /// @param key 原始key
+    /// @param delete 是否删除数据
+    /// @return 数据
+    /// @throws IOException 从Node中获取/删除数据过程中可能抛出的异常
     public List<byte[]> getOrDelete(String indexFilepath, long degree, String key, boolean delete) throws IOException {
         // 获取根节点
         Node node = new Node(indexFilepath, ROOT_NODE_SEEK, true);
@@ -401,6 +430,10 @@ public class Unity extends IEngine {
         return selectOrDelete(search);
     }
 
+    /// 从Node中获取/删除数据
+    /// @param search 查询条件
+    /// @return 数据
+    /// @throws IOException 从Node中获取/删除数据过程中可能抛出的异常
     public List<byte[]> selectOrDelete(Search search) throws IOException {
         if (search.getDegreeMin() > search.getDegreeMax()) {
             return new ArrayList<>();
@@ -485,7 +518,14 @@ public class Unity extends IEngine {
         return bytesList;
     }
 
-    /** 负数文件 */
+    /// 负数文件
+    /// @param search 查询条件
+    /// @param path 索引文件路径
+    /// @param baseMin 基础最小值（数据坐标值的范围）
+    /// @param baseMax 基础最大值（数据坐标值的范围）
+    /// @param asc 是否升序
+    /// @return 数据
+    /// @throws IOException 负数文件过程中可能抛出的异常
     private List<byte[]> listNegative(Search search, Path path, long baseMin, long baseMax, boolean asc) throws IOException {
         long degreeMin;
         long degreeMax;
@@ -537,7 +577,14 @@ public class Unity extends IEngine {
         return listDesc(search, path.toString(), degreeMin, degreeMax, includeMin, includeMax, node, 16777216);
     }
 
-    /** 正数文件 */
+    /// 正数文件
+    /// @param search 查询条件
+    /// @param path 索引文件路径
+    /// @param baseMin 基础最小值（数据坐标值的范围）
+    /// @param baseMax 基础最大值（数据坐标值的范围）
+    /// @param asc 是否升序
+    /// @return 数据
+    /// @throws IOException 正数文件过程中可能抛出的异常
     private List<byte[]> listPositive(Search search, Path path, long baseMin, long baseMax, boolean asc) throws IOException {
         long degreeMin;
         long degreeMax;
@@ -588,14 +635,17 @@ public class Unity extends IEngine {
         return listDesc(search, path.toString(), degreeMin, degreeMax, includeMin, includeMax, node, 16777216);
     }
 
-    /**
-     * 从Node中右遍历升序<p>
-     *
-     * @param degreeMin  主键（-9223372036854775807 —— 9223372036854775808）
-     * @param includeMin 是否包含degree
-     *
-     * @return 数据
-     */
+    /// 从Node中右遍历升序
+    /// @param search 查询条件
+    /// @param indexFilepath 索引文件路径
+    /// @param degreeMin 主键（-9223372036854775807 —— 9223372036854775808）
+    /// @param includeMin 是否包含degreeMin
+    /// @param degreeMax 主键（-9223372036854775807 —— 9223372036854775808）
+    /// @param includeMax 是否包含degreeMax
+    /// @param node Node节点
+    /// @param nodeCount 节点数量
+    /// @return 数据
+    /// @throws IOException 从Node中右遍历升序过程中可能抛出的异常
     public List<byte[]> listAsc(Search search, String indexFilepath, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, Node node, long nodeCount) throws IOException {
         List<byte[]> bytesList = new ArrayList<>();
         long nextPositionMin = Math.divideExact(degreeMin, nodeCount);
@@ -654,14 +704,17 @@ public class Unity extends IEngine {
         return bytesList;
     }
 
-    /**
-     * 从Node中右遍历降序<p>
-     *
-     * @param degreeMin  主键（-9223372036854775807 —— 9223372036854775808）
-     * @param includeMin 是否包含degree
-     *
-     * @return 数据
-     */
+    /// 从Node中右遍历降序
+    /// @param search 查询条件
+    /// @param indexFilepath 索引文件路径
+    /// @param degreeMin 主键（-9223372036854775807 —— 9223372036854775808）
+    /// @param includeMin 是否包含degreeMin
+    /// @param degreeMax 主键（-9223372036854775807 —— 9223372036854775808）
+    /// @param includeMax 是否包含degreeMax
+    /// @param node Node节点
+    /// @param nodeCount 节点数量
+    /// @return 数据
+    /// @throws IOException 从Node中右遍历降序过程中可能抛出的异常
     public List<byte[]> listDesc(Search search, String indexFilepath, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, Node node, long nodeCount) throws IOException {
         List<byte[]> bytesList = new ArrayList<>();
         long nextPositionMin = Math.divideExact(degreeMin, nodeCount);
@@ -724,11 +777,11 @@ public class Unity extends IEngine {
         return bytesList;
     }
 
-    /**
-     * 查找节点<p>
-     *
-     * @param nodeSeek 节点数据在索引文件中的起始偏移量
-     */
+    /// 查找节点
+    /// @param indexFilepath 索引文件路径
+    /// @param nodeSeek 节点数据在索引文件中的起始偏移量
+    /// @return 节点
+    /// @throws IOException 查找节点过程中可能抛出的异常
     private Node getNode(String indexFilepath, long nodeSeek) throws IOException {
         Node nextNode;
         if (nodeSeek <= 0) { // 下一节点不存在，需要新建下一节点
@@ -744,34 +797,33 @@ public class Unity extends IEngine {
         return IEngine.UNITY;
     }
 
-    /** 索引详情：4个字节版本号、1个字节是否主键、1个字节是否唯一索引、1个字节是否允许为空、8个字节创建时间，总计15个字节 */
+    /// 索引详情：4个字节版本号、1个字节是否主键、1个字节是否唯一索引、1个字节是否允许为空、8个字节创建时间，总计15个字节
     @Data
     public static class ChildIndex {
 
         // 写入文件信息开始
-        /** 版本号，4个字节 */
+        /// 版本号，4个字节
         byte[] versionBytes;
-        /** 是否主键，主键也是唯一索引，1个字节 */
+        /// 是否主键，主键也是唯一索引，1个字节
         byte primaryByte;
-        /** 是否唯一索引，1个字节 */
+        /// 是否唯一索引，1个字节
         byte uniqueByte;
-        /** 是否允许为空，1个字节 */
+        /// 是否允许为空，1个字节
         byte nullableByte;
-        /** 创建时间，8个字节 */
+        /// 创建时间，8个字节
         byte[] localDateTimeBytes;
         // 写入文件信息结束
-
-        /** 版本号，4个字节 */
+        /// 版本号，4个字节
         int version;
-        /** 索引名称 */
+        /// 索引名称
         String name;
-        /** 是否主键，主键也是唯一索引，1个字节 */
+        /// 是否主键，主键也是唯一索引，1个字节
         boolean primary;
-        /** 是否唯一索引，1个字节 */
+        /// 是否唯一索引，1个字节
         boolean unique;
-        /** 是否允许为空，1个字节 */
+        /// 是否允许为空，1个字节
         boolean nullable;
-        /** 创建时间，8个字节 */
+        /// 创建时间，8个字节
         LocalDateTime localDateTime;
 
         public ChildIndex(byte[] dataBytes) {
@@ -802,7 +854,7 @@ public class Unity extends IEngine {
             localDateTimeBytes = ByteTools.fromLong(DateTools.localDateTime2timestamp(LocalDateTime.now()));
         }
 
-        /** 4字节版本号+8字节索引名称偏移量+4字节索引名称长度+1字节是否主键+1字节是否唯一索引+1字节是否允许为空+8字节创建时间 */
+        /// 4字节版本号+8字节索引名称偏移量+4字节索引名称长度+1字节是否主键+1字节是否唯一索引+1字节是否允许为空+8字节创建时间
         public byte[] toBytes() throws IOException {
             return ByteTools.join(versionBytes, new byte[]{primaryByte, uniqueByte, nullableByte}, localDateTimeBytes);
         }

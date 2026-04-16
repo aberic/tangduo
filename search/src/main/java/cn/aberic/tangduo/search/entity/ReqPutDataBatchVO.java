@@ -18,6 +18,7 @@ import lombok.Data;
 
 import java.util.List;
 
+/// 批量插入数据请求体
 @Data
 public class ReqPutDataBatchVO {
 
@@ -28,6 +29,7 @@ public class ReqPutDataBatchVO {
     /// 批量插入
     List<Value> values;
 
+    /// 插入值
     @Data
     public static class Value {
 
@@ -35,7 +37,7 @@ public class ReqPutDataBatchVO {
         String index;
         /// 唯一键名
         String key;
-        /// 插入
+        /// 插入值
         Object value;
 
     }

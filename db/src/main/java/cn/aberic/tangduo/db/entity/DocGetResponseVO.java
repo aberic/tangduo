@@ -30,16 +30,24 @@ import java.util.List;
 @NoArgsConstructor
 public class DocGetResponseVO {
 
-    String database;
-    String index;
-    String key;
-    long degree;
-    String digests;
-    Object value;
-    /** 分词集合 */
+    /// 数据库名称
+    private String database;
+    /// 索引名称
+    private String index;
+    /// 索引键值
+    private String key;
+    /// 度数
+    private long degree;
+    /// 摘要
+    private String digests;
+    /// 内容
+    private Object value;
+    /// 分词集合
     @JsonIgnore
-    List<String> segList;
+    private List<String> segList;
 
+    /// 构造函数
+    /// @param doc 文档
     public DocGetResponseVO(Doc doc) {
         BeanUtils.copyProperties(doc, this);
         value = JsonTools.parseJsonNode(doc.value);

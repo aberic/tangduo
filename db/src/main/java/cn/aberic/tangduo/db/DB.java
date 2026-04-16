@@ -27,14 +27,13 @@ import cn.aberic.tangduo.index.engine.Transaction;
 import cn.aberic.tangduo.index.engine.entity.Condition;
 import cn.aberic.tangduo.index.engine.entity.Content;
 import cn.aberic.tangduo.index.engine.entity.Search;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.boot.json.JsonParseException;
 import org.springframework.util.CollectionUtils;
+import tools.jackson.databind.JsonNode;
 
 import javax.management.InstanceAlreadyExistsException;
 import java.io.IOException;
@@ -51,47 +50,50 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+/// 数据库
 @Slf4j
 public class DB {
 
-    /** 库集合，库名+索引对象 */
+    /// 库集合，库名+索引对象
     private final Map<String, SegIndex> dbMap = new ConcurrentHashMap<>();
 
-    /** 数据库根路径 */
+    /// 数据库根路径
     String rootPath;
-    /** 数据文件大小阈值，单位byte */
+    /// 数据文件大小阈值，单位byte
     long dataFileMaxSize;
-    /** 单批次最大数量 */
+    /// 单批次最大数量
     int batchMaxSize = INDEX_BATCH_MAX_SIZE;
-    /** 每条索引检索的最大数据量，默认10000条 */
+    /// 每条索引检索的最大数据量，默认10000条
     int searchMaxCount = SEARCH_MAX_COUNT;
 
     private static final String blockSkip = "@@##@@";
     private static final String dbSkip = "#@#";
-    /** 受保护的默认索引名称 */
+    /// 受保护的默认索引名称
     public static final String INDEX_NAME_DEFAULT = "default";
-    /** 受保护的默认库名称 */
+    /// 受保护的默认库名称
     public static final String DATABASE_NAME_DEFAULT = "default";
+    /// 每条索引检索的最大数据量，默认10000条
     public static final int SEARCH_MAX_COUNT = 10000;
+    /// 索引批量最大数量，默认5000条
     public static final int INDEX_BATCH_MAX_SIZE = 5000;
 
     private static final Lock lock = new ReentrantLock();
     private static DB instance;
 
-    /**
-     *
-     * @param rootPath        数据根路径
-     * @param dataFileMaxSize 数据文件大小阈值，单位byte
-     */
+    /// 获取数据库实例
+    /// @param rootPath 数据根路径
+    /// @param dataFileMaxSize 数据文件大小阈值，单位byte
+    /// @return 数据库实例
     public static DB getInstance(String rootPath, long dataFileMaxSize) throws IOException, NoSuchFieldException {
         return getInstance(rootPath, dataFileMaxSize, SEARCH_MAX_COUNT, 5000);
     }
 
-    /**
-     *
-     * @param rootPath        数据根路径
-     * @param dataFileMaxSize 数据文件大小阈值，单位byte
-     */
+    /// 获取数据库实例
+    /// @param rootPath 数据根路径
+    /// @param dataFileMaxSize 数据文件大小阈值，单位byte
+    /// @param searchMaxCount 每条索引检索的最大数据量，默认10000条
+    /// @param batchMaxSize 索引批量最大数量，默认5000条
+    /// @return 数据库实例
     public static DB getInstance(String rootPath, long dataFileMaxSize, int searchMaxCount, int batchMaxSize) throws IOException, NoSuchFieldException {
         if (instance == null) {
             lock.lock(); // 加锁
@@ -108,6 +110,11 @@ public class DB {
 
     private DB() {}
 
+    /// 构造函数
+    /// @param rootPath 数据根路径
+    /// @param dataFileMaxSize 数据文件大小阈值，单位byte
+    /// @param searchMaxCount 每条索引检索的最大数据量，默认10000条
+    /// @param batchMaxSize 索引批量最大数量，默认5000条
     private DB(String rootPath, long dataFileMaxSize, int searchMaxCount, int batchMaxSize) throws IOException, NoSuchFieldException {
         this();
         this.rootPath = rootPath;
@@ -117,15 +124,17 @@ public class DB {
         init();
     }
 
+    /// 索引段
+    /// @param seg 分词方法，如：hanlp、ik
+    /// @param index 索引对象
     public record SegIndex(String seg, Index index) {}
 
-    /**
-     * 构造Master后最先执行的方法
-     * 基于数据根路径获取索引相关信息<p>
-     * 从指定文件中读取数据库和文件等关联信息，如不存在，则新建文件<p>
-     * 文件内容：
-     * 数据库名称@@##@@数据库名称
-     */
+    /// 初始化数据库
+    /// 构造Master后最先执行的方法
+    /// 基于数据根路径获取索引相关信息<p>
+    /// 从指定文件中读取数据库和文件等关联信息，如不存在，则新建文件<p> 
+    /// 文件内容：
+    /// 数据库名称@@##@@数据库名称
     private void init() throws IOException, NoSuchFieldException {
         Path recordPath = Common.recordFilepath(rootPath); // 如"tmp/data/record.rd"
         if (!Files.exists(recordPath)) {
@@ -145,21 +154,16 @@ public class DB {
         }
     }
 
-    /**
-     * 创建数据库
-     *
-     * @param dbName 数据库名称
-     */
+    /// 创建数据库
+    /// @param dbName 数据库名称
+    /// @param seg    分词方法，如：hanlp、ik
     public void createDB(String dbName) throws IOException, InstanceAlreadyExistsException, NoSuchFieldException {
         createDB(dbName, "hanlp");
     }
 
-    /**
-     * 创建数据库
-     *
-     * @param dbName 数据库名称
-     * @param seg    分词方法，如：hanlp、ik
-     */
+    /// 创建数据库
+    /// @param dbName 数据库名称
+    /// @param seg    分词方法，如：hanlp、ik
     public void createDB(String dbName, String seg) throws IOException, InstanceAlreadyExistsException, NoSuchFieldException {
         // 遍历确认没有重复名称的索引
         if (dbMap.entrySet().stream().anyMatch(entry -> entry.getKey().equals(dbName))) {
@@ -178,11 +182,9 @@ public class DB {
         dbMap.put(dbName, new SegIndex(seg, Index.getInstance(indexRootPath, dataFileMaxSize)));
     }
 
-    /**
-     * 删除数据库
-     *
-     * @param databaseName 数据库名称
-     */
+    /// 数据库是否存在
+    /// @param databaseName 数据库名称
+    /// @return 是否存在
     public boolean dbExist(String databaseName) throws IOException, NoSuchFieldException {
         // 遍历确认没有重复名称的索引
         if (dbMap.entrySet().stream().noneMatch(entry -> entry.getKey().equals(databaseName))) {
@@ -205,11 +207,8 @@ public class DB {
         return true;
     }
 
-    /**
-     * 删除数据库
-     *
-     * @param databaseName 数据库名称
-     */
+    /// 删除数据库
+    /// @param databaseName 数据库名称
     public void removeDB(String databaseName) throws IOException {
         // 遍历确认没有重复名称的索引
         if (dbMap.entrySet().stream().noneMatch(entry -> entry.getKey().equals(databaseName))) {
@@ -238,6 +237,10 @@ public class DB {
         Filer.deleteDirectory(Path.of(rootPath, databaseName));
     }
 
+    /// 获取索引
+    /// @param dbName 数据库名称
+    /// @return 索引
+    /// @throws NoSuchElementException 数据库实例不存在
     private Index getIndex(String dbName) {
         SegIndex segIndex = dbMap.get(dbName);
         if (segIndex == null) {
@@ -246,12 +249,10 @@ public class DB {
         return segIndex.index;
     }
 
-    /**
-     * 创建索引
-     *
-     * @param engine 引擎，在 Engine.UNITY、Engine.SKIP 等中选值，或传入对应的整型值
-     * @param info   索引信息
-     */
+    /// 创建索引
+    /// @param dbName 数据库名称
+    /// @param engine 引擎，在 Engine.UNITY、Engine.SKIP 等中选值，或传入对应的整型值
+    /// @param info   索引信息
     public void createIndex(String dbName, int engine, Index.Info info) throws IOException, InstanceAlreadyExistsException, NoSuchFieldException, NoSuchMethodException {
         if (!dbMap.containsKey(dbName)) {
             throw new NoSuchElementException("数据库实例不存在");
@@ -261,7 +262,12 @@ public class DB {
         index.createIndex(engine, info);
     }
 
-    /** 删除索引 */
+    /// 删除索引
+    /// @param dbName 数据库名称
+    /// @param indexName 索引名
+    /// @throws InstanceAlreadyExistsException 索引已存在
+    /// @throws NoSuchFieldException 索引不存在
+    /// @throws NoSuchMethodException 索引不存在
     public void removeIndex(String dbName, String indexName) throws IOException, InstanceAlreadyExistsException, NoSuchFieldException, NoSuchMethodException {
         if (!dbMap.containsKey(dbName)) {
             throw new NoSuchElementException("数据库实例不存在");
@@ -270,57 +276,59 @@ public class DB {
         index.removeIndex(CommonTools.indexName(indexName));
     }
 
-    /**
-     * Node插入数据data，主流方法
-     *
-     * @param value 数据
-     */
+    /// Node插入数据data，主流方法
+    /// @param value 数据
+    /// @return 文档响应VO
+    /// @throws IOException 异常
     public DocPutResponseVO put(Object value) throws IOException {
         return put(null, value);
     }
 
-    /**
-     * Node插入数据data，主流方法
-     *
-     * @param value 数据
-     */
+    /// Node插入数据data，主流方法
+    /// @param dbName 数据库名称
+    /// @param value 数据
+    /// @return 文档响应VO
+    /// @throws IOException 异常
     public DocPutResponseVO put(@Nullable String dbName, Object value) throws IOException {
         return put(dbName, null, value);
     }
 
-    /**
-     * Node插入数据data，主流方法
-     *
-     * @param key   原始key
-     * @param value 数据
-     */
+    /// Node插入数据data，主流方法
+    /// @param dbName 数据库名称
+    /// @param key   原始key
+    /// @param value 数据
+    /// @return 文档响应VO
+    /// @throws IOException 异常
     public DocPutResponseVO put(@Nullable String dbName, @Nullable String key, Object value) throws IOException {
         return put(dbName, null, key, value);
     }
 
-    /**
-     * Node插入数据data，此方法将进行分词插入处理
-     *
-     * @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-     * @param key       原始key
-     * @param value     数据
-     */
+    /// Node插入数据data，此方法将进行分词插入处理
+    /// @param dbName 数据库名称
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param key       原始key
+    /// @param value     数据
+    /// @return 文档响应VO
+    /// @throws IOException 异常
     public DocPutResponseVO put(@Nullable String dbName, @Nullable String indexName, @Nullable String key, Object value) throws IOException {
         return put(dbName, indexName, key, true, value);
     }
 
-    /**
-     * Node插入数据data，此方法将进行分词插入处理
-     *
-     * @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-     * @param key       原始key
-     * @param value     数据
-     */
+    /// Node插入数据data，此方法将进行分词插入处理
+    /// @param dbName 数据库名称
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param key       原始key
+    /// @param value     数据
+    /// @return 文档响应VO
+    /// @throws IOException 异常
     public DocPutResponseVO put(@Nullable String dbName, @Nullable String indexName, @Nullable String key, boolean seg, @Nonnull Object value) throws IOException {
         return put(new DocPutRequestVO(dbName, indexName, null, key, seg, value));
     }
 
-    /** Node插入数据data */
+    /// Node插入数据data
+    /// @param batchVO 批量插入请求VO
+    /// @return 文档响应VO
+    /// @throws IOException 异常
     public DocPutResponseVO put(@Nonnull DocPutRequestVO batchVO) throws IOException {
         String dbName = StringUtils.isEmpty(batchVO.getDatabase()) ? DATABASE_NAME_DEFAULT : batchVO.getDatabase();
         String indexName = CommonTools.indexName(StringUtils.isEmpty(batchVO.getIndex()) ? INDEX_NAME_DEFAULT : batchVO.getIndex()).toLowerCase();
@@ -359,7 +367,45 @@ public class DB {
         List<IndexName4KeyAndDegree> list;
         String valueStr;
         switch (batchVO.getValue()) {
-            case String _, List<?> _, Map<?, ?> _ -> {
+            case String ignored -> {
+                String str = String.valueOf(batchVO.getValue());
+                if (JsonTools.isJson(str)) {
+                    list = parseJsonStr2IndexName4KeyAndDegree(str);
+                    valueStr = str;
+                    for (IndexName4KeyAndDegree indexName4KeyAndDegree : list) {
+                        if (indexName4KeyAndDegree.hash) {
+                            valueStr = valueStr.replace(indexName4KeyAndDegree.key, "");
+                        }
+                    }
+                } else {
+                    list = new ArrayList<>();
+                    if (HASH_PATTERN.matcher(str).matches()) {
+                        valueStr = "";
+                    } else {
+                        valueStr = str;
+                    }
+                }
+            }
+            case Map<?, ?> ignored -> {
+                String str = String.valueOf(batchVO.getValue());
+                if (JsonTools.isJson(str)) {
+                    list = parseJsonStr2IndexName4KeyAndDegree(str);
+                    valueStr = str;
+                    for (IndexName4KeyAndDegree indexName4KeyAndDegree : list) {
+                        if (indexName4KeyAndDegree.hash) {
+                            valueStr = valueStr.replace(indexName4KeyAndDegree.key, "");
+                        }
+                    }
+                } else {
+                    list = new ArrayList<>();
+                    if (HASH_PATTERN.matcher(str).matches()) {
+                        valueStr = "";
+                    } else {
+                        valueStr = str;
+                    }
+                }
+            }
+            case List<?> ignored -> {
                 String str = String.valueOf(batchVO.getValue());
                 if (JsonTools.isJson(str)) {
                     list = parseJsonStr2IndexName4KeyAndDegree(str);
@@ -405,7 +451,11 @@ public class DB {
         return new DocPutResponseVO(doc, content);
     }
 
-    /** Node批量插入数据data */
+    /// Node批量插入数据data
+    /// @param database 数据库名称
+    /// @param batchRequestVOS 批量插入请求VO列表
+    /// @return 批量插入响应VO列表
+    /// @throws IOException 异常
     public String put(String database, List<DocPutBatchRequestVO> batchRequestVOS) throws IOException {
         List<Content> contentList = new ArrayList<>();
         Index baseIndex = null;
@@ -450,7 +500,45 @@ public class DB {
             List<IndexName4KeyAndDegree> list;
             String valueStr;
             switch (batchRequestVO.getValue()) {
-                case String _, List<?> _, Map<?, ?> _ -> {
+                case String ignored -> {
+                    String str = String.valueOf(batchRequestVO.getValue());
+                    if (JsonTools.isJson(str)) {
+                        list = parseJsonStr2IndexName4KeyAndDegree(str);
+                        valueStr = str;
+                        for (IndexName4KeyAndDegree indexName4KeyAndDegree : list) {
+                            if (indexName4KeyAndDegree.hash) {
+                                valueStr = valueStr.replace(indexName4KeyAndDegree.key, "");
+                            }
+                        }
+                    } else {
+                        list = new ArrayList<>();
+                        if (HASH_PATTERN.matcher(str).matches()) {
+                            valueStr = "";
+                        } else {
+                            valueStr = str;
+                        }
+                    }
+                }
+                case Map<?, ?> ignored -> {
+                    String str = String.valueOf(batchRequestVO.getValue());
+                    if (JsonTools.isJson(str)) {
+                        list = parseJsonStr2IndexName4KeyAndDegree(str);
+                        valueStr = str;
+                        for (IndexName4KeyAndDegree indexName4KeyAndDegree : list) {
+                            if (indexName4KeyAndDegree.hash) {
+                                valueStr = valueStr.replace(indexName4KeyAndDegree.key, "");
+                            }
+                        }
+                    } else {
+                        list = new ArrayList<>();
+                        if (HASH_PATTERN.matcher(str).matches()) {
+                            valueStr = "";
+                        } else {
+                            valueStr = str;
+                        }
+                    }
+                }
+                case List<?> ignored -> {
                     String str = String.valueOf(batchRequestVO.getValue());
                     if (JsonTools.isJson(str)) {
                         list = parseJsonStr2IndexName4KeyAndDegree(str);
@@ -503,21 +591,20 @@ public class DB {
         return database;
     }
 
-    /** 匹配 MD5 / SHA */
+    /// 匹配 MD5 / SHA
     private static final Pattern HASH_PATTERN = Pattern.compile("^[a-f0-9]{32}$|^[a-f0-9]{40}$|^[a-f0-9]{64}$|^[a-f0-9]{128}$|^[a-f0-9]{256}$|^[a-f0-9]{512}$|^[a-f0-9]{1024}$", Pattern.CASE_INSENSITIVE);
 
-    /** 索引名+键信息+度信息+该条记录的唯一标记 */
+    /// 索引名+键信息+度信息+该条记录的唯一标记
     public record IndexName4KeyAndDegree(String indexName, String key, Long degree, boolean hash) {}
 
-    /**
-     * 将json中的key都建立数字索引、时间索引、HashKey索引。
-     * 当json中某一key的value为number时，会根据key建立数字索引，同时根据当前时间戳建立时间索引。
-     * 当json中某一key的value不为number时，建立HashKey索引和时间索引，如果该value长度和内容满足摘要条件时，额外建立摘要索引。
-     * 已确认为摘要索引的value，在后续分词时，会被屏蔽掉，避免分词干扰。
-     *
-     * @param jsonStr json 字符串，如果不是，则返回空集合
-     */
-    public static List<IndexName4KeyAndDegree> parseJsonStr2IndexName4KeyAndDegree(String jsonStr) throws JsonProcessingException {
+    /// 将json中的key都建立数字索引、时间索引、HashKey索引。
+    /// 当json中某一key的value为number时，会根据key建立数字索引，同时根据当前时间戳建立时间索引。
+    /// 当json中某一key的value不为number时，建立HashKey索引和时间索引，如果该value长度和内容满足摘要条件时，额外建立摘要索引。
+    /// 已确认为摘要索引的value，在后续分词时，会被屏蔽掉，避免分词干扰。
+    /// @param jsonStr json 字符串，如果不是，则返回空集合
+    /// @return 索引名+键信息+度信息+该条记录的唯一标记 集合
+    /// @throws IOException 异常
+    public static List<IndexName4KeyAndDegree> parseJsonStr2IndexName4KeyAndDegree(String jsonStr) {
         List<IndexName4KeyAndDegree> list = new ArrayList<>();
         long degree = System.currentTimeMillis();
         String key = String.valueOf(degree);
@@ -527,33 +614,28 @@ public class DB {
         return list;
     }
 
-    /**
-     * 将json中的key都建立数字索引、时间索引、HashKey索引。
-     * 当json中某一key的value为number时，会根据key建立数字索引，同时根据当前时间戳建立时间索引。
-     * 当json中某一key的value不为number时，建立HashKey索引和时间索引，如果该value长度和内容满足摘要条件时，额外建立摘要索引。
-     * 已确认为摘要索引的value，在后续分词时，会被屏蔽掉，避免分词干扰。
-     *
-     * @param list   索引名+键信息+度信息+该条记录的唯一标记 集合，是本方法需要填充内容的对象
-     * @param node   json 节点
-     * @param key    键信息
-     * @param degree 度信息
-     */
+    /// 递归解析json节点，建立索引
+    /// @param list   索引名+键信息+度信息+该条记录的唯一标记 集合，是本方法需要填充内容的对象
+    /// @param node   json 节点
+    /// @param key    键信息
+    /// @param degree 度信息
+    /// @throws IOException 异常
     private static void analysis(List<IndexName4KeyAndDegree> list, JsonNode node, String key, long degree) {
         if (node.isArray()) {
             node.forEach(jsonNode -> analysis(list, jsonNode, key, degree));
         } else if (node.isObject()) {
             node.forEachEntry((indexName, jsonNode) -> {
-                if (jsonNode.isTextual()) {
-                    if (HASH_PATTERN.matcher(jsonNode.asText()).matches()) {
-                        list.add(new IndexName4KeyAndDegree(CommonTools.indexName(indexName.toLowerCase()), jsonNode.asText(), KeyHashTools.toLongKey(jsonNode.asText()), false));
-                        list.add(new IndexName4KeyAndDegree(CommonTools.indexName4dhash(jsonNode.asText()), jsonNode.asText(), degree, true));
+                if (jsonNode.isString()) {
+                    if (HASH_PATTERN.matcher(jsonNode.asString()).matches()) {
+                        list.add(new IndexName4KeyAndDegree(CommonTools.indexName(indexName.toLowerCase()), jsonNode.asString(), KeyHashTools.toLongKey(jsonNode.asString()), false));
+                        list.add(new IndexName4KeyAndDegree(CommonTools.indexName4dhash(jsonNode.asString()), jsonNode.asString(), degree, true));
                     }
                     list.add(new IndexName4KeyAndDegree(CommonTools.indexName4datetime(indexName.toLowerCase()), key, degree, false));
                 } else if (jsonNode.isLong() || jsonNode.isInt()) {
-                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName(indexName.toLowerCase()), jsonNode.asText(), jsonNode.asLong(), false));
+                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName(indexName.toLowerCase()), jsonNode.asString(), jsonNode.asLong(), false));
                     list.add(new IndexName4KeyAndDegree(CommonTools.indexName4datetime(indexName.toLowerCase()), key, degree, false));
                 } else if (jsonNode.isDouble() || jsonNode.isFloat()) {
-                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName(indexName.toLowerCase()), jsonNode.asText(), KeyHashTools.toLongKey(jsonNode.asDouble()), false));
+                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName(indexName.toLowerCase()), jsonNode.asString(), KeyHashTools.toLongKey(jsonNode.asDouble()), false));
                     list.add(new IndexName4KeyAndDegree(CommonTools.indexName4datetime(indexName.toLowerCase()), key, degree, false));
                 } else if (jsonNode.isArray()) {
                     node.forEach(jn -> analysis(list, jn, key, degree));
@@ -566,23 +648,23 @@ public class DB {
         }
     }
 
-    /**
-     * Node获取数据data
-     *
-     * @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-     * @param key       原始key
-     */
+    /// 获取第一个文档
+    /// @param dbName   数据库名
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param key       原始key
+    /// @return 文档搜索响应VO
+    /// @throws IOException 异常
     public DocGetResponseVO getFirst(@Nullable String dbName, @Nullable String indexName, @Nonnull String key) throws IOException {
         return getFirst(dbName, indexName, null, key);
     }
 
-    /**
-     * Node获取数据data
-     *
-     * @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-     * @param degree    主键
-     * @param key       原始key
-     */
+    /// 获取第一个文档
+    /// @param dbName   数据库名
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param degree    主键
+    /// @param key       原始key
+    /// @return 文档搜索响应VO
+    /// @throws IOException 异常
     public DocGetResponseVO getFirst(@Nullable String dbName, @Nullable String indexName, @Nullable Long degree, @Nonnull String key) throws IOException {
         List<DocGetResponseVO> docGetResponseVOList = get(dbName, indexName, degree, key);
         if (Objects.nonNull(docGetResponseVOList) && !docGetResponseVOList.isEmpty()) {
@@ -591,16 +673,26 @@ public class DB {
         return null;
     }
 
-    /**
-     * Node获取数据data
-     *
-     * @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-     * @param degree    主键
-     * @param key       原始key
-     */
+    /// 获取文档列表
+    /// @param dbName   数据库名
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param degree    主键
+    /// @param key       原始key
+    /// @return 文档搜索响应VO列表
+    /// @throws IOException 异常
     public List<DocGetResponseVO> get(@Nullable String dbName, @Nullable String indexName, @Nullable Long degree, @Nullable String key) throws IOException {
+        return getForceIndex(dbName, CommonTools.indexName(StringUtils.isEmpty(indexName) ? INDEX_NAME_DEFAULT : indexName).toLowerCase(), degree, key);
+    }
+
+    /// 获取文档列表
+    /// @param dbName   数据库名
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param degree    主键
+    /// @param key       原始key
+    /// @return 文档搜索响应VO列表
+    /// @throws IOException 异常
+    public List<DocGetResponseVO> getForceIndex(@Nullable String dbName, @Nonnull String indexName, @Nullable Long degree, @Nullable String key) throws IOException {
         dbName = StringUtils.isEmpty(dbName) ? DATABASE_NAME_DEFAULT : dbName;
-        indexName = CommonTools.indexName(StringUtils.isEmpty(indexName) ? INDEX_NAME_DEFAULT : indexName).toLowerCase();
         List<DocGetResponseVO> docGetResponseVOList = new ArrayList<>();
         if (StringUtils.isEmpty(key)) {
             Search search = new Search(indexName, 10);
@@ -639,34 +731,42 @@ public class DB {
         return docGetResponseVOList;
     }
 
-    /**
-     * Node获取数据data
-     *
-     * @param query 检索字符串
-     */
+    /// 搜索文档
+    /// @param dbName   数据库名
+    /// @param query    检索字符串
+    /// @return 文档搜索响应VO列表
+    /// @throws IOException 异常
     public List<DocSearchResponseVO> search(String dbName, String query) throws IOException {
         return search(dbName, null, query, 10);
     }
 
-    /**
-     * Node获取数据data
-     *
-     * @param query 检索字符串
-     */
+    /// 搜索文档
+    /// @param dbName   数据库名
+    /// @param query    检索字符串
+    /// @param callbackCount 回调次数
+    /// @return 文档搜索响应VO列表
+    /// @throws IOException 异常
     public List<DocSearchResponseVO> search(String dbName, String query, int callbackCount) throws IOException {
         return search(dbName, null, query, callbackCount);
     }
 
-    /**
-     * Node获取数据data
-     *
-     * @param query 检索字符串
-     */
+    /// 搜索文档
+    /// @param dbName   数据库名
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param query    检索字符串
+    /// @param callbackCount 回调次数
+    /// @return 文档搜索响应VO列表
+    /// @throws IOException 异常
     public List<DocSearchResponseVO> search(String dbName, String indexName, String query, int callbackCount) throws IOException {
-        return search(dbName, query, new Search(CommonTools.indexName(indexName).toLowerCase(), callbackCount));
+        return search(dbName, query, new Search(StringUtils.isEmpty(indexName) ? null : CommonTools.indexName(indexName).toLowerCase(), callbackCount));
     }
 
-    /** 查询集合 */
+    /// 搜索文档
+    /// @param dbName   数据库名
+    /// @param query    检索字符串
+    /// @param search   搜索参数
+    /// @return 文档搜索响应VO列表
+    /// @throws IOException 异常
     public List<DocSearchResponseVO> search(String dbName, String query, Search search) throws IOException {
         SegIndex segIndex = dbMap.get(dbName);
         if (segIndex == null) {
@@ -729,6 +829,10 @@ public class DB {
         return docItems.subList(0, Math.min(search.getLimit(), docItems.size()));
     }
 
+    /// 过滤文档
+    /// @param bytesList 文档字节数组列表
+    /// @param conditions 条件列表
+    /// @return 过滤后的文档字节数组列表
     private List<byte[]> doFilter(List<byte[]> bytesList, List<Condition> conditions) {
         if (CollectionUtils.isEmpty(conditions)) {
             return bytesList;
@@ -747,7 +851,8 @@ public class DB {
                         return false;
                     }
                 }
-                case List<?> _, Map<?, ?> _ -> {}
+                case List<?> ignored -> {}
+                case Map<?, ?> ignored -> {}
                 case null, default -> {
                     return false;
                 }
@@ -787,13 +892,12 @@ public class DB {
         }).collect(Collectors.toList());
     }
 
-    /**
-     * 比较两个 Number 大小
-     *
-     * @return 负数：n1 < n2
-     * 0：n1 == n2
-     * 正数：n1 > n2
-     */
+    /// 比较两个 Number 大小
+    /// @param n1 第一个 Number
+    /// @param n2 第二个 Number
+    /// @return 负数：n1 < n2
+    /// 0：n1 == n2
+    /// 正数：n1 > n2
     private int compareNumber(Number n1, Number n2) {
         if (n1 == null && n2 == null) {
             return 0;
@@ -808,7 +912,11 @@ public class DB {
         return Double.compare(n1.doubleValue(), n2.doubleValue());
     }
 
-    /** 查询集合 */
+    /// 查询文档
+    /// @param dbName 数据库名
+    /// @param search 搜索参数
+    /// @return 文档搜索响应VO列表
+    /// @throws IOException 异常
     public List<DocSearchResponseVO> select(String dbName, Search search) throws IOException {
         List<DocSearchResponseVO> voList = new ArrayList<>();
         List<byte[]> bytesList = selectBytesList(dbName, search);
@@ -824,12 +932,19 @@ public class DB {
         return voList.stream().filter(distinctById(DocSearchResponseVO::getDigests)).collect(Collectors.toList()).subList(0, Math.min(search.getLimit(), voList.size()));
     }
 
+    /// 去重
+    /// @param idExtractor 提取器
+    /// @return 去重后的 Predicate
     private static <T> Predicate<T> distinctById(Function<? super T, ?> idExtractor) {
         Set<Object> seen = ConcurrentHashMap.newKeySet();
         return t -> seen.add(idExtractor.apply(t));
     }
 
-    /** 查询集合 */
+    /// 查询文档字节数组列表
+    /// @param dbName 数据库名
+    /// @param search 搜索参数
+    /// @return 文档字节数组列表
+    /// @throws IOException 异常
     private List<byte[]> selectBytesList(String dbName, Search search) throws IOException {
         Index index = getIndex(dbName);
         if (index == null) {
@@ -841,23 +956,21 @@ public class DB {
         return index.select(search);
     }
 
-    /**
-     * Node获取数据data
-     *
-     * @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-     * @param key       原始key
-     */
+    /// 删除文档
+    /// @param dbName 数据库名
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param key       原始key
+    /// @throws IOException 异常
     public void remove(String dbName, String indexName, String key) throws IOException {
         remove(dbName, indexName, null, key);
     }
 
-    /**
-     * Node获取数据data
-     *
-     * @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-     * @param degree    主键
-     * @param key       原始key
-     */
+    /// 删除文档
+    /// @param dbName 数据库名
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param degree    主键
+    /// @param key       原始key
+    /// @throws IOException 异常
     public void remove(String dbName, String indexName, @Nullable Long degree, String key) throws IOException {
         dbName = StringUtils.isEmpty(dbName) ? DATABASE_NAME_DEFAULT : dbName;
         indexName = CommonTools.indexName(StringUtils.isEmpty(indexName) ? INDEX_NAME_DEFAULT : indexName).toLowerCase();
@@ -869,7 +982,11 @@ public class DB {
         index.remove(indexName, degree, key);
     }
 
-    /** 查询集合 */
+    /// 删除文档
+    /// @param dbName 数据库名
+    /// @param search 搜索参数
+    /// @return 文档搜索响应VO列表
+    /// @throws IOException 异常
     public List<DocSearchResponseVO> delete(String dbName, Search search) throws IOException {
         List<DocSearchResponseVO> voList = new ArrayList<>();
         List<byte[]> bytesList = deleteBytesList(dbName, search);
@@ -885,7 +1002,11 @@ public class DB {
         return voList.stream().filter(distinctById(DocSearchResponseVO::getDigests)).collect(Collectors.toList()).subList(0, Math.min(search.getLimit(), voList.size()));
     }
 
-    /** 删除集合 */
+    /// 删除文档
+    /// @param dbName 数据库名
+    /// @param search 搜索参数
+    /// @return 文档字节数组列表
+    /// @throws IOException 异常
     private List<byte[]> deleteBytesList(String dbName, Search search) throws IOException {
         Index index = getIndex(dbName);
         if (index == null) {

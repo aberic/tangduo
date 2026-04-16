@@ -16,6 +16,7 @@ package cn.aberic.tangduo.search.entity;
 
 import lombok.Data;
 
+/// 插入数据请求体
 @Data
 public class ReqPutDataVO {
 
@@ -27,7 +28,7 @@ public class ReqPutDataVO {
     String key;
     /// 是否分词
     boolean seg = true;
-    /// 数据
+    /// 插入值
     Object value;
 
 }

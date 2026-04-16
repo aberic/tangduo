@@ -16,6 +16,7 @@ package cn.aberic.tangduo.search.entity;
 
 import lombok.Data;
 
+/// 获取数据请求体
 @Data
 public class ReqGetDataVO {
 

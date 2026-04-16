@@ -54,6 +54,15 @@
                 <configuration>
                     <source>1.8</source> <!-- 设置源代码的JDK版本 -->
                     <target>1.8</target> <!-- 设置编译后的目标JDK版本 -->
+                    <encoding>UTF-8</encoding>
+                    <!-- 启用注解处理，Lombok必须 -->
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.42</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
         </plugins>

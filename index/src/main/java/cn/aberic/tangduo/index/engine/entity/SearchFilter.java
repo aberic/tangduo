@@ -14,11 +14,9 @@
 
 package cn.aberic.tangduo.index.engine.entity;
 
-import com.fasterxml.jackson.core.JsonParseException;
-
 import java.util.List;
 
-/** 自定义过滤接口 */
+/// 自定义过滤接口
 public interface SearchFilter {
 
     /**
@@ -28,6 +26,6 @@ public interface SearchFilter {
      *
      * @return 过滤后的数据集合
      */
-    List<byte[]> filter(List<byte[]> bytesList, List<Condition> conditions) throws JsonParseException;
+    List<byte[]> filter(List<byte[]> bytesList, List<Condition> conditions);
 
 }

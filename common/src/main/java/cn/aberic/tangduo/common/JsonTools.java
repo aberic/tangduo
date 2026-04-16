@@ -14,16 +14,21 @@
 
 package cn.aberic.tangduo.common;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.Map;
 
+/// JSON 工具类
 @Slf4j
-public class JsonTools {
+public final class JsonTools {
+
+    private JsonTools() {
+        throw new AssertionError("工具类禁止实例化");
+    }
 
     /// 全局单例
     public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -87,6 +92,7 @@ public class JsonTools {
         }
     }
 
+    /// 对象 → JsonNode 节点
     public static JsonNode toJsonNode(Object obj) {
         if (obj == null) {
             return null;
@@ -137,8 +143,8 @@ public class JsonTools {
         }
 
         // 返回合适的类型
-        if (currentNode.isTextual()) {
-            return currentNode.asText();
+        if (currentNode.isString()) {
+            return currentNode.asString();
         } else if (currentNode.isNumber()) {
             return currentNode.numberValue();
         } else if (currentNode.isBoolean()) {
@@ -147,7 +153,7 @@ public class JsonTools {
             // 转成普通 Map / List
             return OBJECT_MAPPER.convertValue(currentNode, new TypeReference<>() {});
         } else {
-            return currentNode.asText();
+            return currentNode.asString();
         }
     }
 
@@ -181,8 +187,8 @@ public class JsonTools {
         }
 
         // 字符串 → String
-        if (node.isTextual()) {
-            return node.asText();
+        if (node.isString()) {
+            return node.asString();
         }
 
         // 布尔 → Boolean
@@ -191,7 +197,7 @@ public class JsonTools {
         }
 
         // 其他都返回字符串
-        return node.asText();
+        return node.asString();
     }
 
     /**

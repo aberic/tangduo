@@ -34,15 +34,19 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
-public class Channel {
+public final class Channel {
 
-    public Channel() {
-        throw new IllegalStateException("Channel class");
+    private Channel() {
+        throw new AssertionError("工具类禁止实例化");
     }
 
-    /** 文件名，文件操作意图 */
+    /// 文件名，文件操作意图
     private static final Map<String, Intent> filepathIntentMap = new HashMap<>();
 
+    /// 获取指定文件的意图
+    /// @param filepath 指定文件
+    /// @return 指定文件的意图
+    /// @throws IOException 指定文件不存在或无法定位数据！
     private static Intent getByFilepath(@NonNull String filepath) throws IOException {
         if (!filepathIntentMap.containsKey(filepath)) {
             synchronized (filepathIntentMap) {
@@ -81,13 +85,11 @@ public class Channel {
         return atomicLong.get();
     }
 
-    /**
-     * 向指定文件中指定起始位置开始写入指定字节数组
-     *
-     * @param filepath 指定文件
-     * @param seek     指定起始位置
-     * @param bytes    指定字节数组
-     */
+    /// 向指定文件中指定起始位置开始写入指定字节数组
+    /// @param filepath 指定文件
+    /// @param seek     指定起始位置
+    /// @param bytes    指定字节数组
+    /// @throws IOException 指定文件不存在或无法定位数据！
     public static void write(@NonNull String filepath, long seek, byte[] bytes) throws IOException {
         getByFilepath(filepath).write(seek, bytes);
     }
@@ -126,14 +128,23 @@ public class Channel {
         getByFilepath(filepath).force();
     }
 
-
+    /// 追加写回调接口
+    /// @param seek 指定起始位置
     public interface AppendCallback {
+        /// 追加写回调接口
+        /// @param seek 指定起始位置
         void seek(long seek);
     }
 
+    /// 读取回调接口
+    /// @param res 指定读取结果
     public interface ReadCallback {
+        /// 读取回调接口
+        /// @param res 指定读取结果
         void read(byte[] res);
     }
+
+
 
     static class Intent {
         // 全局共享一个 Channel
@@ -141,24 +152,33 @@ public class Channel {
         // 无锁队列，线程安全
         private final LinkedBlockingQueue<Buffer> queue = new LinkedBlockingQueue<>(10000);
 
+        /// 缓冲区
         static class Buffer {
+            /// 缓冲区
             ByteBuffer buf;
-            // append 系列参数
+            /// append 系列参数
             AppendCallback appendCallback;
-            // write 系列参数
+            /// write 系列参数
             long seek;
-            // read 系列参数 + write 系列参数
+            /// read 系列参数 + write 系列参数
             int length;
+            /// read 系列参数 + write 系列参数
             ReadCallback readCallback;
+            /// 是否通知
             AtomicBoolean isNotified;
-
+            /// 锁
             Lock lock;
+            /// 条件变量
             Condition condition;
-
-            /** 0-追加写、1-随机写、2-随机读 */
+            /// 0-追加写、1-随机写、2-随机读
             int status;
 
-            /** append */
+            /// append
+            /// @param buf 缓冲区
+            /// @param lock 锁
+            /// @param condition 条件变量
+            /// @param isNotified 是否通知
+            /// @param appendCallback 追加写回调接口
             public Buffer(ByteBuffer buf, Lock lock, Condition condition, AtomicBoolean isNotified, AppendCallback appendCallback) {
                 this.buf = buf;
                 this.appendCallback = appendCallback;
@@ -168,14 +188,22 @@ public class Channel {
                 this.status = 0;
             }
 
-            /** write */
+            /// write
+            /// @param buf 缓冲区
+            /// @param seek 指定起始位置
             public Buffer(ByteBuffer buf, long seek) {
                 this.buf = buf;
                 this.seek = seek;
                 this.status = 1;
             }
 
-            /** read */
+            /// read
+            /// @param seek 指定起始位置
+            /// @param length 指定读取长度
+            /// @param lock 锁
+            /// @param condition 条件变量
+            /// @param isNotified 是否通知
+            /// @param readCallback 读取回调接口
             public Buffer(long seek, int length, Lock lock, Condition condition, AtomicBoolean isNotified, ReadCallback readCallback) {
                 this.buf = ByteBuffer.allocate(length);
                 this.seek = seek;
@@ -188,6 +216,9 @@ public class Channel {
             }
         }
 
+        /// 构造函数
+        /// @param path 指定文件
+        /// @throws IOException 异常
         public Intent(String path) throws IOException {
             RandomAccessFile file = new RandomAccessFile(path, "rw");
             this.channel = file.getChannel();
@@ -196,6 +227,11 @@ public class Channel {
         }
 
         // 多线程调用这个方法，只入队，不写文件
+        /// @param bytes 指定写入数据
+        /// @param lock 锁
+        /// @param condition 条件变量
+        /// @param isNotified 是否通知
+        /// @param appendCallback 追加写回调接口
         public void append(byte[] bytes, Lock lock, Condition condition, AtomicBoolean isNotified, AppendCallback appendCallback) {
             ByteBuffer buf = ByteBuffer.allocate(bytes.length);
             buf.put(bytes);
@@ -203,16 +239,27 @@ public class Channel {
         }
 
         // 多线程调用这个方法，只入队，不写文件
+        /// @param seek 指定起始位置
+        /// @param bytes 指定写入数据
         public void write(long seek, byte[] bytes) {
             ByteBuffer buf = ByteBuffer.allocate(bytes.length);
             buf.put(bytes);
             queue.offer(new Buffer(buf, seek)); // 无锁，极快
         }
 
+        /// 多线程读取文件
+        /// @param seek 指定起始位置
+        /// @param length 指定读取长度
+        /// @param lock 锁
+        /// @param condition 条件变量
+        /// @param isNotified 是否通知
+        /// @param readCallback 读取回调接口
         public void read(long seek, int length, Lock lock, Condition condition, AtomicBoolean isNotified, ReadCallback readCallback) {
             queue.offer(new Buffer(seek, length, lock, condition, isNotified, readCallback)); // 无锁，极快
         }
 
+        /// 强制写入磁盘
+        /// @throws IOException 异常
         public void force() throws IOException {
             channel.force(true);
         }

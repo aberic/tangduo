@@ -77,36 +77,35 @@ import java.util.List;
 @Data
 public class Node implements INode {
 
-    /** 节点字节长度 */
+    /// 节点字节长度
     public static int NODE_LENGTH = 2052;
-    /** 数据字节长度 */
+    /// 数据字节长度
     public static int DATA_LENGTH = 2048;
 
     // 写入文件内容开始
-    /** 节点默认声明，值非默认即异常 */
+    /// 节点默认声明，值非默认即异常
     public static byte[] startBytes = {0x00, 0x7B};
-    /** 节点数据或数据坐标数据，256 * 8 = 2048 */
+    /// 节点数据或数据坐标数据，256 * 8 = 2048
     byte[] data;
-    /** 节点默认收尾，值非默认即异常 */
+    /// 节点默认收尾，值非默认即异常
     public static byte[] endBytes = {0x00, 0x7B};
     // 写入文件内容结束
-
-    /** 节点在索引文件中的起始偏移量 */
+    /// 节点在索引文件中的起始偏移量
     long seek;
-    /** Leaf所属索引文件地址，如"tmp/unity/testIndex/1_4294967296.idx" */
+    /// Leaf所属索引文件地址，如"tmp/unity/testIndex/1_4294967296.idx"
     String indexFilepath;
 
     public Node() {
         data = new byte[DATA_LENGTH];
     }
 
-    /**
-     * 在文件中查找或创建当前节点
-     *
-     * @param indexFilepath 索引文件，如"tmp/unity.1.idx"
-     * @param mateSeek      当前节点坐标信息在文件中的起始偏移量
-     * @param seek          当前节点在文件中的起始偏移量
-     */
+    /// 在文件中查找或创建当前节点
+    /// 当seek为-1时，表示追加写入
+    /// 当seek为0时，表示节点不存在，需要新建节点
+    /// 当seek大于0时，表示节点存在，需要读取节点数据
+    /// @param indexFilepath 索引文件，如"tmp/unity.1.idx"
+    /// @param mateSeek      当前节点坐标信息在文件中的起始偏移量
+    /// @param seek          当前节点在文件中的起始偏移量
     public Node(String indexFilepath, long mateSeek, long seek) throws IOException {
         this.indexFilepath = indexFilepath;
         if (seek <= 0) { // 节点不存在，需要新建节点
@@ -147,14 +146,16 @@ public class Node implements INode {
         this.seek = seek;
     }
 
-    /**
-     * 从指定文件中的指定起始位置开始写入/更新数据坐标数据
-     *
-     * @param rootPath        数据根路径
-     * @param position        数据坐标在节点字节数组中的位置
-     * @param dataFileVersion 数据文件版本号，如 1，与索引版本号结合使用，如1.1，区分相同索引下的不同数据文件
-     * @param dataFileMaxSize 数据文件大小阈值，单位byte
-     */
+    /// 从指定文件中的指定起始位置开始写入/更新数据坐标数据
+    /// @param content       数据内容
+    /// @param childIndex    子节点索引
+    /// @param rootPath      数据根路径
+    /// @param indexName     索引名称
+    /// @param position      数据坐标在节点字节数组中的位置
+    /// @param leafMateSeek  Leaf在索引文件中的起始偏移量
+    /// @param dataFileVersion 数据文件版本号，如 1，与索引版本号结合使用，如1.1，区分相同索引下的不同数据文件
+    /// @param dataFileMaxSize 数据文件大小阈值，单位byte
+    /// @throws Exception    异常
     public void put(Content content, Unity.ChildIndex childIndex, String rootPath, String indexName, long position, long leafMateSeek,
                     int dataFileVersion, long dataFileMaxSize) throws Exception {
         long leafSeek = ByteTools.toLong(ByteTools.read(data, position * 8, 8)); // Leaf在索引文件中的起始偏移量

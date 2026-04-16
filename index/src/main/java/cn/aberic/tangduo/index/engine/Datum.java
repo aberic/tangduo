@@ -33,12 +33,12 @@ import java.util.Objects;
 @Data
 public class Datum {
 
-    /** 文件默认声明，值非默认即异常 */
+    /// 文件默认声明，值非默认即异常
     public static byte[] startBytes = {0x00, 0x7D};
 
-    /** 数据文件地址，如"tmp/data.1.1.td */
+    /// 数据文件地址，如"tmp/data.1.1.td"
     String filepath;
-    /** 数据在文件中的起始偏移量 */
+    /// 数据在文件中的起始偏移量
     long seek;
 
     /**
@@ -70,7 +70,7 @@ public class Datum {
         }
     }
 
-    /** 读取指定传入原始key相匹配的数据 */
+    /// 读取指定传入原始key相匹配的数据
     public byte[] read() throws IOException {
         // 4字节数据长度+ 数据字节数组
         int dataLength = ByteTools.toInt(Reader.read(filepath, seek, 4)); // 4字节数据主体长度
@@ -80,7 +80,7 @@ public class Datum {
         return null;
     }
 
-    /** 读取指定传入原始key相匹配的数据 */
+    /// 删除指定传入原始key相匹配的数据
     public void delete() throws IOException {
         // 4字节数据长度+ 数据字节数组
         Channel.write(filepath, seek, new byte[4]);

@@ -25,15 +25,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** 事务，用于存储每条完整命令的写入计划，待验证完成后一次执行，或全部失败，或全部成功 */
+/// 事务，用于存储每条完整命令的写入计划，待验证完成后一次执行，或全部失败，或全部成功
 @Slf4j
 @Data
 public class Transaction {
 
     final AtomicLong atomicLong = new AtomicLong(0);
-    /** 事务号，长整型自增 */
+    /// 事务号，长整型自增
     long number;
-    /** 待执行任务集合 */
+    /// 待执行任务集合
     Map<String, List<Task>> taskListMap = new HashMap<>();
 
     public Transaction() {
@@ -58,11 +58,9 @@ public class Transaction {
         addTask(new Task(filepath, seek, dataNew, dataOrigin));
     }
 
-    /**
-     * 执行事务。
-     * 事务的执行必须全部成功或全部失败。
-     * 若即将写入成功事务时发生磁盘不足、宕机等不可控情况时，需保证事务在执行前已经做了日志记录，待服务恢复后根据日志记录重新执行事务
-     */
+    /// 执行事务。
+    /// 事务的执行必须全部成功或全部失败。
+    /// 若即将写入成功事务时发生磁盘不足、宕机等不可控情况时，需保证事务在执行前已经做了日志记录，待服务恢复后根据日志记录重新执行事务
     public void execute() {
         boolean rollback = false;
         // 默认分配1MB的缓冲区，即 1024*1024 byte
@@ -95,21 +93,21 @@ public class Transaction {
         }
     }
 
-    /** 任务 */
-    public static class Task {
+        /// 任务
+        public static class Task {
 
         // 入参开始
-        /** 待写入内容的文件 */
+        /// 待写入内容的文件路径
         String filepath;
-        /** 待写入内容在文件中的偏移量，当为-1时，表示追加写入 */
+        /// 待写入内容在文件中的偏移量，当为-1时，表示追加写入
         long seek;
-        /** 待写入的内容 */
+        /// 待写入的内容
         byte[] dataNew;
-        /** 原写入的内容，可为空，即表示原先内容都是0x00 */
+        /// 原写入的内容，可为空，即表示原先内容都是0x00
         byte[] dataOrigin;
         // 入参结束
 
-        /** 写入数据后，数据在文件中的起始偏移量 */
+        /// 写入数据后，数据在文件中的起始偏移量
         long writeStartSeek;
 
         public Task(String filepath, long seek, byte[] dataNew, byte[] dataOrigin) {

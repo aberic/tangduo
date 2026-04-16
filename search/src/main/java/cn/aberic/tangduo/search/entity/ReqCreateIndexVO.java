@@ -16,22 +16,23 @@ package cn.aberic.tangduo.search.entity;
 
 import lombok.Data;
 
+/// 创建索引请求体
 @Data
 public class ReqCreateIndexVO {
 
     /// 数据库名
     String database;
-    /** 索引名（全名组合确保唯一性，如：库名+表名+索引名） */
+    /// 索引名（全名组合确保唯一性，如：库名+表名+索引名）
     String index;
-    /** 版本号，4个字节 */
+    /// 版本号，4个字节
     int version = 1;
-    /** 索引名称 */
+    /// 索引名称
     String name;
-    /** 是否主键，主键也是唯一索引，1个字节 */
+    /// 是否主键，主键也是唯一索引，1个字节
     boolean primary = false;
-    /** 是否唯一索引，1个字节 */
+    /// 是否唯一索引，1个字节
     boolean unique = false;
-    /** 是否允许为空，1个字节 */
+    /// 是否允许为空，1个字节
     boolean nullable = true;
 
 }

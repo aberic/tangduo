@@ -85,9 +85,16 @@
                 <configuration>
                     <!-- 关键：保留方法参数名 -->
                     <parameters>true</parameters>
-                    <source>25</source> <!-- 你的JDK版本 -->
-                    <target>25</target>
+                    <source>21</source> <!-- 你的JDK版本 -->
+                    <target>21</target>
                     <encoding>UTF-8</encoding>
+                    <!-- 启用注解处理，Lombok必须 -->
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
         </plugins>

@@ -20,17 +20,43 @@ import java.io.IOException;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-public class GzipTools {
+/// GZIP 工具类
+public final class GzipTools {
 
+    private GzipTools() {
+        throw new AssertionError("工具类禁止实例化");
+    }
+
+    /**
+     * 压缩字节数组
+     * <p>
+     * 压缩后的字节数组长度通常小于原始字节数组长度。
+     * </p>
+     * @param data 待压缩的字节数组
+     * @return 压缩后的字节数组
+     * @throws Exception 压缩过程中可能抛出的异常
+
+     */
+    @SuppressWarnings({"resource", "all"})
     public static byte[] compress(byte[] data) throws Exception {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-             GZIPOutputStream gzip = new GZIPOutputStream(baos)) {
+                GZIPOutputStream gzip = new GZIPOutputStream(baos)) {
             gzip.write(data);
             gzip.finish();
             return baos.toByteArray();
         }
     }
 
+    /**
+     * 解压缩字节数组
+     * <p>
+     * 解压缩后的字节数组长度通常大于压缩后的字节数组长度。
+     * </p>
+     * @param compressed 待解压缩的字节数组
+     * @return 解压缩后的字节数组
+     * @throws IOException 解压缩过程中可能抛出的异常
+     */
+    @SuppressWarnings({"resource", "all"})
     public static byte[] decompress(byte[] compressed) throws IOException {
         if (compressed == null || compressed.length == 0) {
             return null;

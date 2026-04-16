@@ -1,0 +1,57 @@
+# mac创建并切换到跨平台构建器
+#docker buildx create --name linux-builder --use
+# 启动构建器
+#docker buildx inspect linux-builder --bootstrap
+# 替换参数说明：
+# 1. --platform linux/amd64 → 指定构建 Linux/AMD64 架构
+# 2. -f Dockerfile → 指定Dockerfile路径（默认当前目录可省略）
+#docker buildx build --platform linux/amd64 .
+# ========== 阶段1：构建（克隆代码 + 编译所有依赖模块 + 打包search） ==========
+FROM docker.1panel.live/amd64/maven:3.9.14-amazoncorretto-21 AS build
+# 安装Git（用于克隆项目）+ 清理APT缓存
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+
+# 1. 指定构建工作目录（镜像内新目录）
+WORKDIR /tangduo
+
+# 2. 克隆Git项目（替换为实际仓库地址，HTTPS/SSH均可，见下方说明）
+# 公开HTTPS仓库示例
+RUN git clone https://github.com/aberic/tangduo.git .
+# 私有HTTPS仓库（构建时传参）：RUN git clone https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/your-username/tangduo.git .
+# SSH仓库（需配置密钥）：RUN git clone git@github.com:your-username/tangduo.git .
+
+# 3. 一键编译search模块（自动处理根POM + 所有依赖模块）
+# -pl search：指定最终要打包的模块
+# -am：自动编译search依赖的common/index/db模块
+# install：将依赖模块安装到镜像本地Maven仓库，确保search编译时能找到
+# package：打包search模块
+RUN mvn clean package -pl search -am -DskipTests
+
+# ========== 阶段2：运行（仅保留JAR包 + 精简环境） ==========
+FROM docker.1panel.live/amd64/openjdk:21
+# 配置时区 + 安装健康检查工具curl
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/* \
+    && ln -snf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && echo Asia/Shanghai > /etc/timezone
+
+# 1. 指定运行工作目录
+WORKDIR /tangduosearch
+
+# 2. 暴露服务端口（与application.yml一致）
+EXPOSE 8080
+
+# 3. 从构建阶段复制search的JAR包到运行目录
+# 注：路径对应克隆后项目的search模块target目录
+COPY --from=build /tangduo/search/target/*.jar ./search.jar
+
+# 4. 环境变量（可通过docker run动态覆盖）
+ENV SPRING_PROFILES_ACTIVE=prod \
+    SERVER_PORT=8080
+
+# 5. 健康检查（需search模块引入spring-boot-starter-actuator）
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD curl -f http://localhost:${SERVER_PORT}/actuator/health || exit 1
+
+# 6. 启动命令
+ENTRYPOINT ["java", "-jar", "search.jar"]
+CMD ["--spring.profiles.active=${SPRING_PROFILES_ACTIVE}", "--server.port=${SERVER_PORT}"]

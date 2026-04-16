@@ -14,8 +14,6 @@
 
 package cn.aberic.tangduo.db.entity;
 
-import cn.aberic.tangduo.db.DBConditionTests;
-import com.fasterxml.jackson.core.JsonParseException;
 import org.junit.jupiter.api.Test;
 
 public class DocTests {
@@ -30,7 +28,7 @@ public class DocTests {
     }
 
     @Test
-    void doc() throws JsonParseException {
+    void doc() {
         Doc doc = new Doc("db", "idx", "key", 1, role(100));
         System.out.println("doc = " + doc);
         byte[] bytes = doc.toBytes();

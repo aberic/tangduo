@@ -20,6 +20,9 @@ import lombok.NoArgsConstructor;
 
 import java.rmi.UnexpectedException;
 
+/// 条件
+/// 用于查询时，指定要比较的key和要比较的值
+/// 例如：name=张三，age>=18
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -32,12 +35,19 @@ public class Condition {
     /// 要比较的值，大于或等于当前Object的内容
     Object compareValue;
 
+    /// 条件枚举
     public enum Compare {
+        /// 大于
         GT("gt"),
+        /// 大于等于
         GE("ge"),
+        /// 小于
         LT("lt"),
+        /// 小于等于
         LE("le"),
+        /// 等于
         EQ("eq"),
+        /// 不等
         NE("ne");
 
 

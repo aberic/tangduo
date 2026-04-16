@@ -51,6 +51,7 @@ public class DataController {
     @Value("${custom.db.DB_SEARCH_MAX_COUNT}")
     int searchMaxCount;
 
+    /// 插入数据
     @PutMapping()
     public Response putData(@RequestBody ReqPutDataVO vo) {
         log.debug("PUT data 向 {}/{} 中插入数据，key={},degree={},数据摘要={}", vo.getDatabase(), vo.getIndex(),
@@ -65,6 +66,7 @@ public class DataController {
         }
     }
 
+    /// 批量插入数据
     @PutMapping({"batch"})
     public Response putDataBatch(@RequestBody ReqPutDataBatchVO vo) {
         log.debug("PUT data 向 {}中批量插入数据，数据量 {}", vo.getDatabase(), vo.getValues().size());
@@ -78,6 +80,7 @@ public class DataController {
         }
     }
 
+    /// 读取数据
     @GetMapping()
     public Response getData(@RequestBody ReqGetDataVO vo) {
         log.debug("GET data 从 {}/{} 中读取数据，key={},degree={}", vo.getDatabase(), vo.getIndex(), vo.getKey(), KeyHashTools.toLongKey(vo.getKey()));
@@ -88,6 +91,7 @@ public class DataController {
         }
     }
 
+    /// 搜索数据
     @GetMapping("search")
     public Response search(@RequestBody ReqSearchDataVO vo) {
         log.debug("GET data 从 {}/{} 中search数据", vo.getDatabase(), vo.getIndex());
@@ -99,6 +103,7 @@ public class DataController {
         }
     }
 
+    /// 选择数据
     @GetMapping("select")
     public Response select(@RequestBody ReqSelectDataVO vo) {
         log.debug("GET data 从 {}/{} 中select数据", vo.getDatabase(), vo.getIndex());
@@ -110,9 +115,13 @@ public class DataController {
         }
     }
 
+    /// 创建搜索条件
+    /// @param vo 搜索请求VO
+    /// @param delete 是否删除
+    /// @return 搜索条件
     private Search createSearch(ReqSelectDataVO vo, boolean delete) {
         Search search = new Search();
-        search.setIndexName(CommonTools.indexName(vo.getIndex()));
+        search.setIndexName(StringUtils.isEmpty(vo.getIndex()) ? null : CommonTools.indexName(vo.getIndex()));
         search.setDegreeMin(vo.getDegreeMin());
         search.setDegreeMax(vo.getDegreeMax());
         search.setIncludeMin(vo.isIncludeMin());
@@ -124,6 +133,7 @@ public class DataController {
         return search;
     }
 
+    /// 删除数据
     @DeleteMapping()
     public Response removeData(@RequestBody ReqRemoveDataVO vo) {
         log.debug("DELETE data 从 {}/{} 中删除数据，key={},degree={}", vo.getDatabase(), vo.getIndex(), vo.getKey(), vo.getDegree());
@@ -135,6 +145,7 @@ public class DataController {
         }
     }
 
+    /// 删除数据
     @DeleteMapping("delete")
     public Response delete(@RequestBody ReqDeleteDataVO vo) {
         log.debug("DELETE data 从 {}/{} 中delete数据", vo.getDatabase(), vo.getIndex());

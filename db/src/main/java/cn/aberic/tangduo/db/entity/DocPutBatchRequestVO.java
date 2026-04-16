@@ -17,22 +17,37 @@ package cn.aberic.tangduo.db.entity;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+/// 文档批量插入请求VO
 @AllArgsConstructor
 @Data
 public class DocPutBatchRequestVO {
 
+    /// 索引名称
     String index;
+    /// 度数
     Long degree;
+    /// 键值
     String key;
+    /// 是否分词
     boolean seg = false;
+    /// 内容
     Object value;
 
+    /// 文档批量插入请求VO
+    /// @param index 索引名称
+    /// @param key 键值
+    /// @param value 值
     public DocPutBatchRequestVO(String index, String key, Object value) {
         this.index = index;
         this.key = key;
         this.value = value;
     }
 
+    /// 文档批量插入请求VO
+    /// @param index 索引名称
+    /// @param key 键值
+    /// @param seg 是否分片
+    /// @param value 值
     public DocPutBatchRequestVO(String index, String key, boolean seg, Object value) {
         this.index = index;
         this.key = key;

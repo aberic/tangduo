@@ -19,24 +19,27 @@ import lombok.Data;
 
 import java.util.List;
 
+/// 查询数据请求体
 @Data
 public class ReqSelectDataVO {
 
     /// 数据库名
     String database;
-    /** 索引名（全名组合确保唯一性，如：库名+表名+索引名） */
+    /// 索引名（全名组合确保唯一性，如：库名+表名+索引名）
     String index;
-    /** 最小主键（-9223372036854775807 —— 9223372036854775808） */
+    /// 最小主键（-9223372036854775807 —— 9223372036854775808）
     long degreeMin = Long.MIN_VALUE;
-    /** 最大主键（-9223372036854775807 —— 9223372036854775808） */
+    /// 最大主键（-9223372036854775807 —— 9223372036854775808）
     long degreeMax = Long.MAX_VALUE;
-    /** 是否包含最小主键 */
+    /// 是否包含最小主键
     boolean includeMin = true;
-    /** 是否包含最大主键 */
+    /// 是否包含最大主键
     boolean includeMax = true;
+    /// 限制返回数量
     Integer limit = 10;
+    /// 是否升序
     boolean asc = true;
-
+    /// 查询条件
     List<Condition> conditions;
 
 }

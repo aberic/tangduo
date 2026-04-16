@@ -14,30 +14,36 @@
 
 package cn.aberic.tangduo.db.entity;
 
-import cn.aberic.tangduo.common.JsonTools;
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
+
+import cn.aberic.tangduo.common.JsonTools;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
+/// 文档搜索响应VO
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL) // 为null的字段不序列化
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class DocSearchResponseVO {
-
-    String digests;
-    Object value;
-    double score = 0.0;
+    /// 摘要
+    private String digests;
+    /// 内容
+    private Object value;
+    /// 分数
+    private double score = 0.0;
     /// 预计算好的分词（关键：分词只做一次，不重复做）
     @JsonIgnore
     List<String> segList;
 
+    /// 构造函数
+    /// @param doc 文档
     public DocSearchResponseVO(Doc doc) {
         this.digests = doc.getDigests();
         this.segList = doc.getSegList();

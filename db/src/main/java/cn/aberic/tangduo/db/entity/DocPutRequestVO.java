@@ -17,14 +17,22 @@ package cn.aberic.tangduo.db.entity;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+/// 文档插入请求VO
 @AllArgsConstructor
 @Data
 public class DocPutRequestVO {
 
-    String database;
-    String index;
-    Long degree;
-    String key;
-    boolean seg;
-    Object value;
+    /// 数据库名称
+    private String database;
+    /// 索引名称
+    private String index;
+    /// 度数
+    private Long degree;
+    /// 键值
+    private String key;
+    /// 是否分词
+    private boolean seg;
+    /// 内容
+    private Object value;
+    
 }

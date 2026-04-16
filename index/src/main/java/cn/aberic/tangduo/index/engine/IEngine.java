@@ -30,40 +30,45 @@ import java.util.List;
 @Slf4j
 public abstract class IEngine extends Number {
 
-    /** Btree联合引擎 */
+    /// Btree联合引擎
     public static final int UNITY = 0;
-    /** 跳表引擎 */
+    /// 跳表引擎
     public static final int SKIP = 1;
 
+    /// 强制写入数据到磁盘
+    /// @param degree 主键（-9223372036854775807 —— 9223372036854775808）
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
     public abstract void force(long degree, String indexName) throws IOException;
 
-    /**
-     * Node插入数据data
-     */
+    /// 插入数据data
+    /// @param content 数据内容
+    /// @throws IOException 数据写入磁盘过程中可能抛出的异常
     public abstract void put(Content content) throws IOException;
 
-    /**
-     * 从Node中获取数据
-     *
-     * @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-     * @param degree    主键（-9223372036854775807 —— 9223372036854775808）
-     * @param key       原始key
-     *
-     * @return 数据
-     */
+    /// 从Node中获取数据
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param degree    主键（-9223372036854775807 —— 9223372036854775808）
+    /// @param key       原始key
+    /// @return 数据
     public abstract List<byte[]> get(String indexName, long degree, String key) throws IOException;
 
-    /**
-     * 从Node中删除数据
-     *
-     * @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-     * @param degree    主键（-9223372036854775807 —— 9223372036854775808）
-     * @param key       原始key
-     */
+    /// 从Node中删除数据
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param degree 主键（-9223372036854775807 —— 9223372036854775808）
+    /// @param key 原始key
+    /// @throws IOException 数据删除磁盘过程中可能抛出的异常
     public abstract void remove(String indexName, long degree, String key) throws IOException;
 
+    /// 从Node中查询数据
+    /// @param search 查询条件
+    /// @return 数据
+    /// @throws IOException 数据查询磁盘过程中可能抛出的异常
     public abstract List<byte[]> select(Search search) throws IOException;
 
+    /// 从Node中删除数据
+    /// @param search 删除条件
+    /// @return 数据
+    /// @throws IOException 数据删除磁盘过程中可能抛出的异常
     public abstract List<byte[]> delete(Search search) throws IOException;
 
     @Override

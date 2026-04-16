@@ -39,30 +39,36 @@ import java.util.Objects;
 public class Leaf {
 
     // 写入文件内容开始
-    /** 节点默认声明，值非默认即异常 */
+    /// 节点默认声明，值非默认即异常
     public static byte[] startBytes = {0x00, 0x7C};
-    /** 4字节数据文件版本号 */
+    /// 4字节数据文件版本号
     byte[] dataFileVersionBytes = new byte[4];
     /// 8字节下一碰撞key坐标
     byte[] nextKeySeekBytes = new byte[8];
     /// 8字节数据坐标
     byte[] dataSeekBytes = new byte[8];
-    /** 节点默认收尾，值非默认即异常 */
+    /// 节点默认收尾，值非默认即异常
     public static byte[] endBytes = {0x00, 0x7C};
     // 写入文件内容结束
 
-    /** Leaf所属索引文件地址，如"tmp/unity.1.idx" */
+    /// Leaf所属索引文件地址，如"tmp/unity.1.idx"
     String indexFilepath;
-    /** Leaf在索引文件中的起始偏移量 */
+    /// Leaf在索引文件中的起始偏移量
     long seek;
     Unity.ChildIndex childIndex;
 
+    /// 无子构造函数
+    /// @param indexFilepath 索引文件地址
+    /// @param seek        Leaf在索引文件中的起始偏移量
     public Leaf(String indexFilepath, long seek) {
         this.indexFilepath = indexFilepath;
         this.seek = seek;
     }
 
     /// 写入构造函数
+    /// @param childIndex 子节点索引
+    /// @param indexFilepath 索引文件地址
+    /// @param seek        Leaf在索引文件中的起始偏移量
     public Leaf(Unity.ChildIndex childIndex, String indexFilepath, long seek) {
         this.childIndex = childIndex;
         this.indexFilepath = indexFilepath;

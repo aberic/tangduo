@@ -14,6 +14,28 @@
 
 package cn.aberic.tangduo.index;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.rmi.UnexpectedException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+import javax.management.InstanceAlreadyExistsException;
+
+import org.apache.commons.lang3.StringUtils;
+
 import cn.aberic.tangduo.common.file.Channel;
 import cn.aberic.tangduo.common.file.Filer;
 import cn.aberic.tangduo.common.file.Writer;
@@ -23,42 +45,27 @@ import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.Transaction;
 import cn.aberic.tangduo.index.engine.entity.Content;
 import cn.aberic.tangduo.index.engine.entity.Search;
-import cn.aberic.tangduo.index.engine.skip.Skip;
 import cn.aberic.tangduo.index.engine.unity.Unity;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 
-import javax.management.InstanceAlreadyExistsException;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.rmi.UnexpectedException;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-
-/**
- * 索引接口<p>
- * 暴露索引相关使用接口
- */
+/// 索引接口<p>
+/// 暴露索引相关使用接口
 @Slf4j
 public class Index {
 
-    /** 索引集合，索引名+索引引擎 */
+    /// 索引集合，索引名+索引引擎
     private final Map<String, IEngine> indexMap = new ConcurrentHashMap<>();
 
     private static final String blockSkip = "##@@##";
     private static final String indexSkip = "@#@";
 
-    /** 数据库索引所在根路径 */
+    /// 数据库索引所在根路径
     String rootPath;
-    /** 数据文件大小阈值，单位byte */
+    /// 数据文件大小阈值，单位byte
     long dataFileMaxSize;
-    /** 单批次最大数量 */
+    /// 单批次最大数量
     int batchMaxSize;
 
     private static final Lock lock = new ReentrantLock();
@@ -66,20 +73,23 @@ public class Index {
 
     private Index() {}
 
-    /**
-     *
-     * @param rootPath        数据根路径
-     * @param dataFileMaxSize 数据文件大小阈值，单位byte
-     */
+    /// 获取索引实例
+    /// @param rootPath        数据根路径
+    /// @param dataFileMaxSize 数据文件大小阈值，单位byte
+    /// @return 索引实例
+    /// @throws IOException 异常
+    /// @throws NoSuchFieldException 异常
     public static Index getInstance(String rootPath, long dataFileMaxSize) throws IOException, NoSuchFieldException {
         return getInstance(rootPath, dataFileMaxSize, 5000);
     }
 
-    /**
-     *
-     * @param rootPath        数据根路径
-     * @param dataFileMaxSize 数据文件大小阈值，单位byte
-     */
+    /// 获取索引实例
+    /// @param rootPath        数据根路径
+    /// @param dataFileMaxSize 数据文件大小阈值，单位byte
+    /// @param batchMaxSize    单批次最大数量
+    /// @return 索引实例
+    /// @throws IOException 异常
+    /// @throws NoSuchFieldException 异常
     public static Index getInstance(String rootPath, long dataFileMaxSize, int batchMaxSize) throws IOException, NoSuchFieldException {
         if (instance == null) {
             lock.lock(); // 加锁
@@ -94,6 +104,12 @@ public class Index {
         return instance;
     }
 
+    /// 索引构造函数
+    /// @param rootPath        数据根路径
+    /// @param dataFileMaxSize 数据文件大小阈值，单位byte
+    /// @param batchMaxSize    单批次最大数量
+    /// @throws IOException 异常
+    /// @throws NoSuchFieldException 异常
     private Index(String rootPath, long dataFileMaxSize, int batchMaxSize) throws IOException, NoSuchFieldException {
         this();
         this.rootPath = rootPath;
@@ -102,13 +118,14 @@ public class Index {
         init();
     }
 
-    /**
-     * 构造Master后最先执行的方法
-     * 基于数据根路径获取索引相关信息<p>
-     * 从指定文件中读取索引和文件等关联信息，如不存在，则新建文件<p>
-     * 文件内容：
-     * 索引名称@#@索引文件地址@#@索引引擎@#@索引文件版本号##@@##索引名称@#@索引文件地址@#@索引引擎@#@索引文件版本号
-     */
+    /// 初始化索引
+    /// 构造Master后最先执行的方法
+    /// 基于数据根路径获取索引相关信息<p>
+    /// 从指定文件中读取索引和文件等关联信息，如不存在，则新建文件<p>
+    /// 文件内容：
+    /// 索引名称@#@索引文件地址@#@索引引擎@#@索引文件版本号##@@##索引名称@#@索引文件地址@#@索引引擎@#@索引文件版本号
+    /// @throws IOException 异常
+    /// @throws NoSuchFieldException 异常
     private void init() throws IOException, NoSuchFieldException {
         Path recordPath = Common.recordFilepath(rootPath); // 如"tmp/record.rd"
         if (!Files.exists(recordPath)) {
@@ -127,16 +144,17 @@ public class Index {
         }
     }
 
+    /// 获取索引引擎
+    /// @param indexEngine 索引引擎
+    /// @param indexName   索引名称
+    /// @return 索引引擎
+    /// @throws NoSuchFieldException 异常
+    /// @throws IOException 异常
     private IEngine engine(int indexEngine, String indexName) throws NoSuchFieldException, IOException {
-        switch (indexEngine) {
-            case IEngine.UNITY -> {
-                return new Unity(rootPath, indexName, dataFileMaxSize);
-            }
-            case IEngine.SKIP -> {
-                return new Skip();
-            }
-            default -> throw new NoSuchFieldException("入参引擎不存在");
+        if (indexEngine == IEngine.UNITY) {
+            return new Unity(rootPath, indexName, dataFileMaxSize);
         }
+        throw new NoSuchFieldException("入参引擎不存在");
     }
 
     /**
@@ -211,12 +229,17 @@ public class Index {
         Filer.deleteDirectory(Path.of(rootPath, indexName));
     }
 
-    /** 刷盘 */
+    /// 刷盘
+    /// @param degree 主键（-9223372036854775807 —— 9223372036854775808）
+    /// @param indexName 索引名称
+    /// @throws IOException 异常
     public void force(long degree, String indexName) throws IOException {
         indexMap.get(indexName).force(degree, indexName);
     }
 
-    /** Node插入数据data */
+    /// Node插入数据data
+    /// @param content 数据内容
+    /// @throws IOException 异常
     public void put(Content content) throws IOException {
         if (!indexMap.containsKey(content.getIndexName())) {
             if (content.isAutoCreateIndex()) {
@@ -267,7 +290,9 @@ public class Index {
         content.getTransaction().execute();
     }
 
-    /** Node批量插入数据data */
+    /// 批量插入数据data
+    /// @param contentList 数据内容列表
+    /// @throws IOException 异常
     public void put(List<Content> contentList) throws IOException {
         List<List<Content>> result = splitContentList(contentList);
         for (List<Content> contents : result) {
@@ -300,7 +325,9 @@ public class Index {
         return result;
     }
 
-    /** Node批量插入数据data */
+    /// 批量插入数据data
+    /// @param contentList 数据内容列表
+    /// @throws IOException 异常
     public void putBatch(List<Content> contentList) {
         Transaction transaction = new Transaction();
         // 外层循环并行虚拟线程
@@ -329,6 +356,10 @@ public class Index {
         transaction.execute();
     }
 
+    /// 处理单条数据
+    /// @param content 数据内容
+    /// @param transaction 事务
+    /// @throws Exception 异常
     private void processSingleContent(Content content, Transaction transaction) throws Exception {
         if (!indexMap.containsKey(content.getIndexName())) {
             try {
@@ -379,6 +410,10 @@ public class Index {
         }
     }
 
+    /// 处理单条数据
+    /// @param item 数据项
+    /// @param content 数据内容
+    /// @throws Exception 异常
     private void processSingleItem(Content.Item item, Content content) throws Exception {
         // 原业务逻辑完全不变
         String indexName = item.getIndexName();
@@ -444,7 +479,9 @@ public class Index {
         indexMap.get(indexName).remove(indexName, degree, key);
     }
 
-    /** 查询集合 */
+    /// 查询集合
+    /// @param search 查询条件
+    /// @throws IOException 异常
     public List<byte[]> select(Search search) throws IOException {
         String indexName = search.getIndexName();
         if (indexMap.containsKey(indexName)) {
@@ -455,7 +492,9 @@ public class Index {
         }
     }
 
-    /** 删除集合 */
+    /// 删除集合
+    /// @param search 删除条件
+    /// @throws IOException 异常
     public List<byte[]> delete(Search search) throws IOException {
         String indexName = search.getIndexName();
         if (indexMap.containsKey(indexName)) {
@@ -466,24 +505,33 @@ public class Index {
         }
     }
 
+    /// 索引信息类
     @NoArgsConstructor
     @Data
     public static class Info {
-        /** 版本号，4个字节 */
+        /// 版本号，4个字节
         int version = 1;
-        /** 索引名称 */
+        /// 索引名称
         String name;
-        /** 是否主键，主键也是唯一索引，1个字节 */
+        /// 是否主键，主键也是唯一索引，1个字节
         boolean primary = false;
-        /** 是否唯一索引，1个字节 */
+        /// 是否唯一索引，1个字节
         boolean unique = false;
-        /** 是否允许为空，1个字节 */
+        /// 是否允许为空，1个字节
         boolean nullable = true;
-
+        
+        /// 构造函数
+        /// @param name 索引名称
         public Info(String name) {
             this.name = name;
         }
 
+        /// 构造函数
+        /// @param version 版本号，4个字节
+        /// @param name 索引名称
+        /// @param primary 是否主键，主键也是唯一索引，1个字节
+        /// @param unique 是否唯一索引，1个字节
+        /// @param nullable 是否允许为空，1个字节
         public Info(int version, String name, boolean primary, boolean unique, boolean nullable) {
             if (name.contains(".")) {
                 throw new IllegalArgumentException("name cannot contain .");
