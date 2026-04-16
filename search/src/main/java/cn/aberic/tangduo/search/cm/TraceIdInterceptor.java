@@ -22,6 +22,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.util.UUID;
 
+/// 日志追踪ID拦截器
 public class TraceIdInterceptor implements HandlerInterceptor {
 
     // 日志追踪ID的key

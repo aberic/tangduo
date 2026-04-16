@@ -20,6 +20,7 @@ import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.classic.spi.StackTraceElementProxy;
 import ch.qos.logback.core.UnsynchronizedAppenderBase;
 import cn.aberic.tangduo.common.JsonTools;
+import lombok.Setter;
 import org.slf4j.MDC;
 
 import java.net.InetAddress;
@@ -29,14 +30,15 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+@Setter
 public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
 
     /// 日志服务器地址，可配置项
     private String serverUrl;
     private String appName;
     private String appKey;
-    private int    batchSize = 20;
-    private long   flushInterval = 1000;
+    private int batchSize = 20;
+    private long flushInterval = 1000;
     private static final int BATCH_SIZE = 100;
     private static final long FLUSH_INTERVAL_MS = 1000;
 
@@ -44,18 +46,6 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
     private final AtomicBoolean running = new AtomicBoolean(true);
     private String localIp;
     private SenderConfig config;
-
-    /**
-     * 业务项目在 logback.xml 中配置：
-     * <serverUrl>http://127.0.0.1:8080/log/receive</serverUrl>
-     */
-    public void setServerUrl(String serverUrl) {
-        this.serverUrl = serverUrl;
-    }
-    public void setAppName(String appName) {this.appName = appName;}
-    public void setAppKey(String appKey) {this.appKey = appKey;}
-    public void setBatchSize(int batchSize) {this.batchSize = batchSize;}
-    public void setFlushInterval(long flushInterval) {this.flushInterval = flushInterval;}
 
     public LogCollectAppender() {
         this.localIp = getLocalIp();
@@ -83,7 +73,7 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
     @Override
     protected void append(ILoggingEvent event) {
         if (!isStarted() || !running.get()) return;
-        if (event.getLevel() == Level.DEBUG) return;
+        if (event.getLevel() == Level.DEBUG || event.getLevel() == Level.TRACE) return;
 
         try {
             LogEntity log = new LogEntity();

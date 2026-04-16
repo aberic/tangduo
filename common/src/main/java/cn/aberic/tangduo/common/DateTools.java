@@ -18,10 +18,11 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 
-public class DateTools {
+/// 日期工具类
+public final class DateTools {
 
     private DateTools() {
-        throw new IllegalStateException("Dates class");
+        throw new AssertionError("工具类禁止实例化");
     }
 
     /**

@@ -15,7 +15,7 @@
 package cn.aberic.tangduo.db;
 
 import cn.aberic.tangduo.common.file.Filer;
-import cn.aberic.tangduo.db.common.Bm25Tools;
+import cn.aberic.tangduo.db.entity.DocSearchResponseVO;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -178,14 +178,17 @@ public class DBCallbackTests {
     @Test
     @Order(1)
     void init() {
-        try (Stream<Path> stream = Files.walk(Paths.get(rootpath))) {
-            stream.forEach(f -> {
-                try {
-                    Files.delete(f);
-                } catch (IOException ignore) {}
-            });
-        } catch (IOException e) {
-            log.warn(e.getMessage());
+        Path path = Paths.get(rootpath);
+        while (Files.exists(path)) {
+            try (Stream<Path> stream = Files.walk(path)) {
+                stream.forEach(f -> {
+                    try {
+                        Files.deleteIfExists(f);
+                    } catch (IOException ignore) {}
+                });
+            } catch (IOException e) {
+                log.warn(e.getMessage());
+            }
         }
     }
 
@@ -193,7 +196,6 @@ public class DBCallbackTests {
     @Order(2)
     void putText() throws IOException, NoSuchFieldException {
         String dbName = "putTextDB";
-        Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         DB db = DB.getInstance(rootpath, 10737418240L);
         db.removeDB(dbName);
         try {
@@ -243,7 +245,7 @@ public class DBCallbackTests {
     void searchText() throws IOException, NoSuchFieldException {
         String dbName = "putTextDB";
         DB db = DB.getInstance(rootpath, 10737418240L);
-        List<Bm25Tools.DocItem> docItems = db.get(dbName, search1, 100);
+        List<DocSearchResponseVO> docItems = db.search(dbName, search1, 100);
         System.out.println("size = " + docItems.size());
         docItems.forEach(System.out::println);
     }
@@ -253,7 +255,17 @@ public class DBCallbackTests {
     void searchText1() throws IOException, NoSuchFieldException {
         String dbName = "putTextDB";
         DB db = DB.getInstance(rootpath, 10737418240L);
-        List<Bm25Tools.DocItem> docItems = db.get(dbName, search1);
+        List<DocSearchResponseVO> docItems = db.search(dbName, search2);
+        System.out.println("size = " + docItems.size());
+        docItems.forEach(System.out::println);
+    }
+
+    @Test
+    @Order(3)
+    void searchText2() throws IOException, NoSuchFieldException {
+        String dbName = "putTextDB";
+        DB db = DB.getInstance(rootpath, 10737418240L);
+        List<DocSearchResponseVO> docItems = db.search(dbName, search3);
         System.out.println("size = " + docItems.size());
         docItems.forEach(System.out::println);
     }

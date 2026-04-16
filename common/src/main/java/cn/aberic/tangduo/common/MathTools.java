@@ -17,10 +17,11 @@ package cn.aberic.tangduo.common;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-public class MathTools {
+/// 数学工具类
+public final class MathTools {
 
     private MathTools() {
-        throw new IllegalStateException("Maths class");
+        throw new AssertionError("工具类禁止实例化");
     }
 
     /**

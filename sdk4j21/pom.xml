@@ -22,4 +22,8 @@
         </dependency>
     </dependencies>
 
+    <build>
+        <finalName>tangduo-sdk4j21-${project.version}</finalName>
+    </build>
+
 </project>

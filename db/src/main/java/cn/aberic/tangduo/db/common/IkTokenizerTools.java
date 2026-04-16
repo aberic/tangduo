@@ -25,18 +25,22 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class IkTokenizerTools {
+public final class IkTokenizerTools {
 
-    public IkTokenizerTools() {
-        throw new IllegalStateException("IkTokenizerUtil class");
+    private IkTokenizerTools() {
+        throw new AssertionError("工具类禁止实例化");
     }
 
     /// 智能分词
+    /// @param text 待分词字符串
+    /// @return 分词结果列表
     public static List<String> seg(String text) {
         return tokenize4datetimeKey(text.toLowerCase());
     }
 
     /// 智能分词
+    /// @param text 待分词字符串
+    /// @return 分词结果列表
     public static List<String> tokenize4datetimeKey(String text) {
         List<String> list = tokenize(text, false);
         return list.stream()
@@ -59,6 +63,8 @@ public class IkTokenizerTools {
     }
 
     /// 智能分词
+    /// @param text 待分词字符串
+    /// @return 分词结果列表
     public static List<String> tokenize(String text) {
         List<String> list = tokenize(text, false);
         return list.stream()
@@ -79,11 +85,10 @@ public class IkTokenizerTools {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * 分词
-     *
-     * @param useSmart true=智能分词 false=最细粒度
-     */
+    /// 分词
+    /// @param text 待分词字符串
+    /// @param useSmart true=智能分词 false=最细粒度
+    /// @return 分词结果列表
     public static List<String> tokenize(String text, boolean useSmart) {
         List<String> result = new ArrayList<>();
         if (text == null || text.isBlank()) return result;

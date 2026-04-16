@@ -20,9 +20,13 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 
+/// 指标端点安全配置
 @Configuration
 public class ActuatorSecurityConfig {
 
+    /// 安全过滤链
+    /// @param http HTTP安全配置
+    /// @return 安全过滤链
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) {
         http.authorizeHttpRequests(auth -> auth

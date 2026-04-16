@@ -19,7 +19,7 @@ import cn.aberic.tangduo.common.file.Channel;
 import cn.aberic.tangduo.common.file.Reader;
 import cn.aberic.tangduo.index.engine.Common;
 import cn.aberic.tangduo.index.engine.Datum;
-import cn.aberic.tangduo.index.engine.IEngine;
+import cn.aberic.tangduo.index.engine.entity.Content;
 import cn.aberic.tangduo.index.engine.unity.Unity;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -39,30 +39,36 @@ import java.util.Objects;
 public class Leaf {
 
     // 写入文件内容开始
-    /** 节点默认声明，值非默认即异常 */
+    /// 节点默认声明，值非默认即异常
     public static byte[] startBytes = {0x00, 0x7C};
-    /** 4字节数据文件版本号 */
+    /// 4字节数据文件版本号
     byte[] dataFileVersionBytes = new byte[4];
     /// 8字节下一碰撞key坐标
     byte[] nextKeySeekBytes = new byte[8];
     /// 8字节数据坐标
     byte[] dataSeekBytes = new byte[8];
-    /** 节点默认收尾，值非默认即异常 */
+    /// 节点默认收尾，值非默认即异常
     public static byte[] endBytes = {0x00, 0x7C};
     // 写入文件内容结束
 
-    /** Leaf所属索引文件地址，如"tmp/unity.1.idx" */
+    /// Leaf所属索引文件地址，如"tmp/unity.1.idx"
     String indexFilepath;
-    /** Leaf在索引文件中的起始偏移量 */
+    /// Leaf在索引文件中的起始偏移量
     long seek;
     Unity.ChildIndex childIndex;
 
+    /// 无子构造函数
+    /// @param indexFilepath 索引文件地址
+    /// @param seek        Leaf在索引文件中的起始偏移量
     public Leaf(String indexFilepath, long seek) {
         this.indexFilepath = indexFilepath;
         this.seek = seek;
     }
 
     /// 写入构造函数
+    /// @param childIndex 子节点索引
+    /// @param indexFilepath 索引文件地址
+    /// @param seek        Leaf在索引文件中的起始偏移量
     public Leaf(Unity.ChildIndex childIndex, String indexFilepath, long seek) {
         this.childIndex = childIndex;
         this.indexFilepath = indexFilepath;
@@ -77,7 +83,7 @@ public class Leaf {
      *
      * @param rootPath 数据根路径
      */
-    public void put(IEngine.Content content, String rootPath, String indexName, long leafMateSeek, int dataFileVersion, long fileMaxSize) throws Exception {
+    public void put(Content content, String rootPath, String indexName, long leafMateSeek, int dataFileVersion, long fileMaxSize) throws Exception {
         long dataMateSeek = -1;
         if (seek <= 0) { // 新写入
             if (Objects.nonNull(content.getDataFileVersionBytes())) { // 复用data
@@ -169,8 +175,8 @@ public class Leaf {
     /**
      * 读取数据
      *
-     * @param rootPath  数据根路径
-     * @param key       原始key
+     * @param rootPath 数据根路径
+     * @param key      原始key
      */
     public List<byte[]> get(String rootPath, String key) throws IOException {
         List<byte[]> bytesList = new ArrayList<>();
@@ -226,10 +232,10 @@ public class Leaf {
     /**
      * 读取数据
      *
-     * @param rootPath  数据根路径
+     * @param rootPath 数据根路径
      */
     public List<byte[]> select(String rootPath) throws IOException {
-        List<byte[]>  bytesList = new ArrayList<>();
+        List<byte[]> bytesList = new ArrayList<>();
         // 读取 默认声明2字节、4字节数据文件版本号、8字节数据坐标、
         // 8字节下一碰撞key坐标（8字节下一碰撞key坐标 + 4字节数据文件版本号 + 8字节数据坐标 + 4字节key字节数组长度 + key字节数组）、
         // 4字节key字节数组长度、key字节数组、默认收尾2字节

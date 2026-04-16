@@ -22,34 +22,56 @@ import lombok.Data;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Response {
 
+    /// 响应码
     private int code;
+    /// 响应数据
     private Object data;
+    /// 响应错误信息
     @JsonProperty("error")
     private String errorMessage;
 
+    /// 响应构造函数
+    /// @param code 响应码
+    /// @param data 响应数据
+    /// @param errorMessage 响应错误信息
     public Response(int code, Object data, String errorMessage) {
         this.code = code;
         this.data = data;
         this.errorMessage = errorMessage;
     }
 
+    /// 成功响应
+    /// @return 成功响应
     public static Response success() {
         return new Response(Status.Success.code, null, null);
     }
 
+    /// 成功响应
+    /// @param data 响应数据
+    /// @return 成功响应
     public static Response success(Object data) {
         return new Response(Status.Success.code, data, null);
     }
 
+    /// 失败响应
+    /// @param status 响应码
+    /// @param errorMessage 响应错误信息
+    /// @return 失败响应
     public static Response failed(Status status, String errorMessage) {
         return new Response(status.code, null, errorMessage);
     }
 
+    /// 失败响应
+    /// @param e 异常
+    /// @return 失败响应
     public static Response failed(Exception e) {
         return failed(Status.Exception, e.getMessage());
     }
 
-    // 递归获取根异常
+    /// 递归获取根异常
+    /// @param e 异常
+    /// @return 根异常
+    /// @return 根异常
     private static Throwable getRootCause(Throwable e) {
         while (e.getCause() != null && e.getCause() != e) {
             e = e.getCause();
@@ -57,6 +79,7 @@ public class Response {
         return e;
     }
 
+    /// 响应码枚举
     public enum Status {
         Success(200, "请求成功！"),
         Exception(32000, "请求异常！"),
@@ -86,19 +109,25 @@ public class Response {
         ExportException(32402, "文件导出异常"),
         Custom(33000, "自定义异常！"),
         EnqueueSuccess(201, "入队列成功！");
-
+        
+        /// 响应码
         private final int code;
+        /// 响应信息
         private final String brief;
 
+        /// 响应码
+        /// @return 响应码
         public int code() {
             return this.code;
         }
 
+        /// 响应信息
+        /// @return 响应信息
         public String brief() {
             return this.brief;
         }
 
-        private Status(int code, String brief) {
+        Status(int code, String brief) {
             this.code = code;
             this.brief = brief;
         }

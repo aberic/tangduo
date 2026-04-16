@@ -19,19 +19,29 @@ import com.hankcs.hanlp.seg.common.Term;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-public class HanlpTools {
+/// 汉语分词工具类
+public final class HanlpTools {
 
-    // 无意义英文正则：连续重复字母（aa, bb, aaa, abab）、纯2字母以内乱码英文
-    private static final Pattern MEANINGLESS_EN = Pattern.compile("^([a-z])\\1{1,}$|^[a-z]{1,2}$");    // 特殊符号正则（全覆盖 - * # 等）
+    private HanlpTools() {
+        throw new AssertionError("工具类禁止实例化");
+    }
+
+    /// 无意义英文正则：连续重复字母（aa, bb, aaa, abab）、纯2字母以内乱码英文
+    private static final Pattern MEANINGLESS_EN = Pattern.compile("^([a-z])\\1{1,}$|^[a-z]{1,2}$");
+    /// 特殊符号正则（全覆盖 - * # 等）
     private static final Pattern SPECIAL_SYMBOL = Pattern.compile("[^a-zA-Z0-9\\u4e00-\\u9fa5]");
 
 
     /// 标准分词，过滤数字、空格、空串、标点，并去重
+    ///
+    /// @param text 待分词文本
+    ///
+    /// @return 分词结果
+    ///
+    /// @see #segFilterWithNature(String)
     public static List<String> segNormal(String text) {
         List<Term> termList = HanLP.segment(text);
         return termList.stream()
@@ -55,6 +65,12 @@ public class HanlpTools {
     }
 
     /// 标准分词，过滤无意义词（标点 + 助词 + 介词 + 连词 + 副词），并去重
+    ///
+    /// @param text 待分词文本
+    ///
+    /// @return 分词结果
+    ///
+    /// @see #segNormal(String)
     public static List<Term> segFilterWithNature(String text) {
         // ====================== 【第一步：全局过滤特殊符号】 ======================
         text = SPECIAL_SYMBOL.matcher(text).replaceAll(" "); // 把符号全部换成空格
@@ -96,6 +112,12 @@ public class HanlpTools {
     }
 
     /// 标准分词，过滤无意义词（标点 + 助词 + 介词 + 连词 + 副词），并去重
+    ///
+    /// @param text 待分词文本
+    ///
+    /// @return 分词结果
+    ///
+    /// @see #segFilterWithNature(String)
     public static List<String> segFilter(String text) {
         // ====================== 【第一步：全局过滤特殊符号】 ======================
         text = SPECIAL_SYMBOL.matcher(text).replaceAll(" "); // 把符号全部换成空格
@@ -141,11 +163,24 @@ public class HanlpTools {
     }
 
     /// 标准分词，过滤无意义词（标点 + 助词 + 介词 + 连词 + 副词），并去重
+    ///
+    /// @param text 待分词文本
+    ///
+    /// @return 分词结果
+    ///
+    /// @see #segFilter(String)
     public static List<String> seg(String text) {
         return segFilter4datetimeKey(text.toLowerCase());
     }
 
     /// 标准分词，过滤无意义词（标点 + 助词 + 介词 + 连词 + 副词），并去重
+    ///
+    /// @param text 待分词文本
+    ///
+    /// @return 分词结果
+    ///
+    /// @see #segFilter(String)
+    /// @see #segNormal(String)
     public static List<String> segFilter4datetimeKey(String text) {
         // ====================== 【第一步：全局过滤特殊符号】 ======================
         text = SPECIAL_SYMBOL.matcher(text).replaceAll(" "); // 把符号全部换成空格
@@ -190,12 +225,22 @@ public class HanlpTools {
                 .collect(Collectors.toList());
     }
 
-    /// 分词 + 词性
+    /// 分词 + 词性标注
+    ///
+    /// @param text 待分词文本
+    ///
+    /// @return 分词结果
+    ///
+    /// @see #segNormal(String)
     public static List<Term> segWithPos(String text) {
         return HanLP.segment(text);
     }
 
     /// 提取关键词
+    ///
+    /// @param text 待提取关键词文本
+    ///
+    /// @return 关键词结果
     public static List<String> keywords(String text) {
         int size;
         if (text.length() <= 100) {
@@ -217,6 +262,10 @@ public class HanlpTools {
     }
 
     /// 提取关键词
+    ///
+    /// @param text 待提取关键词文本
+    ///
+    /// @return 关键词结果
     /// size=1：太少，代表性差
     /// size=2：勉强可用
     /// size=3~5：最适合短文本，效果最佳
@@ -235,6 +284,10 @@ public class HanlpTools {
     }
 
     /// 提取摘要
+    ///
+    /// @param text 待提取摘要文本
+    ///
+    /// @return 摘要结果
     public static List<String> summary(String text) {
         int size;
         if (text.length() <= 100) {
@@ -250,7 +303,10 @@ public class HanlpTools {
     }
 
     /// 提取摘要
-    /// 100 字左右短文
+    ///
+    /// @param text 待提取摘要文本
+    ///
+    /// @return 摘要结果
     /// size = 1～2
     /// 短文本身就 1～3 句，抽 2 句基本等于全文，1 句最像摘要。
     /// 300～500 字段落

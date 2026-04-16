@@ -19,10 +19,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+/// Web 配置类
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
-    // 交给 Spring 管理！！！这是你之前不生效的根源
     @Bean
     public TraceIdInterceptor traceIdInterceptor() {
         return new TraceIdInterceptor();

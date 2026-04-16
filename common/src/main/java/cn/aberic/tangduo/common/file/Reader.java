@@ -19,16 +19,25 @@ import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-public class Reader {
+/// 文件读取工具类
+public final class Reader {
 
-    public Reader() {
-        throw new IllegalStateException("Reader class");
+    private Reader() {
+        throw new AssertionError("工具类禁止实例化");
     }
 
+    /// 读取文件内容
+    /// @param filepath 指定文件路径
+    /// @throws IOException 异常
     public static byte[] read(String filepath) throws IOException {
         return Files.readAllBytes(Path.of(filepath));
     }
 
+    /// 读取文件内容
+    /// @param filepath 指定文件路径
+    /// @param seek 指定读取位置
+    /// @param length 指定读取长度
+    /// @throws IOException 异常
     public static byte[] read(String filepath, long seek, int length) throws IOException {
         try (RandomAccessFile file = new RandomAccessFile(filepath, "r")) {
             file.seek(seek); // 移动到指定位置
@@ -40,10 +49,18 @@ public class Reader {
         }
     }
 
+    /// 读取文件内容
+    /// @param filepath 指定文件路径
+    /// @throws IOException 异常
     public static String readString(String filepath) throws IOException {
         return Files.readString(Path.of(filepath));
     }
 
+    /// 读取文件内容
+    /// @param filepath 指定文件路径
+    /// @param seek 指定读取位置
+    /// @param length 指定读取长度
+    /// @throws IOException 异常
     public static String readString(String filepath, long seek, int length) throws IOException {
         return new String(read(filepath, seek, length));
     }

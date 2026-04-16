@@ -22,14 +22,23 @@ import org.aspectj.lang.annotation.Pointcut;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 
+/// 日志耗时切面
 @Slf4j
 @Aspect
 @Component
 public class LogCostAspect {
 
+    /// 控制器方法切点
+    /// @param joinPoint 连接点
+    /// @return 连接点
+    /// @throws Throwable 异常
     @Pointcut("execution(* cn.aberic.tangduo.search.controller..*.*(..))")
     public void controllerPointcut() {}
 
+    /// 环绕通知
+    /// @param joinPoint 连接点
+    /// @return 连接点
+    /// @throws Throwable 异常
     @Around("controllerPointcut()")
     public Object around(ProceedingJoinPoint joinPoint) throws Throwable {
         long start = System.currentTimeMillis();
@@ -43,7 +52,8 @@ public class LogCostAspect {
         long millis = ms % 1000;
         String cost = String.format("%02d.%02d.%03d", min, sec, millis);
 
-        log.info("[traceId:{}] {} 耗时: {}", traceId, joinPoint.getSignature().getName(), cost);
+        log.debug("[traceId:{}] {} 耗时: {}", traceId, joinPoint.getSignature().getName(), cost);
         return proceed;
     }
+
 }

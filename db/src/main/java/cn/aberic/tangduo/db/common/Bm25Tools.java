@@ -14,9 +14,8 @@
 
 package cn.aberic.tangduo.db.common;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import cn.aberic.tangduo.common.JsonTools;
+import cn.aberic.tangduo.db.entity.DocSearchResponseVO;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -24,27 +23,32 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class Bm25Tools {
+/// BM25 排序工具类
+/// 用于计算文档的BM25分数
+public final class Bm25Tools {
+
+    private Bm25Tools() {
+        throw new AssertionError("工具类禁止实例化");
+    }
 
     // ===================== Lucene 官方默认参数 =====================
+    /// BM25 模型参数 K1
     private static final double K1 = 1.2;
+    /// BM25 模型参数 B
     private static final double B = 0.75;
     // ===============================================================
 
-    /**
-     * 纯Java BM25 排序（结果 = Lucene原生BM25）
-     *
-     * @param docs  文档列表
-     * @param query 搜索词
-     *
-     * @return 按BM25分数降序排列
-     */
-    public static List<DocItem> rank(List<DocItem> docs, String query, String seg) {
+    /// 纯Java BM25 排序（结果 = Lucene原生BM25）
+    /// @param docs 文档列表
+    /// @param query 搜索词
+    /// @param seg   分词器，可选"ik"或"hanlp"
+    /// @return 按BM25分数降序排列的文档列表
+    public static List<DocSearchResponseVO> rank(List<DocSearchResponseVO> docs, String query, String seg) {
         if (docs == null || docs.isEmpty() || query == null || query.isBlank()) {
             return docs;
         }
 
-        // ========== 1. 分词（你可替换成IK/HanLP，这里用空格/通用分词保持通用）==========
+        // ========== 1. 分词（可替换成IK/HanLP，这里用空格/通用分词保持通用）==========
         List<String> queryTerms;
         if (seg.equals("ik")) {
             queryTerms = IkTokenizerTools.tokenize(query.toLowerCase());
@@ -54,9 +58,9 @@ public class Bm25Tools {
         Map<String, List<String>> docTermMap = new HashMap<>();
         Map<String, Integer> docLengthMap = new HashMap<>();
 
-        for (DocItem doc : docs) {
-            docTermMap.put(doc.id, doc.segList);
-            docLengthMap.put(doc.id, doc.segList.size());
+        for (DocSearchResponseVO doc : docs) {
+            docTermMap.put(doc.getDigests(), doc.getSegList());
+            docLengthMap.put(doc.getDigests(), doc.getSegList().size());
         }
 
         // ========== 2. 全局统计（预计算，性能关键）==========
@@ -75,8 +79,8 @@ public class Bm25Tools {
 
         // ========== 3. 逐文档计算 BM25 分数（Lucene 同款公式）==========
         Map<String, Double> scoreMap = new HashMap<>();
-        for (DocItem doc : docs) {
-            String docId = doc.id;
+        for (DocSearchResponseVO doc : docs) {
+            String docId = doc.getDigests();
             List<String> docTerms = docTermMap.get(docId);
             int docLen = docLengthMap.get(docId);
             double score = 0.0;
@@ -96,39 +100,18 @@ public class Bm25Tools {
             }
 
             // 标题加权（可选，和Lucene boosting效果一致）
-            if (doc.content.toLowerCase().contains(query.toLowerCase())) {
+            String jsonStr = JsonTools.toJson(doc.getValue());
+            if (jsonStr != null && jsonStr.toLowerCase().contains(query.toLowerCase())) {
                 score *= 2.0;
             }
-            doc.score = score;
+            doc.setScore(score);
             scoreMap.put(docId, score);
         }
 
         // ========== 4. 按分数排序 ==========
         return docs.stream()
-                .sorted((a, b) -> Double.compare(scoreMap.get(b.id), scoreMap.get(a.id)))
+                .sorted((a, b) -> Double.compare(scoreMap.get(b.getDigests()), scoreMap.get(a.getDigests())))
                 .collect(Collectors.toList());
-    }
-
-    @Data
-    @AllArgsConstructor
-    public static class DocItem {
-        private String id;
-        private String content;
-        double score = 0.0;
-        /// 预计算好的分词（关键：分词只做一次，不重复做）
-        @JsonIgnore
-        private List<String> segList;
-
-        public DocItem(String id, String content, List<String> segList) {
-            this.id = id;
-            this.content = content;
-            this.segList = segList;
-        }
-
-        @Override
-        public String toString() {
-            return "score = " + score + ", content = " + content;
-        }
     }
 
 }

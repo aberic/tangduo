@@ -19,16 +19,23 @@ import java.nio.file.*;
 import java.util.Comparator;
 import java.util.stream.Stream;
 
-public class Filer {
+/// 文件工具类
+public final class Filer {
 
-    public Filer() {
-        throw new IllegalStateException("Filer class");
+    private Filer() {
+        throw new AssertionError("工具类禁止实例化");
     }
 
+    /// 创建文件
+    /// @param filepath 指定文件路径
+    /// @throws IOException 异常
     public static synchronized void createFile(String filepath) throws IOException {
         createFile(Path.of(filepath));
     }
 
+    /// 创建文件
+    /// @param filepath 指定文件路径
+    /// @throws IOException 异常
     public static synchronized void createFile(Path filepath) throws IOException {
         createDirectory(filepath.getParent());
         try {
@@ -36,10 +43,16 @@ public class Filer {
         } catch (FileAlreadyExistsException ignored) {}
     }
 
+    /// 创建目录
+    /// @param filepath 指定目录路径
+    /// @throws IOException 异常
     public static synchronized void createDirectory(String filepath) throws IOException {
         createDirectory(Path.of(filepath));
     }
 
+    /// 创建目录
+    /// @param filepath 指定目录路径
+    /// @throws IOException 异常
     public static synchronized void createDirectory(Path path) throws IOException {
         if (!Files.exists(path)) {
             try {
@@ -51,8 +64,17 @@ public class Filer {
         }
     }
 
-    public static void deleteDirectory(String absolutePath) {
-        Path path = Paths.get(absolutePath);
+    /// 删除目录
+    /// @param dirPath 指定目录路径
+    /// @throws IOException 异常
+    public static void deleteDirectory(String dirPath) {
+        deleteDirectory(Paths.get(dirPath));
+    }
+
+    /// 删除目录
+    /// @param path 指定目录路径
+    /// @throws IOException 异常
+    public static void deleteDirectory(Path path) {
         if (!Files.exists(path)) {
             return;
         }

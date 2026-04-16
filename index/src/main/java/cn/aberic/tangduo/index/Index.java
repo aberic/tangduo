@@ -14,72 +14,118 @@
 
 package cn.aberic.tangduo.index;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.rmi.UnexpectedException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+import javax.management.InstanceAlreadyExistsException;
+
+import org.apache.commons.lang3.StringUtils;
+
 import cn.aberic.tangduo.common.file.Channel;
 import cn.aberic.tangduo.common.file.Filer;
 import cn.aberic.tangduo.common.file.Writer;
 import cn.aberic.tangduo.index.engine.Common;
 import cn.aberic.tangduo.index.engine.Datum;
 import cn.aberic.tangduo.index.engine.IEngine;
-import cn.aberic.tangduo.index.engine.skip.Skip;
+import cn.aberic.tangduo.index.engine.Transaction;
+import cn.aberic.tangduo.index.engine.entity.Content;
+import cn.aberic.tangduo.index.engine.entity.Search;
 import cn.aberic.tangduo.index.engine.unity.Unity;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 
-import javax.management.InstanceAlreadyExistsException;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.rmi.UnexpectedException;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-
-/**
- * 索引接口<p>
- * 暴露索引相关使用接口
- */
+/// 索引接口<p>
+/// 暴露索引相关使用接口
 @Slf4j
 public class Index {
 
-    /** 索引集合，索引名+索引引擎 */
+    /// 索引集合，索引名+索引引擎
     private final Map<String, IEngine> indexMap = new ConcurrentHashMap<>();
 
     private static final String blockSkip = "##@@##";
     private static final String indexSkip = "@#@";
 
-    /** 数据文件大小阈值，单位byte，默认1MB */
-    private static final long DATA_FILE_DEFAULT_SIZE = 1048576L;
-
-    /** 数据库索引所在根路径 */
+    /// 数据库索引所在根路径
     String rootPath;
-    /** 数据文件大小阈值，单位byte */
+    /// 数据文件大小阈值，单位byte
     long dataFileMaxSize;
+    /// 单批次最大数量
+    int batchMaxSize;
+
+    private static final Lock lock = new ReentrantLock();
+    private static Index instance;
 
     private Index() {}
 
-    public Index(String rootPath) throws IOException, NoSuchFieldException {
-        this(rootPath, DATA_FILE_DEFAULT_SIZE);
+    /// 获取索引实例
+    /// @param rootPath        数据根路径
+    /// @param dataFileMaxSize 数据文件大小阈值，单位byte
+    /// @return 索引实例
+    /// @throws IOException 异常
+    /// @throws NoSuchFieldException 异常
+    public static Index getInstance(String rootPath, long dataFileMaxSize) throws IOException, NoSuchFieldException {
+        return getInstance(rootPath, dataFileMaxSize, 5000);
     }
 
-    public Index(String rootPath, long dataFileMaxSize) throws IOException, NoSuchFieldException {
+    /// 获取索引实例
+    /// @param rootPath        数据根路径
+    /// @param dataFileMaxSize 数据文件大小阈值，单位byte
+    /// @param batchMaxSize    单批次最大数量
+    /// @return 索引实例
+    /// @throws IOException 异常
+    /// @throws NoSuchFieldException 异常
+    public static Index getInstance(String rootPath, long dataFileMaxSize, int batchMaxSize) throws IOException, NoSuchFieldException {
+        if (instance == null) {
+            lock.lock(); // 加锁
+            try {
+                if (instance == null) {
+                    instance = new Index(rootPath, dataFileMaxSize, batchMaxSize);
+                }
+            } finally {
+                lock.unlock(); // 释放锁
+            }
+        }
+        return instance;
+    }
+
+    /// 索引构造函数
+    /// @param rootPath        数据根路径
+    /// @param dataFileMaxSize 数据文件大小阈值，单位byte
+    /// @param batchMaxSize    单批次最大数量
+    /// @throws IOException 异常
+    /// @throws NoSuchFieldException 异常
+    private Index(String rootPath, long dataFileMaxSize, int batchMaxSize) throws IOException, NoSuchFieldException {
         this();
         this.rootPath = rootPath;
-        this.dataFileMaxSize = Math.max(dataFileMaxSize, DATA_FILE_DEFAULT_SIZE);
+        this.dataFileMaxSize = dataFileMaxSize;
+        this.batchMaxSize = batchMaxSize;
         init();
     }
 
-    /**
-     * 构造Master后最先执行的方法
-     * 基于数据根路径获取索引相关信息<p>
-     * 从指定文件中读取索引和文件等关联信息，如不存在，则新建文件<p>
-     * 文件内容：
-     * 索引名称@#@索引文件地址@#@索引引擎@#@索引文件版本号##@@##索引名称@#@索引文件地址@#@索引引擎@#@索引文件版本号
-     */
+    /// 初始化索引
+    /// 构造Master后最先执行的方法
+    /// 基于数据根路径获取索引相关信息<p>
+    /// 从指定文件中读取索引和文件等关联信息，如不存在，则新建文件<p>
+    /// 文件内容：
+    /// 索引名称@#@索引文件地址@#@索引引擎@#@索引文件版本号##@@##索引名称@#@索引文件地址@#@索引引擎@#@索引文件版本号
+    /// @throws IOException 异常
+    /// @throws NoSuchFieldException 异常
     private void init() throws IOException, NoSuchFieldException {
         Path recordPath = Common.recordFilepath(rootPath); // 如"tmp/record.rd"
         if (!Files.exists(recordPath)) {
@@ -98,16 +144,17 @@ public class Index {
         }
     }
 
+    /// 获取索引引擎
+    /// @param indexEngine 索引引擎
+    /// @param indexName   索引名称
+    /// @return 索引引擎
+    /// @throws NoSuchFieldException 异常
+    /// @throws IOException 异常
     private IEngine engine(int indexEngine, String indexName) throws NoSuchFieldException, IOException {
-        switch (indexEngine) {
-            case IEngine.UNITY -> {
-                return new Unity(rootPath, indexName, dataFileMaxSize);
-            }
-            case IEngine.SKIP -> {
-                return new Skip();
-            }
-            default -> throw new NoSuchFieldException("入参引擎不存在");
+        if (indexEngine == IEngine.UNITY) {
+            return new Unity(rootPath, indexName, dataFileMaxSize);
         }
+        throw new NoSuchFieldException("入参引擎不存在");
     }
 
     /**
@@ -140,7 +187,7 @@ public class Index {
         }
         Path recordPath = Common.recordFilepath(rootPath); // 如"tmp/record.rd"
         String format;
-        if (Files.size(recordPath) == 0) {
+        if (!Files.exists(recordPath) || Files.size(recordPath) == 0) {
             format = String.format("%s%s%s", engine, indexSkip, info.name);
         } else {
             format = String.format("%s%s%s%s", blockSkip, engine, indexSkip, info.name);
@@ -148,18 +195,61 @@ public class Index {
         Channel.append(recordPath.toString(), format.getBytes(StandardCharsets.UTF_8));
     }
 
-    /** 刷盘 */
+    /**
+     * 删除索引
+     *
+     * @param indexName 索引名称
+     */
+    public void removeIndex(String indexName) throws IOException {
+        // 遍历确认没有重复名称的索引
+        if (indexMap.entrySet().stream().noneMatch(entry -> entry.getKey().equals(indexName))) {
+            return;
+        }
+        Path recordPath = Common.recordFilepath(rootPath); // 如"tmp/record.rd"
+        // 索引引擎@#@索引名称@#@索引文件地址@#@索引文件版本号@#@索引创建时间 ##@@## 索引引擎@#@索引名称@#@索引文件地址@#@索引文件版本号@#@索引创建时间
+        String res = Files.readString(recordPath);
+        if (StringUtils.isEmpty(res)) {
+            return;
+        }
+        StringBuilder sb = new StringBuilder();
+        String[] blockArr = res.split(blockSkip);
+        for (String indexRecord : blockArr) {
+            String[] dbArr = indexRecord.split(indexSkip);
+            if (dbArr[1].equals(indexName)) {
+                continue;
+            }
+            if (!sb.isEmpty()) {
+                sb.append(blockSkip).append(indexRecord);
+            } else {
+                sb.append(indexRecord);
+            }
+        }
+        Writer.write(recordPath.toString(), sb.toString().getBytes(StandardCharsets.UTF_8));
+        indexMap.remove(indexName);
+        Filer.deleteDirectory(Path.of(rootPath, indexName));
+    }
+
+    /// 刷盘
+    /// @param degree 主键（-9223372036854775807 —— 9223372036854775808）
+    /// @param indexName 索引名称
+    /// @throws IOException 异常
     public void force(long degree, String indexName) throws IOException {
         indexMap.get(indexName).force(degree, indexName);
     }
 
-    /** Node插入数据data */
-    public void put(IEngine.Content content) throws IOException {
+    /// Node插入数据data
+    /// @param content 数据内容
+    /// @throws IOException 异常
+    public void put(Content content) throws IOException {
         if (!indexMap.containsKey(content.getIndexName())) {
-            try {
-                createIndex(IEngine.UNITY, new Info(content.getIndexName()));
-            } catch (InstanceAlreadyExistsException ignore) {} catch (NoSuchMethodException e) {
-                throw new RuntimeException(e);
+            if (content.isAutoCreateIndex()) {
+                try {
+                    createIndex(IEngine.UNITY, new Info(content.getIndexName()));
+                } catch (InstanceAlreadyExistsException ignore) {} catch (NoSuchMethodException e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                throw new NoSuchElementException("索引" + content.getIndexName() + "实例不存在");
             }
         }
         indexMap.get(content.getIndexName()).put(content);
@@ -174,42 +264,179 @@ public class Index {
             content.getLock().unlock();
         }
         if (!content.getItems().isEmpty()) {
-            CountDownLatch latch = new CountDownLatch(content.getItems().size()); // 计数3
-            for (IEngine.Content.Item item : content.getItems()) {
-                Thread.startVirtualThread(() -> {
-                    String indexName = item.getIndexName();
-                    if (!indexMap.containsKey(indexName)) {
+            try (ExecutorService childExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+                List<Future<?>> childFutures = new ArrayList<>();
+                for (Content.Item item : content.getItems()) {
+                    Future<?> childFuture = childExecutor.submit(() -> {
                         try {
-                            createIndex(IEngine.UNITY, new Info(indexName));
-                        } catch (InstanceAlreadyExistsException | IOException ignore) {} catch (NoSuchMethodException e) {
+                            processSingleItem(item, content);
+                        } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
-                    }
+                    });
+                    childFutures.add(childFuture);
+                }
+                // 等待所有item任务完成
+                for (Future<?> future : childFutures) {
                     try {
-                        indexMap.get(indexName).put(content);
-                    } catch (IOException e) {
+                        future.get();
+                    } catch (InterruptedException | ExecutionException e) {
+                        Thread.currentThread().interrupt();
                         throw new RuntimeException(e);
                     }
-                    content.getLock(indexName).lock();
-                    try {
-                        while (!content.getIsNotified(indexName).get()) {
-                            content.getCondition(indexName).await();
-                        }
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    } finally {
-                        content.getLock(indexName).unlock();
-                        latch.countDown();
-                    }
-                });
-            }
-            try {
-                latch.await();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+                }
             }
         }
         content.getTransaction().execute();
+    }
+
+    /// 批量插入数据data
+    /// @param contentList 数据内容列表
+    /// @throws IOException 异常
+    public void put(List<Content> contentList) throws IOException {
+        List<List<Content>> result = splitContentList(contentList);
+        for (List<Content> contents : result) {
+            putBatch(contents);
+        }
+    }
+
+    /**
+     * 将大的contentList拆分为多个指定大小的子集合
+     *
+     * @param contentList 原始数据集合
+     *
+     * @return 拆分后的子批次集合
+     */
+    private List<List<Content>> splitContentList(List<Content> contentList) {
+        List<List<Content>> result = new ArrayList<>();
+        if (contentList == null || contentList.isEmpty()) {
+            return result;
+        }
+        int totalSize = contentList.size();
+        int startIndex = 0;
+        // 循环拆分：从startIndex开始，每次取batchSize条，直到末尾
+        while (startIndex < totalSize) {
+            int endIndex = Math.min(startIndex + batchMaxSize, totalSize);
+            List<Content> subBatch = contentList.subList(startIndex, endIndex);
+            // 注意：subList是视图，需转为新ArrayList避免原集合修改影响子批次
+            result.add(new ArrayList<>(subBatch));
+            startIndex = endIndex;
+        }
+        return result;
+    }
+
+    /// 批量插入数据data
+    /// @param contentList 数据内容列表
+    /// @throws IOException 异常
+    public void putBatch(List<Content> contentList) {
+        Transaction transaction = new Transaction();
+        // 外层循环并行虚拟线程
+        try (ExecutorService parentExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<Future<?>> parentFutures = new ArrayList<>();
+            for (Content content : contentList) {
+                Future<?> parentFuture = parentExecutor.submit(() -> {
+                    try {
+                        processSingleContent(content, transaction);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+                parentFutures.add(parentFuture);
+            }
+            // 统一等待所有任务，处理异常
+            for (Future<?> future : parentFutures) {
+                try {
+                    future.get();
+                } catch (InterruptedException | ExecutionException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+        transaction.execute();
+    }
+
+    /// 处理单条数据
+    /// @param content 数据内容
+    /// @param transaction 事务
+    /// @throws Exception 异常
+    private void processSingleContent(Content content, Transaction transaction) throws Exception {
+        if (!indexMap.containsKey(content.getIndexName())) {
+            try {
+                createIndex(IEngine.UNITY, new Info(content.getIndexName()));
+            } catch (InstanceAlreadyExistsException ignore) {} catch (NoSuchMethodException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        content.setTransaction(transaction);
+        indexMap.get(content.getIndexName()).put(content);
+
+        content.getLock().lock();
+        try {
+            while (!content.getIsNotified().get()) {
+                content.getCondition().await();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw e;
+        } finally {
+            content.getLock().unlock();
+        }
+
+        // 内层循环用虚拟线程池替代CountDownLatch
+        if (!content.getItems().isEmpty()) {
+            try (ExecutorService childExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+                List<Future<?>> childFutures = new ArrayList<>();
+                for (Content.Item item : content.getItems()) {
+                    Future<?> childFuture = childExecutor.submit(() -> {
+                        try {
+                            processSingleItem(item, content);
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                    childFutures.add(childFuture);
+                }
+                // 等待所有item任务完成
+                for (Future<?> future : childFutures) {
+                    try {
+                        future.get();
+                    } catch (InterruptedException | ExecutionException e) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        }
+    }
+
+    /// 处理单条数据
+    /// @param item 数据项
+    /// @param content 数据内容
+    /// @throws Exception 异常
+    private void processSingleItem(Content.Item item, Content content) throws Exception {
+        // 原业务逻辑完全不变
+        String indexName = item.getIndexName();
+        if (!indexMap.containsKey(indexName)) {
+            try {
+                createIndex(IEngine.UNITY, new Info(indexName));
+            } catch (InstanceAlreadyExistsException | IOException ignore) {} catch (NoSuchMethodException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        indexMap.get(indexName).put(content);
+
+        content.getLock(indexName).lock();
+        try {
+            while (!content.getIsNotified(indexName).get()) {
+                content.getCondition(indexName).await();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw e;
+        } finally {
+            content.getLock(indexName).unlock();
+        }
     }
 
     /**
@@ -252,46 +479,59 @@ public class Index {
         indexMap.get(indexName).remove(indexName, degree, key);
     }
 
-    /** 查询集合 */
-    public List<byte[]> select(IEngine.Search search) throws IOException {
+    /// 查询集合
+    /// @param search 查询条件
+    /// @throws IOException 异常
+    public List<byte[]> select(Search search) throws IOException {
         String indexName = search.getIndexName();
         if (indexMap.containsKey(indexName)) {
             return indexMap.get(indexName).select(search);
         } else {
-            log.info("select indexMap.get(indexName) is null, indexName = {}", indexName);
+            log.info("select indexMap.get({}) is null", indexName);
             return null;
         }
     }
 
-    /** 删除集合 */
-    public List<byte[]> delete(IEngine.Search search) throws IOException {
+    /// 删除集合
+    /// @param search 删除条件
+    /// @throws IOException 异常
+    public List<byte[]> delete(Search search) throws IOException {
         String indexName = search.getIndexName();
         if (indexMap.containsKey(indexName)) {
             return indexMap.get(indexName).delete(search);
         } else {
-            log.info("delete indexMap.get(indexName) is null, indexName = {}", indexName);
+            log.info("delete indexMap.get({}) is null", indexName);
             return null;
         }
     }
 
+    /// 索引信息类
     @NoArgsConstructor
     @Data
     public static class Info {
-        /** 版本号，4个字节 */
+        /// 版本号，4个字节
         int version = 1;
-        /** 索引名称 */
+        /// 索引名称
         String name;
-        /** 是否主键，主键也是唯一索引，1个字节 */
+        /// 是否主键，主键也是唯一索引，1个字节
         boolean primary = false;
-        /** 是否唯一索引，1个字节 */
+        /// 是否唯一索引，1个字节
         boolean unique = false;
-        /** 是否允许为空，1个字节 */
+        /// 是否允许为空，1个字节
         boolean nullable = true;
-
+        
+        /// 构造函数
+        /// @param name 索引名称
         public Info(String name) {
             this.name = name;
         }
 
+        /// 构造函数
+        /// @param version 版本号，4个字节
+        /// @param name 索引名称
+        /// @param primary 是否主键，主键也是唯一索引，1个字节
+        /// @param unique 是否唯一索引，1个字节
+        /// @param nullable 是否允许为空，1个字节
         public Info(int version, String name, boolean primary, boolean unique, boolean nullable) {
             if (name.contains(".")) {
                 throw new IllegalArgumentException("name cannot contain .");

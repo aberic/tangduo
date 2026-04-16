@@ -16,7 +16,6 @@ package cn.aberic.tangduo.db.common;
 
 import cn.aberic.tangduo.common.JsonTools;
 import cn.aberic.tangduo.db.DB;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -100,7 +99,7 @@ public class SegToolsTests {
     }
 
     @Test
-    void hanlp() throws JsonProcessingException {
+    void hanlp() {
         String text = """
                 {
                     "code":200,
@@ -124,7 +123,7 @@ public class SegToolsTests {
                     ]
                 }
                 """;
-        List<DB.IndexName4KeyAndDegree> indexName4KeyAndDegreeList = DB.parseIndexName4KeyAndDegree(text);
+        List<DB.IndexName4KeyAndDegree> indexName4KeyAndDegreeList = DB.parseJsonStr2IndexName4KeyAndDegree(text);
         System.out.println(indexName4KeyAndDegreeList);
         System.out.println();
         System.out.println(JsonTools.toJson(indexName4KeyAndDegreeList));

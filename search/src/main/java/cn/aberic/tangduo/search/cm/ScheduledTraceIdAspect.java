@@ -22,16 +22,24 @@ import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import java.util.UUID;
 
+/// 定时任务 traceId 切面
 @Aspect
 @Component
 public class ScheduledTraceIdAspect {
-
+    /// traceId 键
     private static final String TRACE_ID = "traceId";
 
     // 拦截所有 @Scheduled 方法
+    /// @param joinPoint 连接点
+    /// @return 连接点
+    /// @throws Throwable 异常
     @Pointcut("@annotation(org.springframework.scheduling.annotation.Scheduled)")
     public void scheduledPointcut() {}
 
+    /// 环绕通知
+    /// @param joinPoint 连接点
+    /// @return 连接点
+    /// @throws Throwable 异常
     @Around("scheduledPointcut()")
     public Object around(ProceedingJoinPoint joinPoint) throws Throwable {
         try {
