@@ -1,0 +1,17 @@
+### create index
+PUT /index HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "createTest"
+}
+
+### list index
+GET /index/test/list HTTP/1.1
+Host: {{host}}
+
+### delete index
+DELETE /index/test/createTest HTTP/1.1
+Host: {{host}}

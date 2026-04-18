@@ -27,7 +27,7 @@ server:
 management:
   # Actuator 独立端口，不占用业务端口
   server:
-    port: 19220
+    port: ${MANAGEMENT_PORT:19220}
   endpoints:
     web:
       # 暴露常用监控端点

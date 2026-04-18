@@ -49,10 +49,21 @@ public class IndexController {
     public Response create(@RequestBody() ReqCreateIndexVO vo) {
         log.trace("PUT index/{}/{} 建索引，库名：{}，索引名：{}", vo.getDatabase(), vo.getIndex(), vo.getDatabase(), vo.getIndex());
         try {
-            Index.Info info = new Index.Info(vo.getVersion(), vo.getName(), vo.isPrimary(), vo.isUnique(), vo.isNullable());
+            Index.Info info = new Index.Info(vo.getVersion(), vo.getIndex(), vo.isPrimary(), vo.isUnique(), vo.isNullable());
             DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).createIndex(vo.getDatabase(), IEngine.UNITY, info);
             return Response.success();
         } catch (IOException | NoSuchFieldException | InstanceAlreadyExistsException | NoSuchMethodException e) {
+            return Response.failed(e);
+        }
+    }
+
+    /// 搜索数据
+    @GetMapping("{dbName}/list")
+    public Response list(@PathVariable String dbName) {
+        log.debug("LIST 库 {} 内 index 数据", dbName);
+        try {
+            return Response.success(DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).indexList(dbName));
+        } catch (Exception e) {
             return Response.failed(e);
         }
     }

@@ -20,3 +20,4 @@ buildNumber.properties
 */*/LOG_PATH_IS_UNDEFINED/
 /.gitee/
 /.idea
+/build/*.jar

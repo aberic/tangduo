@@ -16,11 +16,14 @@ package cn.aberic.tangduo.sdk.log;
 
 import lombok.Data;
 
+/// 日志发送配置类，用于配置日志发送的参数
 @Data
 public class SenderConfig {
-
+    /// 日志服务器URL
     private String serverUrl;
+    /// 应用名称
     private String appName;
+    /// 应用密钥
     private String appKey;
 
 }

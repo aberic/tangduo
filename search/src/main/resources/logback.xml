@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration scan="true">
-    <!-- 过滤日志路径 -->
-    <logger name="org.jboss.logging" level="OFF"/>
     <!--定义日志文件的存储地址 勿在 LogBack 的配置中使用相对路径-->
     <!-- 直接使用 Spring Boot 内置变量，不用自己读配置 -->
     <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="search/tmp/log"/>
@@ -97,21 +95,23 @@
     <!-- 日志采集追加器 -->
     <appender name="LOG_COLLECT" class="cn.aberic.tangduo.sdk.log.LogCollectAppender">
         <!-- 业务项目在这里传入服务器地址 -->
-        <serverUrl>http://127.0.0.1:19219/data/batch</serverUrl>
-        <appName>search-service</appName>
-        <appKey>your-app-key-123456</appKey>
-        <batchSize>30</batchSize>
-        <flushInterval>1000</flushInterval>
+        <serverUrl>${LOG_TRACE_SERVER_URL:-http://127.0.0.1:19219/data/batch}</serverUrl>
+        <appName>${LOG_TRACE_SERVER_APP_NAME:-appName}</appName>
+        <appKey>${LOG_TRACE_SERVER_APP_KEY:-appKey}</appKey>
+        <batchSize>${LOG_TRACE_SERVER_BATCH_SIZE:-30}</batchSize>
+        <flushInterval>${LOG_TRACE_SERVER_FLUSH_INTERVAL:-1000}</flushInterval>
     </appender>
 
-    <logger name="org.apache.http" level="INFO" additivity="false"  />
-    <logger name="org.springframework" level="INFO" additivity="false"  />
-    <logger name="com.zaxxer" level="INFO" additivity="false"  />
-    <logger name="net.devh" level="INFO" additivity="false"  />
-    <logger name="io.netty" level="INFO" additivity="false"  />
-    <logger name="io.lettuce" level="INFO" additivity="false"  />
-    <logger name="reactor.util" level="INFO" additivity="false"  />
-    <logger name="ch.qos.logback" level="INFO" additivity="false"  />
+    <!-- 过滤日志路径 -->
+    <logger name="org.jboss.logging" level="OFF"/>
+    <logger name="org.apache.http" level="ERROR" additivity="false"  />
+    <logger name="org.springframework" level="ERROR" additivity="false"  />
+    <logger name="com.zaxxer" level="ERROR" additivity="false"  />
+    <logger name="net.devh" level="ERROR" additivity="false"  />
+    <logger name="io.netty" level="ERROR" additivity="false"  />
+    <logger name="io.lettuce" level="ERROR" additivity="false"  />
+    <logger name="reactor.util" level="ERROR" additivity="false"  />
+    <logger name="ch.qos.logback" level="ERROR" additivity="false"  />
 
     <!-- 日志输出级别 -->
     <root level="${LOG_LEVEL:-DEBUG}">

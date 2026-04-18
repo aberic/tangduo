@@ -93,7 +93,7 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void dbRemove() throws IOException, NoSuchFieldException {
+    void dbRemove() throws Exception {
         String dbName = "dbRemove";
         Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         DB db = DB.getInstance(rootpath, 10737418240L);
@@ -110,7 +110,7 @@ public class DBTests {
 
     @Test
     @Order(3)
-    void dbRemoveCheck() throws IOException, NoSuchFieldException {
+    void dbRemoveCheck() throws Exception {
         String dbName = "dbRemove";
         DB db = DB.getInstance(rootpath, 10737418240L);
         assert !db.dbExist(dbName) : db.dbExist(dbName);
@@ -118,7 +118,7 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void putAndGetFirst() throws IOException, NoSuchFieldException, NoSuchMethodException {
+    void putAndGetFirst() throws Exception, NoSuchMethodException {
         String dbName = "putAndGetFirstDB";
         Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "putAndGetFirstIndex";
@@ -147,7 +147,7 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void putAndGetFirstAndRemove() throws IOException, NoSuchFieldException, NoSuchMethodException {
+    void putAndGetFirstAndRemove() throws Exception, NoSuchMethodException {
         String dbName = "putAndGetFirstAndRemoveDB";
         Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "putAndGetFirstAndRemoveIndex";
@@ -197,7 +197,7 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void putStringContent() throws IOException, NoSuchFieldException, NoSuchMethodException {
+    void putStringContent() throws Exception, NoSuchMethodException {
         String dbName = "putStringContentDB";
         Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "putStringContentIndex";
@@ -242,7 +242,7 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void putStringDefaultIndexContent() throws IOException, NoSuchFieldException {
+    void putStringDefaultIndexContent() throws Exception {
         String dbName = "putStringDefaultIndexContentDB";
         Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         DB db = DB.getInstance(rootpath, 10737418240L);
@@ -285,7 +285,7 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void putStringDefaultIndexAndKeyContent() throws IOException, NoSuchFieldException {
+    void putStringDefaultIndexAndKeyContent() throws Exception {
         String dbName = "putStringDefaultIndexAndKeyContentDB";
         Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         DB db = DB.getInstance(rootpath, 10737418240L);
@@ -327,7 +327,7 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void putStringDefaultDatabaseIndexAndKeyContent() throws IOException, NoSuchFieldException {
+    void putStringDefaultDatabaseIndexAndKeyContent() throws Exception {
         Filer.deleteDirectory(Path.of(rootpath, DB.DATABASE_NAME_DEFAULT).toAbsolutePath().toString());
         DB db = DB.getInstance(rootpath, 10737418240L);
         db.removeDB(DB.DATABASE_NAME_DEFAULT);
@@ -363,7 +363,7 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void putAndSelectFirstTimesAsync() throws IOException, NoSuchFieldException, NoSuchMethodException, InterruptedException {
+    void putAndSelectFirstTimesAsync() throws Exception, NoSuchMethodException, InterruptedException {
         String dbName = "putAndGetFirstTimesAsyncDB";
         Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "putAndGetFirstTimesAsyncIndex";
@@ -445,7 +445,7 @@ public class DBTests {
 
     @Test
     @Order(3)
-    void select() throws IOException, NoSuchFieldException {
+    void select() throws Exception {
         String dbName = "putAndGetFirstTimesAsyncDB";
         String indexName = "putAndGetFirstTimesAsyncIndex";
         DB db = DB.getInstance(rootpath, 10737418240L);
@@ -536,7 +536,7 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void putAndGetFirstInSameIndex0() throws IOException, NoSuchFieldException, NoSuchMethodException {
+    void putAndGetFirstInSameIndex0() throws Exception, NoSuchMethodException {
         String dbName = "putAndGetFirstInSameIndexDB";
         Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "putAndGetFirstInSameIndex0Index";
@@ -566,7 +566,7 @@ public class DBTests {
 
     @Test
     @Order(3)
-    void putAndGetFirstInSameIndex1() throws IOException, NoSuchFieldException, NoSuchMethodException {
+    void putAndGetFirstInSameIndex1() throws Exception, NoSuchMethodException {
         String dbName = "putAndGetFirstInSameIndexDB";
         String indexName = "putAndGetFirstInSameIndex1Index";
         DB db = DB.getInstance(rootpath, 10737418240L);
@@ -593,7 +593,7 @@ public class DBTests {
 
     @Test
     @Order(4)
-    void putAndGetFirstInSameIndex2() throws IOException, NoSuchFieldException {
+    void putAndGetFirstInSameIndex2() throws Exception {
         String dbName = "putAndGetFirstInSameIndexDB";
         String indexName0 = "putAndGetFirstInSameIndex0Index";
         String indexName1 = "putAndGetFirstInSameIndex1Index";
@@ -621,7 +621,7 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void deleteList() throws IOException, NoSuchFieldException {
+    void deleteList() throws Exception {
         String dbName = "deleteListDB";
         Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "deleteListIndex";
@@ -779,7 +779,7 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void putAndSelectFirstBatch() throws IOException, NoSuchFieldException, NoSuchMethodException, InterruptedException {
+    void putAndSelectFirstBatch() throws Exception, NoSuchMethodException, InterruptedException {
         String dbName = "putAndSelectFirstBatchDB";
         Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "putAndSelectFirstBatchIndex";

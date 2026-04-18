@@ -14,27 +14,36 @@
 
 package cn.aberic.tangduo.sdk.log;
 
-import lombok.Data;
-
 import java.util.Date;
 
+import lombok.Data;
+
+/// 日志实体类，用于存储日志事件的详细信息
 @Data
 public class LogEntity {
-
+    /// 日志ID
     private String id;
-
-    private String traceId;       // 全链路ID
-
-    private String level;          // DEBUG/INFO/WARN/ERROR
-
-    private String message;        // 日志内容
-    private String threadName;     // 线程名
-    private String loggerName;     // 类全限定名
-    private Long   timestamp;      // 时间戳
-
-    private Date createTime;       // 时间
-
-    private String exception;      // 异常堆栈
-    private String serverIp;       // 机器IP
+    /// 全链路ID
+    private String traceId;
+    /// 日志级别
+    /// @see DEBUG
+    /// @see INFO
+    /// @see WARN
+    /// @see ERROR
+    private String level;
+    /// 日志内容
+    private String message;
+    /// 线程名
+    private String threadName;
+    /// 类全限定名
+    private String loggerName;
+    /// 时间戳 单位：毫秒
+    private Long timestamp;
+    /// 创建时间
+    private Date createTime;
+    /// 异常堆栈
+    private String exception;
+    /// 机器IP
+    private String serverIp;
 
 }

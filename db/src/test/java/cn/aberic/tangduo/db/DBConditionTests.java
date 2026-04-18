@@ -78,7 +78,7 @@ public class DBConditionTests {
 
     @Test
     @Order(2)
-    void putJsonListAndSelect() throws IOException, NoSuchFieldException, NoSuchMethodException {
+    void putJsonListAndSelect() throws Exception {
         String dbName = "putJsonListAndSelectDB";
         Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "putJsonListAndSelectIndex";

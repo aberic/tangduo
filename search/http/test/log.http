@@ -1,0 +1,23 @@
+### search log
+GET /data/search HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "query": "include"
+}
+
+### select data
+GET /data/select HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "conditions": [
+    {
+      "param": "traceId",
+      "compare": "EQ",
+      "compareValue": "91b05f66cdb04b30a06785bf44033d77"
+    }
+  ]
+}

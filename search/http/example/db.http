@@ -1,0 +1,11 @@
+### create db
+PUT /db/test HTTP/1.1
+Host: {{host}}
+
+### list db
+GET /db/list HTTP/1.1
+Host: {{host}}
+
+### delete db
+DELETE /db/test HTTP/1.1
+Host: {{host}}
