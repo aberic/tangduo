@@ -27,10 +27,10 @@ import java.util.concurrent.TimeUnit;
 public class LogBatchSender {
 
     // 批量入库 + 失败重试
-    public static void sendBatch(SenderConfig config, LinkedBlockingQueue<String> queue, int batchSize) {
+    public static void sendBatch(SenderConfig config, LinkedBlockingQueue<LogEntity> queue, int batchSize) {
         if (queue.isEmpty()) return;
 
-        List<String> list = new ArrayList<>(batchSize);
+        List<LogEntity> list = new ArrayList<>(batchSize);
         queue.drainTo(list, batchSize);
 
         if (list.isEmpty()) return;

@@ -43,7 +43,7 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
     private static final int BATCH_SIZE = 100;
     private static final long FLUSH_INTERVAL_MS = 1000;
 
-    private final LinkedBlockingQueue<String> queue = new LinkedBlockingQueue<>(5000);
+    private final LinkedBlockingQueue<LogEntity> queue = new LinkedBlockingQueue<>(5000);
     private final AtomicBoolean running = new AtomicBoolean(true);
     private String localIp;
     private SenderConfig config;
@@ -97,7 +97,7 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
                 log.setException(stackTrace);
             }
 
-            queue.offer(Objects.requireNonNull(JsonTools.toJson(log)));
+            queue.offer(log);
         } catch (Exception ignore) {}
     }
 

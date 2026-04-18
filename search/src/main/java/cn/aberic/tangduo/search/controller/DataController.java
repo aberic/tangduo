@@ -29,7 +29,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -61,7 +60,7 @@ public class DataController {
         try {
             DocPutRequestVO requestVO = new DocPutRequestVO(vo.getDatabase(), vo.getIndex(), null, vo.getKey(), vo.isSeg(), vo.getValue());
             return Response.success(DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).put(requestVO));
-        } catch (IOException | NoSuchFieldException e) {
+        } catch (Exception e) {
             return Response.failed(e);
         }
     }
@@ -75,7 +74,7 @@ public class DataController {
         try {
             DB db = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize);
             return Response.success(db.put(vo.getDatabase(), batchRequestVOS));
-        } catch (IOException | NoSuchFieldException e) {
+        } catch (Exception e) {
             return Response.failed(e);
         }
     }
@@ -86,7 +85,7 @@ public class DataController {
         log.debug("GET data 从 {}/{} 中读取数据，key={},degree={}", vo.getDatabase(), vo.getIndex(), vo.getKey(), KeyHashTools.toLongKey(vo.getKey()));
         try {
             return Response.success(DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).get(vo.getDatabase(), vo.getIndex(), null, vo.getKey()));
-        } catch (IOException | NoSuchFieldException e) {
+        } catch (Exception e) {
             return Response.failed(e);
         }
     }
@@ -94,11 +93,11 @@ public class DataController {
     /// 搜索数据
     @GetMapping("search")
     public Response search(@RequestBody ReqSearchDataVO vo) {
-        log.debug("GET data 从 {}/{} 中search数据", vo.getDatabase(), vo.getIndex());
+        log.debug("SEARCH data 从 {}/{} 中search数据", vo.getDatabase(), vo.getIndex());
         try {
             List<DocSearchResponseVO> list = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).search(vo.getDatabase(), vo.getQuery(), createSearch(vo, false));
             return Response.success(list);
-        } catch (IOException | NoSuchFieldException e) {
+        } catch (Exception e) {
             return Response.failed(e);
         }
     }
@@ -106,18 +105,20 @@ public class DataController {
     /// 选择数据
     @GetMapping("select")
     public Response select(@RequestBody ReqSelectDataVO vo) {
-        log.debug("GET data 从 {}/{} 中select数据", vo.getDatabase(), vo.getIndex());
+        log.debug("SELECT data 从 {}/{} 中select数据", vo.getDatabase(), vo.getIndex());
         try {
             List<DocSearchResponseVO> list = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).select(vo.getDatabase(), createSearch(vo, false));
             return Response.success(list);
-        } catch (IOException | NoSuchFieldException e) {
+        } catch (Exception e) {
             return Response.failed(e);
         }
     }
 
     /// 创建搜索条件
-    /// @param vo 搜索请求VO
+    ///
+    /// @param vo     搜索请求VO
     /// @param delete 是否删除
+    ///
     /// @return 搜索条件
     private Search createSearch(ReqSelectDataVO vo, boolean delete) {
         Search search = new Search();
@@ -140,7 +141,7 @@ public class DataController {
         try {
             DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).remove(vo.getDatabase(), vo.getIndex(), vo.getDegree(), vo.getKey());
             return Response.success();
-        } catch (IOException | NoSuchFieldException e) {
+        } catch (Exception e) {
             return Response.failed(e);
         }
     }
@@ -152,7 +153,7 @@ public class DataController {
         try {
             List<DocSearchResponseVO> list = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).delete(vo.getDatabase(), createSearch(vo, true));
             return Response.success(list);
-        } catch (IOException | NoSuchFieldException e) {
+        } catch (Exception e) {
             return Response.failed(e);
         }
     }

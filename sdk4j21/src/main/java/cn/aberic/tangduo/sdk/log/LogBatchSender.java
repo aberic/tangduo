@@ -22,14 +22,19 @@ import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+/// 日志批量发送器
 @Slf4j
 public class LogBatchSender {
 
-    // 批量入库 + 失败重试
-    public static void sendBatch(SenderConfig config, LinkedBlockingQueue<String> queue, int batchSize) {
+    /// 批量入库
+    ///
+    /// @param config    发送配置
+    /// @param queue     日志队列
+    /// @param batchSize 批量大小
+    public static void sendBatch(SenderConfig config, LinkedBlockingQueue<LogEntity> queue, int batchSize) {
         if (queue.isEmpty()) return;
 
-        List<String> list = new ArrayList<>(batchSize);
+        List<LogEntity> list = new ArrayList<>(batchSize);
         queue.drainTo(list, batchSize);
 
         if (list.isEmpty()) return;
@@ -39,7 +44,7 @@ public class LogBatchSender {
 
         while (retry < 2 && !success) {
             try {
-                HttpTools.putJson(config.getServerUrl(), list);
+                HttpTools.putJson(config.getServerUrl(), new ReqLogEntityBatch(list));
                 success = true;
             } catch (Exception e) {
                 retry++;

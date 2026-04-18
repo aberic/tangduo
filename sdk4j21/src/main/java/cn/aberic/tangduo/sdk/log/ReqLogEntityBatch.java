@@ -12,25 +12,38 @@
  * limitations under the License.
  */
 
-package cn.aberic.tangduo.search.entity;
+package cn.aberic.tangduo.sdk.log;
 
 import lombok.Data;
 
-/// 创建索引请求体
-@Data
-public class ReqCreateIndexVO {
+import java.util.ArrayList;
+import java.util.List;
 
-    /// 数据库名
-    String database;
-    /// 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-    String index;
-    /// 版本号，4个字节
-    int version = 1;
-    /// 是否主键，主键也是唯一索引，1个字节
-    boolean primary = false;
-    /// 是否唯一索引，1个字节
-    boolean unique = false;
-    /// 是否允许为空，1个字节
-    boolean nullable = true;
+@Data
+public class ReqLogEntityBatch {
+
+    /// 批量插入
+    List<Value> values;
+
+    public ReqLogEntityBatch(List<LogEntity> list) {
+        values = new ArrayList<>();
+        list.forEach(logEntity -> values.add(new Value(logEntity)));
+    }
+
+    /// 插入值
+    @Data
+    public static class Value {
+
+        /// 索引名
+        String index;
+        /// 唯一键名
+        String key;
+        /// 插入值
+        LogEntity value;
+
+        public Value(LogEntity value) {
+            this.value = value;
+        }
+    }
 
 }

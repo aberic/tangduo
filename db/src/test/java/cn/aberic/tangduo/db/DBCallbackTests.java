@@ -14,7 +14,6 @@
 
 package cn.aberic.tangduo.db;
 
-import cn.aberic.tangduo.common.file.Filer;
 import cn.aberic.tangduo.db.entity.DocSearchResponseVO;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.MethodOrderer;
@@ -194,7 +193,7 @@ public class DBCallbackTests {
 
     @Test
     @Order(2)
-    void putText() throws IOException, NoSuchFieldException {
+    void putText() throws Exception {
         String dbName = "putTextDB";
         DB db = DB.getInstance(rootpath, 10737418240L);
         db.removeDB(dbName);
@@ -234,7 +233,7 @@ public class DBCallbackTests {
 
     @Test
     @Order(3)
-    void putTextAgain() throws IOException, NoSuchFieldException {
+    void putTextAgain() throws Exception {
         String dbName = "putTextDB";
         DB db = DB.getInstance(rootpath, 10737418240L);
         db.put(dbName, "text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1text1");
@@ -242,7 +241,7 @@ public class DBCallbackTests {
 
     @Test
     @Order(3)
-    void searchText() throws IOException, NoSuchFieldException {
+    void searchText() throws Exception {
         String dbName = "putTextDB";
         DB db = DB.getInstance(rootpath, 10737418240L);
         List<DocSearchResponseVO> docItems = db.search(dbName, search1, 100);
@@ -252,7 +251,7 @@ public class DBCallbackTests {
 
     @Test
     @Order(3)
-    void searchText1() throws IOException, NoSuchFieldException {
+    void searchText1() throws Exception {
         String dbName = "putTextDB";
         DB db = DB.getInstance(rootpath, 10737418240L);
         List<DocSearchResponseVO> docItems = db.search(dbName, search2);
@@ -262,7 +261,7 @@ public class DBCallbackTests {
 
     @Test
     @Order(3)
-    void searchText2() throws IOException, NoSuchFieldException {
+    void searchText2() throws Exception {
         String dbName = "putTextDB";
         DB db = DB.getInstance(rootpath, 10737418240L);
         List<DocSearchResponseVO> docItems = db.search(dbName, search3);

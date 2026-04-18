@@ -54,6 +54,8 @@
     </dependencies>
 
     <build>
+        <!-- 这里指定最终打包的 jar 名称 -->
+        <finalName>search</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

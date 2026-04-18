@@ -68,7 +68,7 @@ public class IndexTests {
     void create() throws IOException, NoSuchFieldException, NoSuchMethodException {
         Filer.deleteDirectory(rootpath);
         String indexName = "create";
-        Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
+        Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         try {
             index.createIndex(IEngine.UNITY, new Index.Info(1, indexName, true, true, false));
         } catch (InstanceAlreadyExistsException e) {
@@ -81,7 +81,7 @@ public class IndexTests {
     void putAndGetFirstOne() throws IOException, NoSuchFieldException {
         String indexName = "putAndGetFirstOne";
         Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
-        Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
+        Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
         index.put(new Content(new Transaction(1), indexName, 1, "1", ByteTools.fromInt(1)));
@@ -93,7 +93,7 @@ public class IndexTests {
     void putAndGetFirst() throws IOException, NoSuchFieldException {
         String indexName = "putAndGetFirst";
         Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
-        Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
+        Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
         index.put(new Content(new Transaction(1), indexName, -64424581328L, "1", ByteTools.fromInt(1)));
@@ -111,7 +111,7 @@ public class IndexTests {
     void putAndGetFirstAndRemove() throws IOException, NoSuchFieldException {
         String indexName = "putAndGetFirstAndRemove";
         Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
-        Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
+        Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
         index.put(new Content(new Transaction(1), indexName, -64424581328L, "1", ByteTools.fromInt(1)));
@@ -203,7 +203,7 @@ public class IndexTests {
     void resetAndGetFirst() throws IOException, NoSuchFieldException {
         String indexName = "resetAndGetFirst";
         Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
-        Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
+        Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
         index.put(new Content(new Transaction(1), indexName, 1, "1", ByteTools.fromInt(1)));
@@ -217,7 +217,7 @@ public class IndexTests {
     void putAndGetFirstTimes() throws IOException, NoSuchFieldException {
         String indexName = "putAndGetFirstTimes";
         Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
-        Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
+        Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
         int count = 100000;
@@ -236,7 +236,7 @@ public class IndexTests {
     void putAndGetFirstTimesAsync() throws IOException, NoSuchFieldException, InterruptedException {
         String indexName = "putAndGetFirstTimesAsync";
         Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
-        Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
+        Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
         int threadCount = 100000; // 10000000 1小时16分钟
@@ -301,7 +301,7 @@ public class IndexTests {
     @Order(4)
     void select() throws IOException, NoSuchFieldException {
         String indexName = "putAndGetFirstTimesAsync";
-        Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
+        Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         long wrongCount = 0;
         for (int i = -500; i < 500; i++) {
             byte[] bytes = index.getFirst(indexName, i, String.valueOf(i));
@@ -384,7 +384,7 @@ public class IndexTests {
     void putAndGetFirstBatch() throws IOException, NoSuchFieldException {
         String indexName = "putAndGetFirstBatch";
         Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
-        Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
+        Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
         int threadCount = 300000;
@@ -437,7 +437,7 @@ public class IndexTests {
     @Order(4)
     void putAndGetFirstBatchTmp() throws IOException, NoSuchFieldException {
         String indexName = "putAndGetFirstBatch";
-        Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
+        Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
 
         int threadCount = 150000;
         int startIndex = threadCount / 2 - threadCount;
@@ -483,7 +483,7 @@ public class IndexTests {
     void putAndGetFirstAndAreaSelectTimes() throws IOException, NoSuchFieldException {
         String indexName = "putAndGetFirstAndAreaSelectTimes";
         Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
-        Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
+        Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
         int count = 10;
@@ -522,7 +522,7 @@ public class IndexTests {
     @Order(4)
     void selectAreaTimes() throws IOException, NoSuchFieldException {
         String indexName = "putAndGetFirstAndAreaSelectTimes";
-        Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
+        Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
 
         Search search = new Search(indexName, 15, false);
         List<byte[]> bytesList = index.select(search);
@@ -537,7 +537,7 @@ public class IndexTests {
     void deleteList() throws IOException, NoSuchFieldException {
         String indexName = "deleteList";
         Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
-        Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
+        Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
         int count = 10000;
@@ -580,7 +580,7 @@ public class IndexTests {
         Filer.deleteDirectory(Path.of(rootpath, indexName2).toAbsolutePath().toString());
         Filer.deleteDirectory(Path.of(rootpath, indexName3).toAbsolutePath().toString());
         Filer.deleteDirectory(Path.of(rootpath, indexName4).toAbsolutePath().toString());
-        Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
+        Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName1);
         index.removeIndex(indexName2);
         index.removeIndex(indexName3);
@@ -617,7 +617,7 @@ public class IndexTests {
         Filer.deleteDirectory(Path.of(rootpath, indexName2).toAbsolutePath().toString());
         Filer.deleteDirectory(Path.of(rootpath, indexName3).toAbsolutePath().toString());
         Filer.deleteDirectory(Path.of(rootpath, indexName4).toAbsolutePath().toString());
-        Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
+        Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName1);
         index.removeIndex(indexName2);
         index.removeIndex(indexName3);
@@ -645,7 +645,7 @@ public class IndexTests {
         Filer.deleteDirectory(Path.of(rootpath, indexName2).toAbsolutePath().toString());
         Filer.deleteDirectory(Path.of(rootpath, indexName3).toAbsolutePath().toString());
         Filer.deleteDirectory(Path.of(rootpath, indexName4).toAbsolutePath().toString());
-        Index index = Index.getInstance(rootpath, DATA_FILE_DEFAULT_SIZE);
+        Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName1);
         index.removeIndex(indexName2);
         index.removeIndex(indexName3);

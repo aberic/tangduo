@@ -20,9 +20,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
-import javax.management.InstanceAlreadyExistsException;
-import java.io.IOException;
-
 @Slf4j
 @RestController
 @RequestMapping("db")
@@ -40,15 +37,26 @@ public class DBController {
     /// 每条索引检索的最大数据量
     @Value("${custom.db.DB_SEARCH_MAX_COUNT}")
     int searchMaxCount;
-    
+
     /// 创建数据库
     @PutMapping({"{dbName}"})
     public Response create(@PathVariable String dbName) {
-        log.trace("PUT db/{} 建库，库名：{}", dbName, dbName);
+        log.trace("CREATE db/{} 建库，库名：{}", dbName, dbName);
         try {
             DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).createDB(dbName);
             return Response.success();
-        } catch (IOException | NoSuchFieldException | InstanceAlreadyExistsException e) {
+        } catch (Exception e) {
+            return Response.failed(e);
+        }
+    }
+
+    /// 搜索数据
+    @GetMapping("list")
+    public Response list() {
+        log.debug("LIST db 数据");
+        try {
+            return Response.success(DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).dbList());
+        } catch (Exception e) {
             return Response.failed(e);
         }
     }
@@ -60,7 +68,7 @@ public class DBController {
         try {
             DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).removeDB(dbName);
             return Response.success();
-        } catch (IOException | NoSuchFieldException e) {
+        } catch (Exception e) {
             return Response.failed(e);
         }
     }

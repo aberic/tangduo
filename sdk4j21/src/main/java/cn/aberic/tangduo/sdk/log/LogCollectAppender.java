@@ -14,37 +14,43 @@
 
 package cn.aberic.tangduo.sdk.log;
 
+import java.net.InetAddress;
+import java.util.Date;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.slf4j.MDC;
+
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.classic.spi.StackTraceElementProxy;
 import ch.qos.logback.core.UnsynchronizedAppenderBase;
-import cn.aberic.tangduo.common.JsonTools;
 import lombok.Setter;
-import org.slf4j.MDC;
 
-import java.net.InetAddress;
-import java.util.Date;
-import java.util.Objects;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-
+/// 日志采集器
 @Setter
 public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
 
     /// 日志服务器地址，可配置项
     private String serverUrl;
+    /// 应用名称，可配置项
     private String appName;
+    /// 应用密钥，可配置项
     private String appKey;
+    /// 批量大小，可配置项
     private int batchSize = 20;
+    /// 刷新间隔，可配置项
     private long flushInterval = 1000;
-    private static final int BATCH_SIZE = 100;
-    private static final long FLUSH_INTERVAL_MS = 1000;
 
-    private final LinkedBlockingQueue<String> queue = new LinkedBlockingQueue<>(5000);
+    /// 日志队列，用于存储待发送的日志事件
+    private final LinkedBlockingQueue<LogEntity> queue = new LinkedBlockingQueue<>(5000);
+    /// 发送配置
     private final AtomicBoolean running = new AtomicBoolean(true);
+    /// 本地IP，用于发送日志时的服务器IP
     private String localIp;
+    /// 发送配置
     private SenderConfig config;
 
     public LogCollectAppender() {
@@ -62,6 +68,8 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
         config.setAppKey(appKey);
     }
 
+    /// 获取本地IP
+    /// @return 本地IP
     private String getLocalIp() {
         try {
             return InetAddress.getLocalHost().getHostAddress();
@@ -70,10 +78,14 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
         }
     }
 
+    /// 处理日志事件
+    /// @param event 日志事件
     @Override
     protected void append(ILoggingEvent event) {
-        if (!isStarted() || !running.get()) return;
-        if (event.getLevel() == Level.DEBUG || event.getLevel() == Level.TRACE) return;
+        if (!isStarted() || !running.get())
+            return;
+        if (event.getLevel() == Level.DEBUG || event.getLevel() == Level.TRACE)
+            return;
 
         try {
             LogEntity log = new LogEntity();
@@ -93,11 +105,14 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
                 log.setException(stackTrace);
             }
 
-            queue.offer(Objects.requireNonNull(JsonTools.toJson(log)));
-        } catch (Exception ignore) {}
+            queue.offer(log);
+        } catch (Exception ignore) {
+        }
     }
 
-    // ✅ 修复：参数类型改为 IThrowableProxy，完全兼容 1.5.x
+    /// 获取异常堆栈信息
+    /// @param throwableProxy 异常代理
+    /// @return 异常堆栈信息
     private String getStackTrace(IThrowableProxy throwableProxy) {
         StringBuilder sb = new StringBuilder();
         sb.append(throwableProxy.getClassName()).append(": ").append(throwableProxy.getMessage()).append("\n");
@@ -109,7 +124,8 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
         // 递归拼接 cause 堆栈
         IThrowableProxy cause = throwableProxy.getCause();
         while (cause != null) {
-            sb.append("\nCaused by: ").append(cause.getClassName()).append(": ").append(cause.getMessage()).append("\n");
+            sb.append("\nCaused by: ").append(cause.getClassName()).append(": ").append(cause.getMessage())
+                    .append("\n");
             for (StackTraceElementProxy step : cause.getStackTraceElementProxyArray()) {
                 sb.append("\tat ").append(step.getStackTraceElement()).append("\n");
             }
@@ -118,19 +134,26 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
         return sb.toString();
     }
 
+    /// 启动批量发送线程
+    /// @param config 发送配置
+    /// @param queue 日志队列
+    /// @param batchSize 批量大小
+    /// @param flushInterval 刷新间隔
     private void startFlushThread() {
         Thread t = new Thread(() -> {
             while (running.get()) {
                 try {
                     LogBatchSender.sendBatch(config, queue, batchSize);
                     TimeUnit.MILLISECONDS.sleep(flushInterval);
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
         }, "log-collect");
         t.setDaemon(true);
         t.start();
     }
 
+    /// 停止批量发送线程
     @Override
     public void stop() {
         running.set(false);

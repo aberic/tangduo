@@ -14,12 +14,15 @@
 
 package cn.aberic.tangduo.common.file;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.Comparator;
 import java.util.stream.Stream;
 
 /// 文件工具类
+@Slf4j
 public final class Filer {
 
     private Filer() {
@@ -27,14 +30,18 @@ public final class Filer {
     }
 
     /// 创建文件
+    ///
     /// @param filepath 指定文件路径
+    ///
     /// @throws IOException 异常
     public static synchronized void createFile(String filepath) throws IOException {
         createFile(Path.of(filepath));
     }
 
     /// 创建文件
+    ///
     /// @param filepath 指定文件路径
+    ///
     /// @throws IOException 异常
     public static synchronized void createFile(Path filepath) throws IOException {
         createDirectory(filepath.getParent());
@@ -44,14 +51,16 @@ public final class Filer {
     }
 
     /// 创建目录
+    ///
     /// @param filepath 指定目录路径
+    ///
     /// @throws IOException 异常
     public static synchronized void createDirectory(String filepath) throws IOException {
         createDirectory(Path.of(filepath));
     }
 
     /// 创建目录
-    /// @param filepath 指定目录路径
+    ///
     /// @throws IOException 异常
     public static synchronized void createDirectory(Path path) throws IOException {
         if (!Files.exists(path)) {
@@ -65,17 +74,18 @@ public final class Filer {
     }
 
     /// 删除目录
+    ///
     /// @param dirPath 指定目录路径
-    /// @throws IOException 异常
     public static void deleteDirectory(String dirPath) {
         deleteDirectory(Paths.get(dirPath));
     }
 
     /// 删除目录
+    ///
     /// @param path 指定目录路径
-    /// @throws IOException 异常
     public static void deleteDirectory(Path path) {
-        if (!Files.exists(path)) {
+        Path normalizedPath = path.toAbsolutePath().normalize();
+        if (!Files.exists(normalizedPath)) {
             return;
         }
         try (Stream<Path> stream = Files.walk(path)) {
@@ -85,8 +95,8 @@ public final class Filer {
                             Files.delete(p);
                         } catch (IOException ignored) {}
                     });
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        } catch (SecurityException | IOException e) {
+            log.error("deleteDirectory error! e: {}", e.getMessage());
         }
     }
 
