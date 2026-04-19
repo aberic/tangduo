@@ -17,6 +17,7 @@ package cn.aberic.tangduo.sdk.common;
 import okhttp3.*;
 
 import java.io.IOException;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 public class HttpTools {
@@ -88,5 +89,13 @@ public class HttpTools {
             }
         }
         return "";
+    }
+
+    public static String put(String url, Object object) throws IOException {
+        String json = "{}";
+        if (Objects.nonNull(object)) {
+            json = JsonTools.toJson(object);
+        }
+        return putJson(url, json);
     }
 }

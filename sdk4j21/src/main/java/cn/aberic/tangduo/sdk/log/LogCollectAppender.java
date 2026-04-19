@@ -14,20 +14,19 @@
 
 package cn.aberic.tangduo.sdk.log;
 
-import java.net.InetAddress;
-import java.util.Date;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.slf4j.MDC;
-
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.classic.spi.StackTraceElementProxy;
 import ch.qos.logback.core.UnsynchronizedAppenderBase;
 import lombok.Setter;
+import org.slf4j.MDC;
+
+import java.net.InetAddress;
+import java.util.Date;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /// 日志采集器
 @Setter
@@ -69,6 +68,7 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
     }
 
     /// 获取本地IP
+    ///
     /// @return 本地IP
     private String getLocalIp() {
         try {
@@ -79,13 +79,12 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
     }
 
     /// 处理日志事件
+    ///
     /// @param event 日志事件
     @Override
     protected void append(ILoggingEvent event) {
-        if (!isStarted() || !running.get())
-            return;
-        if (event.getLevel() == Level.DEBUG || event.getLevel() == Level.TRACE)
-            return;
+        if (!isStarted() || !running.get()) return;
+        if (event.getLevel() == Level.DEBUG || event.getLevel() == Level.TRACE) return;
 
         try {
             LogEntity log = new LogEntity();
@@ -98,7 +97,6 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
             log.setCreateTime(new Date(event.getTimeStamp()));
             log.setServerIp(localIp);
 
-            // ✅ 修复：兼容 logback 1.5.x 接口类型
             IThrowableProxy throwableProxy = event.getThrowableProxy();
             if (throwableProxy != null) {
                 String stackTrace = getStackTrace(throwableProxy);
@@ -106,12 +104,13 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
             }
 
             queue.offer(log);
-        } catch (Exception ignore) {
-        }
+        } catch (Exception ignore) {}
     }
 
     /// 获取异常堆栈信息
+    ///
     /// @param throwableProxy 异常代理
+    ///
     /// @return 异常堆栈信息
     private String getStackTrace(IThrowableProxy throwableProxy) {
         StringBuilder sb = new StringBuilder();
@@ -124,8 +123,7 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
         // 递归拼接 cause 堆栈
         IThrowableProxy cause = throwableProxy.getCause();
         while (cause != null) {
-            sb.append("\nCaused by: ").append(cause.getClassName()).append(": ").append(cause.getMessage())
-                    .append("\n");
+            sb.append("\nCaused by: ").append(cause.getClassName()).append(": ").append(cause.getMessage()).append("\n");
             for (StackTraceElementProxy step : cause.getStackTraceElementProxyArray()) {
                 sb.append("\tat ").append(step.getStackTraceElement()).append("\n");
             }
@@ -135,18 +133,13 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
     }
 
     /// 启动批量发送线程
-    /// @param config 发送配置
-    /// @param queue 日志队列
-    /// @param batchSize 批量大小
-    /// @param flushInterval 刷新间隔
     private void startFlushThread() {
         Thread t = new Thread(() -> {
             while (running.get()) {
                 try {
                     LogBatchSender.sendBatch(config, queue, batchSize);
                     TimeUnit.MILLISECONDS.sleep(flushInterval);
-                } catch (Exception ignored) {
-                }
+                } catch (Exception ignored) {}
             }
         }, "log-collect");
         t.setDaemon(true);

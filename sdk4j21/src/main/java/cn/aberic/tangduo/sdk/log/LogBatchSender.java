@@ -44,7 +44,7 @@ public class LogBatchSender {
 
         while (retry < 2 && !success) {
             try {
-                HttpTools.putJson(config.getServerUrl(), new ReqLogEntityBatch(list));
+                HttpTools.put(config.getServerUrl(), new ReqLogEntityBatch(list));
                 success = true;
             } catch (Exception e) {
                 retry++;

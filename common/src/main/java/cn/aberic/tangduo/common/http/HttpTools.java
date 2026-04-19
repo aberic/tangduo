@@ -71,40 +71,12 @@ public final class HttpTools {
     }
 
     // ==================== POST JSON ====================
-    /// POST 请求
-    /// @param url 请求 URL
-    /// @param body 请求体
-    /// @param headers 请求头
-    /// @return 响应体
-    public static String postJson(String url, Object body, Map<String, String> headers) {
-        try {
-            return REST_CLIENT.post()
-                    .uri(url)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .headers(h -> h.setAll(headers))
-                    .body(body)
-                    .retrieve()
-                    .body(String.class);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    /// POST 请求
-    /// @param url 请求 URL
-    /// @param body 请求体
-    /// @return 响应体
-    public static String postJson(String url, Object body) {
-        return postJson(url, body, Map.of());
-    }
-
-    // ==================== POST JSON ====================
     /// PUT 请求
     /// @param url 请求 URL
     /// @param body 请求体
     /// @param headers 请求头
     /// @return 响应体
-    public static String putJson(String url, Object body, Map<String, String> headers) {
+    public static String put(String url, Object body, Map<String, String> headers) {
         try {
             return REST_CLIENT.put()
                     .uri(url)
@@ -123,8 +95,8 @@ public final class HttpTools {
     /// @param url 请求 URL
     /// @param body 请求体
     /// @return 响应体
-    public static String putJson(String url, Object body) {
-        return putJson(url, body, Map.of());
+    public static String put(String url, Object body) {
+        return put(url, body, Map.of());
     }
 
 }
