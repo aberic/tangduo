@@ -300,7 +300,7 @@ docker run --name tangduosearch --restart=always \
 |`-v /data/vol/tangduosearch:/data`|数据持久化：将容器内 /data 目录（数据库数据存储目录）映射到宿主机 /data/vol/tangduosearch 目录，避免容器删除后数据丢失|
 
 #### 四、Dockerfile 详情（镜像构建逻辑）
-镜像的 [dockerfile](build/tangduosearch/dockerfile) 内容，清晰呈现镜像构建流程，便于自定义修改或验证。
+镜像的 [dockerfile](build/tangduosearch/Dockerfile) 内容，清晰呈现镜像构建流程，便于自定义修改或验证。
 
 #### 五、可自定义环境变量
 部署时可通过 `\-e` 参数覆盖默认环境变量，适配不同场景需求，支持的环境变量如下（对应 [application.yml](search/src/main/resources/application.yml) 配置）：
