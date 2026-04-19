@@ -42,7 +42,7 @@ public class HttpToolsTests {
                 超时可控、不阻塞、不拖死业务
                 不会像 RestTemplate 那样被标记过时
                 """);
-        System.out.println(HttpTools.putJson("http://127.0.0.1:19219/db/batch/test", list));
+        System.out.println(HttpTools.put("http://127.0.0.1:19219/db/batch/test", list));
     }
 
 }

@@ -15,7 +15,6 @@
 package cn.aberic.tangduo.sdk.log;
 
 import cn.aberic.tangduo.sdk.common.HttpTools;
-import cn.aberic.tangduo.sdk.common.JsonTools;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -40,7 +39,7 @@ public class LogBatchSender {
 
         while (retry < 2 && !success) {
             try {
-                HttpTools.putJson(config.getServerUrl(), JsonTools.toJson(list));
+                HttpTools.put(config.getServerUrl(), new ReqLogEntityBatch(list));
                 success = true;
             } catch (Exception e) {
                 retry++;
