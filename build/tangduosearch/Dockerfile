@@ -1,4 +1,4 @@
-FROM openjdk:21
+FROM docker.1panel.live/amd64/openjdk:21
 
 # 1. 指定运行工作目录
 WORKDIR /app

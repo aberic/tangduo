@@ -45,7 +45,7 @@ stages:
         name: build_search_docker
         displayName: 镜像构建-search
         type: cert
-        certificate: aberic
+        certificate: '100309595'
         tag: ${GITEE_BRANCH}-1.0-M1-${GITEE_PIPELINE_BUILD_NUMBER}
         dockerfile: ./build/tangduosearch/Dockerfile
         context: ./build/tangduosearch
@@ -53,7 +53,6 @@ stages:
         isCache: false
         processorType:
           - amd64
-          - arm64
         parameter: {}
         notify: []
         strategy:
