@@ -35,12 +35,19 @@ stages:
         artifactName: search
         strategy: {}
         dependsOn: build_maven
-  - name: stage-d497c5d1
+  - name: build-docker
     displayName: 构建镜像
+    dependsOn: compile  # 必须等编译完成
     strategy: naturally
     trigger: auto
     executor: []
     steps:
+      - checkout:
+      # 下载上一步编译好的 jar 包
+      - step: download@general_artifacts
+        name: download_artifact
+        displayName: 下载构建产物
+        dependArtifact: output
       - step: build@docker
         name: build_search_docker
         displayName: 镜像构建-search
