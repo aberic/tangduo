@@ -23,15 +23,16 @@ stages:
         commands:
           - ./build.sh
         artifacts:
-          - name: BUILD_ARTIFACT
+          - name: BUILD_ARTIFACT_SEARCH
             path:
-              - build
+              - build/tangduosearch/Dockerfile
+              - build/tangduosearch/search.jar
         settings: []
         strategy: {}
-      - step: publish@general_artifacts
-        name: publish_general_artifacts
-        displayName: 上传制品
-        dependArtifact: BUILD_ARTIFACT
+      - step: publish@general_search_artifacts
+        name: publish_general_search_artifacts
+        displayName: 上传制品 search
+        dependArtifact: BUILD_SEARCH_ARTIFACT
         artifactName: search
         strategy: {}
         dependsOn: build_maven
@@ -44,8 +45,8 @@ stages:
     steps:
       - checkout:
       # 下载上一步编译好的 jar 包
-      - step: download@general_artifacts
-        name: download_artifact
+      - step: download@general_search_artifacts
+        name: download_search_artifact
         displayName: 下载构建产物
         dependArtifact: search
       - step: build@docker
@@ -54,8 +55,8 @@ stages:
         type: cert
         certificate: '100309595'
         tag: ${GITEE_BRANCH}-1.0-M1-${GITEE_PIPELINE_BUILD_NUMBER}
-        dockerfile: ./build/tangduosearch/Dockerfile
-        context: ./build/tangduosearch
+        dockerfile: ./Dockerfile
+        context: ./
         artifacts: []
         isCache: false
         processorType:
