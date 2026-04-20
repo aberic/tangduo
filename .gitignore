@@ -21,5 +21,6 @@ buildNumber.properties
 /.gitee/
 /.idea
 /build/*.jar
+/build/*/*.jar
 *.iml
 */*.iml
