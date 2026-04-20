@@ -47,7 +47,7 @@ stages:
       - step: download@general_artifacts
         name: download_artifact
         displayName: 下载构建产物
-        dependArtifact: output
+        dependArtifact: search
       - step: build@docker
         name: build_search_docker
         displayName: 镜像构建-search
