@@ -18,6 +18,7 @@ echo deploy start ==============================================================
 
 docker rm -f tangduosearch
 docker rmi -f registry.cn-hangzhou.aliyuncs.com/aberic/tangduosearch:latest
+cp ../search.jar .
 docker build -t registry.cn-hangzhou.aliyuncs.com/aberic/tangduosearch:latest .
 
 docker run --name tangduosearch --restart=always \

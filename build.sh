@@ -13,10 +13,10 @@ mvnInstall() {
 mvnPackage() {
   echo clean package "$1" ===================================================================================================
   mvn -f "$1"/pom.xml -DskipTests=true clean package
-  cp "$1"/target/"$1".jar build/tangduo"$1"
+  cp "$1"/target/"$1".jar build
 }
 
-rm -rf build/*/*.jar
+rm -rf build/*.jar
 echo clean tangduo start ====================================================================================================
 mvn -f pom.xml -DskipTests=true clean
 echo clean tangduo end ======================================================================================================
