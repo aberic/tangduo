@@ -126,6 +126,7 @@ public class DB {
         this.dataFileMaxSize = dataFileMaxSize;
         this.searchMaxCount = searchMaxCount;
         this.batchMaxSize = batchMaxSize;
+        Channel.startWriteThread();
         init();
     }
 
@@ -165,13 +166,16 @@ public class DB {
     }
 
     /// 获取所有数据库名称
+    ///
     /// @return 数据库名称列表
     public List<String> dbList() {
         return dbMap.keySet().stream().toList();
     }
 
     /// 获取指定数据库的所有索引名称
+    ///
     /// @param dbName 数据库名称
+    ///
     /// @return 索引名称列表
     public List<String> indexList(String dbName) {
         return dbMap.get(dbName).index.indexList();
@@ -382,7 +386,7 @@ public class DB {
     /// @throws IOException 异常
     public DocPutResponseVO put(@Nonnull DocPutRequestVO vo) throws IOException {
         String dbName = StringUtils.isEmpty(vo.getDatabase()) ? DATABASE_NAME_DEFAULT : vo.getDatabase();
-        String indexName = CommonTools.indexName(StringUtils.isEmpty(vo.getIndex()) ? INDEX_NAME_DEFAULT : vo.getIndex()).toLowerCase();
+        String indexName = CommonTools.indexName(StringUtils.isEmpty(vo.getIndex()) ? INDEX_NAME_DEFAULT : vo.getIndex());
         String key = StringUtils.isEmpty(vo.getKey()) ? UUID.randomUUID().toString() : vo.getKey();
         long degree = Objects.isNull(vo.getDegree()) ? KeyHashTools.toLongKey(key) : vo.getDegree();
         Doc doc = new Doc(dbName, indexName, key, degree, vo.getValue());
@@ -501,7 +505,7 @@ public class DB {
         Index baseIndex = null;
         for (DocPutBatchRequestVO batchRequestVO : batchRequestVOS) {
             String dbName = StringUtils.isEmpty(database) ? DATABASE_NAME_DEFAULT : database;
-            String indexName = CommonTools.indexName(StringUtils.isEmpty(batchRequestVO.getIndex()) ? INDEX_NAME_DEFAULT : batchRequestVO.getIndex()).toLowerCase();
+            String indexName = CommonTools.indexName(StringUtils.isEmpty(batchRequestVO.getIndex()) ? INDEX_NAME_DEFAULT : batchRequestVO.getIndex());
             String key = StringUtils.isEmpty(batchRequestVO.getKey()) ? UUID.randomUUID().toString() : batchRequestVO.getKey();
             long degree = Objects.isNull(batchRequestVO.getDegree()) ? KeyHashTools.toLongKey(key) : batchRequestVO.getDegree();
             Doc doc = new Doc(dbName, indexName, key, degree, batchRequestVO.getValue());
@@ -654,22 +658,23 @@ public class DB {
             node.forEachEntry((indexName, jsonNode) -> {
                 if (jsonNode.isString()) {
                     if (HASH_PATTERN.matcher(jsonNode.asString()).matches()) {
-                        list.add(new IndexName4KeyAndDegree(CommonTools.indexName(indexName.toLowerCase()), jsonNode.asString(), KeyHashTools.toLongKey(jsonNode.asString()), false));
-                        list.add(new IndexName4KeyAndDegree(CommonTools.indexName4dhash(jsonNode.asString()), jsonNode.asString(), degree, true));
+                        long degree4str = KeyHashTools.toLongKey(jsonNode.asString());
+                        list.add(new IndexName4KeyAndDegree(CommonTools.indexName(indexName), jsonNode.asString(), degree4str, false));
+                        list.add(new IndexName4KeyAndDegree(CommonTools.indexName4hash(jsonNode.asString()), jsonNode.asString(), degree4str, true));
                     }
-                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName4datetime(indexName.toLowerCase()), key, degree, false));
+                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName4datetime(indexName), key, degree, false));
                 } else if (jsonNode.isLong() || jsonNode.isInt()) {
-                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName(indexName.toLowerCase()), jsonNode.asString(), jsonNode.asLong(), false));
-                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName4datetime(indexName.toLowerCase()), key, degree, false));
+                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName(indexName), jsonNode.asString(), jsonNode.asLong(), false));
+                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName4datetime(indexName), key, degree, false));
                 } else if (jsonNode.isDouble() || jsonNode.isFloat()) {
-                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName(indexName.toLowerCase()), jsonNode.asString(), KeyHashTools.toLongKey(jsonNode.asDouble()), false));
-                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName4datetime(indexName.toLowerCase()), key, degree, false));
+                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName(indexName), jsonNode.asString(), KeyHashTools.toLongKey(jsonNode.asDouble()), false));
+                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName4datetime(indexName), key, degree, false));
                 } else if (jsonNode.isArray()) {
                     node.forEach(jn -> analysis(list, jn, key, degree));
                 } else if (jsonNode.isObject()) {
                     analysis(list, jsonNode, key, degree);
                 } else {
-                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName4datetime(indexName.toLowerCase()), key, degree, false));
+                    list.add(new IndexName4KeyAndDegree(CommonTools.indexName4datetime(indexName), key, degree, false));
                 }
             });
         }
@@ -706,6 +711,37 @@ public class DB {
         return null;
     }
 
+    /// 获取第一个文档
+    ///
+    /// @param dbName    数据库名
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param key       原始key
+    ///
+    /// @return 文档搜索响应VO
+    ///
+    /// @throws IOException 异常
+    public DocGetResponseVO getLast(@Nullable String dbName, @Nullable String indexName, @Nonnull String key) throws IOException {
+        return getLast(dbName, indexName, null, key);
+    }
+
+    /// 获取第一个文档
+    ///
+    /// @param dbName    数据库名
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param degree    主键
+    /// @param key       原始key
+    ///
+    /// @return 文档搜索响应VO
+    ///
+    /// @throws IOException 异常
+    public DocGetResponseVO getLast(@Nullable String dbName, @Nullable String indexName, @Nullable Long degree, @Nonnull String key) throws IOException {
+        List<DocGetResponseVO> docGetResponseVOList = get(dbName, indexName, degree, key);
+        if (Objects.nonNull(docGetResponseVOList) && !docGetResponseVOList.isEmpty()) {
+            return docGetResponseVOList.getLast();
+        }
+        return null;
+    }
+
     /// 获取文档列表
     ///
     /// @param dbName    数据库名
@@ -717,7 +753,20 @@ public class DB {
     ///
     /// @throws IOException 异常
     public List<DocGetResponseVO> get(@Nullable String dbName, @Nullable String indexName, @Nullable Long degree, @Nullable String key) throws IOException {
-        return getForceIndex(dbName, CommonTools.indexName(StringUtils.isEmpty(indexName) ? INDEX_NAME_DEFAULT : indexName).toLowerCase(), degree, key);
+        if (StringUtils.isEmpty(indexName)) {
+            if (StringUtils.isNotEmpty(key)) {
+                if (HASH_PATTERN.matcher(key).matches()) {
+                    indexName = CommonTools.indexName4hash(key);
+                } else {
+                    indexName = CommonTools.indexName(INDEX_NAME_DEFAULT);
+                }
+            } else {
+                indexName = CommonTools.indexName(INDEX_NAME_DEFAULT);
+            }
+        } else {
+            indexName = CommonTools.indexName(indexName);
+        }
+        return getForceIndex(dbName, indexName, degree, key);
     }
 
     /// 获取文档列表
@@ -742,7 +791,7 @@ public class DB {
                         Doc doc = new Doc(bytes);
                         docGetResponseVOList.add(new DocGetResponseVO(doc));
                     } catch (JsonParseException e) {
-                        log.warn("db get JsonParseException: {}", e.getMessage());
+                        log.warn("untrace db get JsonParseException: {}", e.getMessage());
                     }
                 }
             });
@@ -763,7 +812,7 @@ public class DB {
                     Doc doc = new Doc(bytes);
                     docGetResponseVOList.add(new DocGetResponseVO(doc));
                 } catch (JsonParseException e) {
-                    log.warn("db get JsonParseException: {}", e.getMessage());
+                    log.warn("untrace db get JsonParseException: {}", e.getMessage());
                 }
             }
         });
@@ -806,7 +855,7 @@ public class DB {
     ///
     /// @throws IOException 异常
     public List<DocSearchResponseVO> search(String dbName, String indexName, String query, int callbackCount) throws IOException {
-        return search(dbName, query, new Search(StringUtils.isEmpty(indexName) ? null : CommonTools.indexName(indexName).toLowerCase(), callbackCount));
+        return search(dbName, query, new Search(StringUtils.isEmpty(indexName) ? null : CommonTools.indexName(indexName), callbackCount));
     }
 
     /// 搜索文档
@@ -824,17 +873,29 @@ public class DB {
         if (segIndex == null) {
             throw new NoSuchFileException("数据库实例不存在");
         }
-        List<String> indexNameList;
-        if (segIndex.seg.equals("ik")) {
-            indexNameList = IkTokenizerTools.seg(query);
-        } else {
-            indexNameList = HanlpTools.seg(query);
-        }
+        List<String> indexNameList = new ArrayList<>();
         if (HASH_PATTERN.matcher(query).matches()) {
-            indexNameList.add(CommonTools.indexName4dhash(query));
+            indexNameList.add(CommonTools.indexName4hash(query));
+        } else {
+            if (segIndex.seg.equals("ik")) {
+                indexNameList.addAll(IkTokenizerTools.seg(query));
+            } else {
+                indexNameList.addAll(HanlpTools.seg(query));
+            }
         }
         Map<String, DocSearchResponseVO> valueWithSegMap = new ConcurrentHashMap<>();
-        if (StringUtils.isEmpty(search.getIndexName())) {
+        if (StringUtils.isNotEmpty(search.getIndexName())) {
+            List<byte[]> bytesList = segIndex.index.select(new Search(search, search.getIndexName(), searchMaxCount, false, this::doFilter));
+            if (!CollectionUtils.isEmpty(bytesList)) {
+                bytesList.forEach(bytes -> {
+                    try {
+                        Doc doc = new Doc(bytes);
+                        DocSearchResponseVO valueWithSeg = new DocSearchResponseVO(doc);
+                        valueWithSegMap.put(valueWithSeg.getDigests(), valueWithSeg);
+                    } catch (JsonParseException ignore) {}
+                });
+            }
+        } else {
             // 外层循环并行虚拟线程
             try (ExecutorService parentExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
                 List<Future<?>> parentFutures = new ArrayList<>();
@@ -864,17 +925,6 @@ public class DB {
                         throw new RuntimeException(e);
                     }
                 }
-            }
-        } else {
-            List<byte[]> bytesList = segIndex.index.select(new Search(search, search.getIndexName(), searchMaxCount, false, this::doFilter));
-            if (!CollectionUtils.isEmpty(bytesList)) {
-                bytesList.forEach(bytes -> {
-                    try {
-                        Doc doc = new Doc(bytes);
-                        DocSearchResponseVO valueWithSeg = new DocSearchResponseVO(doc);
-                        valueWithSegMap.put(valueWithSeg.getDigests(), valueWithSeg);
-                    } catch (JsonParseException ignore) {}
-                });
             }
         }
         List<DocSearchResponseVO> docItems = Bm25Tools.rank(valueWithSegMap.values().stream().toList(), query, segIndex.seg);
@@ -1042,7 +1092,7 @@ public class DB {
     /// @throws IOException 异常
     public void remove(String dbName, String indexName, @Nullable Long degree, String key) throws IOException {
         dbName = StringUtils.isEmpty(dbName) ? DATABASE_NAME_DEFAULT : dbName;
-        indexName = CommonTools.indexName(StringUtils.isEmpty(indexName) ? INDEX_NAME_DEFAULT : indexName).toLowerCase();
+        indexName = CommonTools.indexName(StringUtils.isEmpty(indexName) ? INDEX_NAME_DEFAULT : indexName);
         degree = Objects.isNull(degree) ? KeyHashTools.toLongKey(key) : degree;
         Index index = getIndex(dbName);
         if (index == null) {

@@ -12,24 +12,22 @@
  * limitations under the License.
  */
 
-package cn.aberic.tangduo.sdk.log;
+package cn.aberic.tangduo.client;
 
-import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-/// 日志发送配置类，用于配置日志发送的参数
-@Data
-public class SenderConfig {
-    /// 日志服务器URL
-    private String serverUrl;
-    /// 应用名称
-    private String appName;
-    /// 应用密钥
-    private String appKey;
-    /// 批量大小，可配置项
-    private int batchSize = 20;
-    /// 刷新间隔，可配置项
-    private long flushInterval = 1000;
-    /// 捕获的日志级别
-    private String level = "INFO";
+@Slf4j
+@RestController
+@RequestMapping("")
+public class Controller {
+
+    /// 创建数据库
+    @GetMapping({"test"})
+    public String test() {
+        return "ok";
+    }
 
 }

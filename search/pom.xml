@@ -9,7 +9,7 @@
 
     <groupId>cn.aberic.tangduo</groupId>
     <artifactId>search</artifactId>
-    <name>search server</name>
+    <name>search</name>
     <packaging>jar</packaging>
 
     <properties>

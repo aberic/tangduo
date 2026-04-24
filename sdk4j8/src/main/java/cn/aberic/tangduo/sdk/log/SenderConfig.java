@@ -25,5 +25,11 @@ public class SenderConfig {
     private String appName;
     /// 应用密钥
     private String appKey;
+    /// 批量大小，可配置项
+    private int batchSize = 20;
+    /// 刷新间隔，可配置项
+    private long flushInterval = 1000;
+    /// 捕获的日志级别
+    private String level = "INFO";
 
 }

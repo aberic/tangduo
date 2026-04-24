@@ -9,7 +9,6 @@
 
     <groupId>cn.aberic.tangduo</groupId>
     <artifactId>sdk4j21</artifactId>
-    <name>tangduo sdk4j21</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

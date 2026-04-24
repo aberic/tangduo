@@ -121,7 +121,7 @@ public class Leaf {
                 throw new UnexpectedException("解析bytes与Node所需尾默认值不匹配！");
             }
             String key = ByteTools.toString(ByteTools.read(keyBytesAndEndBytes, 0, keyLength));
-            if (key.equals(content.getKey(indexName))) {
+            if (key.equals(content.getKey(indexName)) && (childIndex.isPrimary() || childIndex.isUnique())) {
                 dataMateSeek = seek + 6;
             } else {
                 // 默认声明2字节、4字节数据文件版本号、8字节数据坐标、
@@ -268,8 +268,7 @@ public class Leaf {
             byte[] nextKeyPreBytes = Reader.read(indexFilepath, nextKeySeekTmp, 24);
             nextKeySeekBytes = ByteTools.read(nextKeyPreBytes, 0, 8);
             dataFileVersionBytes = ByteTools.read(nextKeyPreBytes, 8, 4);
-            dataSeekBytes = ByteTools.read(bytes, 12, 8); // 8字节数据坐标
-            dataSeek = ByteTools.toLong(dataSeekBytes);
+            dataSeek = ByteTools.toLong(ByteTools.read(nextKeyPreBytes, 12, 8));
             if (dataSeek > 0) {
                 String dataFilepath = Common.dataFilepath(rootPath, ByteTools.toInt(dataFileVersionBytes)).toString(); // 数据文件地址，数据将写入该文件中
                 Datum datum = new Datum(dataFilepath, dataSeek);

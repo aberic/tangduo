@@ -130,9 +130,10 @@ public class DBTests {
         } catch (InstanceAlreadyExistsException e) {
             System.out.println(e.getMessage());
         }
-        indexName = CommonTools.indexName(indexName);
         DocPutResponseVO putVO = db.put(dbName, indexName, "-64424581328", false, 1);
-        int value = (int) db.getFirst(dbName, indexName, putVO.getDegree(), "-64424581328").getValue();
+        DocGetResponseVO vo = db.getFirst(dbName, indexName, putVO.getDegree(), "-64424581328");
+        Object obj = vo.getValue();
+        int value = (int) obj;
         assert 1 == value : value;
         putVO = db.put(dbName, indexName, "0", false, 1);
         value = (int) db.getFirst(dbName, indexName, putVO.getDegree(), "0").getValue();

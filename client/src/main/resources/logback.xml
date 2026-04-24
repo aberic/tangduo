@@ -2,7 +2,7 @@
 <configuration scan="true">
     <!--定义日志文件的存储地址 勿在 LogBack 的配置中使用相对路径-->
     <!-- 直接使用 Spring Boot 内置变量，不用自己读配置 -->
-    <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="search/tmp/log"/>
+    <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="client/tmp/log"/>
 
     <!-- 控制台输出 -->
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
@@ -21,9 +21,9 @@
         </filter>
         <append>true</append>
         <!-- 日志名称 -->
-        <file>${LOG_PATH}/search-debug.log</file>
+        <file>${LOG_PATH}/client-debug.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_PATH}/logs/search-debug.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${LOG_PATH}/logs/client-debug.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <!-- 日志文件过大会使的编辑器打开非常慢，因此设置日志最大50MB -->
             <maxFileSize>${LOG_MAX_FILE_SIZE:-100MB}</maxFileSize>
             <!-- 保存10天 -->
@@ -43,9 +43,9 @@
             <level>INFO</level>
         </filter>
         <append>true</append>
-        <file>${LOG_PATH}/search-info.log</file>
+        <file>${LOG_PATH}/client-info.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_PATH}/logs/search-info.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${LOG_PATH}/logs/client-info.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxFileSize>${LOG_MAX_FILE_SIZE:-100MB}</maxFileSize>
             <maxHistory>${LOG_MAX_HISTORY:-180}</maxHistory>
             <totalSizeCap>${LOG_TOTAL_SIZE_CAP:-10GB}</totalSizeCap>
@@ -62,9 +62,9 @@
             <onMismatch>DENY</onMismatch>
         </filter>
         <append>true</append>
-        <file>${LOG_PATH}/search-warn.log</file>
+        <file>${LOG_PATH}/client-warn.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_PATH}/logs/search-warn.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${LOG_PATH}/logs/client-warn.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxFileSize>${LOG_MAX_FILE_SIZE:-100MB}</maxFileSize>
             <maxHistory>${LOG_MAX_HISTORY:-180}</maxHistory>
             <totalSizeCap>${LOG_TOTAL_SIZE_CAP:-10GB}</totalSizeCap>
@@ -81,9 +81,9 @@
             <onMismatch>DENY</onMismatch>
         </filter>
         <append>true</append>
-        <file>${LOG_PATH}/search-error.log</file>
+        <file>${LOG_PATH}/client-error.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_PATH}/logs/search-error.%d{yyyy-MM-dd}.%i.log.zip</fileNamePattern>
+            <fileNamePattern>${LOG_PATH}/logs/client-error.%d{yyyy-MM-dd}.%i.log.zip</fileNamePattern>
             <maxFileSize>${LOG_MAX_FILE_SIZE:-100MB}</maxFileSize>
             <maxHistory>${LOG_MAX_HISTORY:-180}</maxHistory>
             <totalSizeCap>${LOG_TOTAL_SIZE_CAP:-10GB}</totalSizeCap>
@@ -93,16 +93,15 @@
         </encoder>
     </appender>
     <!-- 日志采集追加器 -->
-    <appender name="LOG_COLLECT" class="cn.aberic.tangduo.sdk.log.LogCollectAppender" factoryMethod="getInstance">
-        <!-- 业务项目在这里传入服务器地址 -->
-        <serverUrl>${LOG_TRACE_SERVER_URL:-http://127.0.0.1:19219/data/batch}</serverUrl>
+<!--    <appender name="LOG_COLLECT" class="cn.aberic.tangduo.sdk.log.LogCollectAppender" factoryMethod="getInstance">-->
+<!--        &lt;!&ndash; 业务项目在这里传入服务器地址 &ndash;&gt;-->
 <!--        <serverUrl>${LOG_TRACE_SERVER_URL:-http://47.95.115.130:19219/data/batch}</serverUrl>-->
-        <appName>${LOG_TRACE_SERVER_APP_NAME:-appName}</appName>
-        <appKey>${LOG_TRACE_SERVER_APP_KEY:-appKey}</appKey>
-        <batchSize>${LOG_TRACE_SERVER_BATCH_SIZE:-30}</batchSize>
-        <flushInterval>${LOG_TRACE_SERVER_FLUSH_INTERVAL:-1000}</flushInterval>
-        <level>${LOG_TRACE_SERVER_LEVEL:-INFO}</level>
-    </appender>
+<!--        <appName>${LOG_TRACE_SERVER_APP_NAME:-appName}</appName>-->
+<!--        <appKey>${LOG_TRACE_SERVER_APP_KEY:-appKey}</appKey>-->
+<!--        <batchSize>${LOG_TRACE_SERVER_BATCH_SIZE:-30}</batchSize>-->
+<!--        <flushInterval>${LOG_TRACE_SERVER_FLUSH_INTERVAL:-1000}</flushInterval>-->
+<!--        <level>${LOG_TRACE_SERVER_LEVEL:-INFO}</level>-->
+<!--    </appender>-->
 
     <!-- 过滤日志路径 -->
     <logger name="org.jboss.logging" level="OFF"/>
@@ -122,6 +121,6 @@
         <appender-ref ref="INFO"/>
         <appender-ref ref="WARN"/>
         <appender-ref ref="ERROR"/>
-        <appender-ref ref="LOG_COLLECT"/> <!-- 新增日志收集，互不影响 -->
+<!--        <appender-ref ref="LOG_COLLECT"/> &lt;!&ndash; 新增日志收集，互不影响 &ndash;&gt;-->
     </root>
 </configuration>

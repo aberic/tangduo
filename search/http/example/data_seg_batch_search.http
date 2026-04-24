@@ -200,3 +200,12 @@ Content-Type: application/json
   "database": "test",
   "query": "学习对人有哪些帮助？"
 }
+
+### search data
+GET /data/search HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "query": "星河璀璨注重清风入耳的表达"
+}

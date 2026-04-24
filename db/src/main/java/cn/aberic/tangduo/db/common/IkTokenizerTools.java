@@ -102,7 +102,7 @@ public final class IkTokenizerTools {
                 result.add(lex.getLexemeText().trim());
             }
         } catch (Exception e) {
-            log.warn(e.getMessage());
+            log.warn("untrace ik tokenize Exception: {}", e.getMessage());
         }
         return result;
     }

@@ -82,6 +82,7 @@ public class Index {
         this.rootPath = rootPath;
         this.dataFileMaxSize = dataFileMaxSize;
         this.batchMaxSize = batchMaxSize;
+        Channel.startWriteThread();
         init();
     }
 
@@ -233,7 +234,8 @@ public class Index {
                 throw new NoSuchElementException("索引" + content.getIndexName() + "实例不存在");
             }
         }
-        indexMap.get(content.getIndexName()).put(content);
+        IEngine engine = indexMap.get(content.getIndexName());
+        engine.put(engine, content.getIndexName(), content);
         content.getLock().lock();
         try {
             while (!content.getIsNotified().get()) {
@@ -354,7 +356,8 @@ public class Index {
             }
         }
         content.setTransaction(transaction);
-        indexMap.get(content.getIndexName()).put(content);
+        IEngine engine = indexMap.get(content.getIndexName());
+        engine.put(engine, content.getIndexName(), content);
 
         content.getLock().lock();
         try {
@@ -411,7 +414,8 @@ public class Index {
                 throw new RuntimeException(e);
             }
         }
-        indexMap.get(indexName).put(content);
+        IEngine engine = indexMap.get(indexName);
+        engine.put(engine, indexName, content);
 
         content.getLock(indexName).lock();
         try {
@@ -437,6 +441,21 @@ public class Index {
         List<byte[]> bytesList = get(indexName, degree, key);
         if (Objects.nonNull(bytesList) && !bytesList.isEmpty()) {
             return bytesList.getFirst();
+        }
+        return null;
+    }
+
+    /**
+     * Node获取数据data
+     *
+     * @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+     * @param degree    主键
+     * @param key       原始key
+     */
+    public byte[] getLast(String indexName, long degree, String key) throws IOException {
+        List<byte[]> bytesList = get(indexName, degree, key);
+        if (Objects.nonNull(bytesList) && !bytesList.isEmpty()) {
+            return bytesList.getLast();
         }
         return null;
     }
@@ -479,7 +498,7 @@ public class Index {
         if (indexMap.containsKey(indexName)) {
             return indexMap.get(indexName).select(search);
         } else {
-            log.info("select indexMap.get({}) is null", indexName);
+            log.info("untrace select indexMap.get({}) is null", indexName);
             return null;
         }
     }
@@ -494,7 +513,7 @@ public class Index {
         if (indexMap.containsKey(indexName)) {
             return indexMap.get(indexName).delete(search);
         } else {
-            log.info("delete indexMap.get({}) is null", indexName);
+            log.info("untrace delete indexMap.get({}) is null", indexName);
             return null;
         }
     }

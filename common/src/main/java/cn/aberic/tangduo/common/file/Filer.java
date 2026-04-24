@@ -96,7 +96,7 @@ public final class Filer {
                         } catch (IOException ignored) {}
                     });
         } catch (SecurityException | IOException e) {
-            log.error("deleteDirectory error! e: {}", e.getMessage());
+            log.error("untrace deleteDirectory error! e: {}", e.getMessage());
         }
     }
 

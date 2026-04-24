@@ -19,22 +19,23 @@ import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /// 事务，用于存储每条完整命令的写入计划，待验证完成后一次执行，或全部失败，或全部成功
 @Slf4j
 @Data
 public class Transaction {
 
-    final AtomicLong atomicLong = new AtomicLong(0);
+    static final AtomicLong atomicLong = new AtomicLong(0);
     /// 事务号，长整型自增
     long number;
     /// 待执行任务集合
-    Map<String, List<Task>> taskListMap = new HashMap<>();
+    Map<String, List<Task>> taskListMap = new ConcurrentHashMap<>();
+    Lock lock = new ReentrantLock();
 
     public Transaction() {
         this.number = atomicLong.addAndGet(1);
@@ -46,12 +47,24 @@ public class Transaction {
 
     public void addTask(Task task) {
         if (taskListMap.containsKey(task.filepath)) {
-            taskListMap.get(task.filepath).add(task);
-        } else {
-            List<Task> tasks = new ArrayList<>();
-            tasks.add(task);
-            taskListMap.put(task.filepath, tasks);
+            if (Objects.nonNull(taskListMap.get(task.filepath))) {
+                taskListMap.get(task.filepath).add(task);
+                return;
+            }
         }
+        lock.lock();
+        try {
+            if (Objects.nonNull(taskListMap.get(task.filepath))) {
+                taskListMap.get(task.filepath).add(task);
+            } else {
+                List<Task> tasks = new ArrayList<>();
+                tasks.add(task);
+                taskListMap.put(task.filepath, tasks);
+            }
+        } finally {
+            lock.unlock();
+        }
+
     }
 
     public void addTask(String filepath, long seek, byte[] dataNew, byte[] dataOrigin) {
@@ -73,7 +86,7 @@ public class Transaction {
                     Channel.write(filepathListEntry.getKey(), task.seek, task.dataNew);
                     successTaskList.add(task);
                 } catch (IOException e) {
-                    log.warn("transaction-{} execute write error, rollback all task!", number);
+                    log.warn("untrace transaction-{} execute write error, rollback all task!", number);
                     rollback = true;
                     break;
                 }
@@ -85,7 +98,7 @@ public class Transaction {
                     try {
                         Channel.write(filepathListEntry.getKey(), task.seek, task.dataOrigin);
                     } catch (IOException e) {
-                        log.warn("transaction-{} execute rollback write error!", number);
+                        log.warn("untrace transaction-{} execute rollback write error!", number);
                         break;
                     }
                 }
@@ -93,8 +106,8 @@ public class Transaction {
         }
     }
 
-        /// 任务
-        public static class Task {
+    /// 任务
+    public static class Task {
 
         // 入参开始
         /// 待写入内容的文件路径

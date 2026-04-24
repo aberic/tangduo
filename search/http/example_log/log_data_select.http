@@ -1,0 +1,47 @@
+# demo如下：
+#"value": {
+#        "createTime": "2026-04-20T16:08:56.500Z",
+#        "exception": null,
+#        "id": null,
+#        "level": "INFO",
+#        "loggerName": "cn.aberic.tangduo.search.cm.AutoIncludeScheduled",
+#        "message": "从多角度出发，细腻画面以治愈安心为核心，通过热血成长优化体验，伙伴羁绊进一步增强质感，兼顾群像鲜活立体。",
+#        "serverIp": "127.0.0.1",
+#        "threadName": "scheduling-1",
+#        "timestamp": 1776701336500,
+#        "traceId": "4ae6d26c014f468493e96fa2b8e365ef"
+#}
+
+### example_log search data
+GET /data/search HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "query": "为实现更好体验"
+}
+
+### get data kv object
+GET /data HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "key": "671ff36e3414486e836d34109e521c77"
+}
+
+### example_log select data
+GET /data/select HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "index": "traceId",
+  "conditions": [
+    {
+      "param": "traceId",
+      "compare": "EQ",
+      "compareValue": "671ff36e3414486e836d34109e521c77"
+    }
+  ]
+}

@@ -87,8 +87,8 @@ public final class CommonTools {
     /// @param value 值
     /// @return 索引名称
     /// @see #indexName(String, String, String)
-    public static String indexName4dhash(String value) {
-        return indexName(String.valueOf(value.length()), "datetime");
+    public static String indexName4hash(String value) {
+        return indexName(String.valueOf(value.length()), "key");
     }
 
     /// 生成索引名称
@@ -107,7 +107,7 @@ public final class CommonTools {
     /// @return 索引名称
     /// @see #indexName(String, String, String)
     public static String indexName(String schema, String indexName, String fieldName) {
-        return String.format("%s_%s_%s", schema, indexName, fieldName);
+        return String.format("%s_%s_%s", schema, indexName, fieldName).toLowerCase();
     }
 
 }

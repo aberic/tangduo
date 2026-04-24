@@ -69,7 +69,7 @@ public final class JsonTools {
         try {
             return OBJECT_MAPPER.readValue(json, clazz);
         } catch (Exception e) {
-            log.error("JSON反序列化失败，json: {}, clazz: {}", json, clazz.getName(), e);
+            log.error("untrace JSON反序列化失败，json: {}, clazz: {}", json, clazz.getName(), e);
             return null;
         }
     }
@@ -106,7 +106,7 @@ public final class JsonTools {
             }
             return OBJECT_MAPPER.valueToTree(obj);
         } catch (Exception e) {
-            log.error("Object转JsonNode失败", e);
+            log.error("untrace Object转JsonNode失败", e);
             return null;
         }
     }

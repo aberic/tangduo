@@ -96,13 +96,13 @@ public class IndexTests {
         Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
-        index.put(new Content(new Transaction(1), indexName, -64424581328L, "1", ByteTools.fromInt(1)));
+        index.put(new Content(new Transaction(), indexName, -64424581328L, "1", ByteTools.fromInt(1)));
         assert 1 == ByteTools.toInt(index.getFirst(indexName, -64424581328L, "1")) : ByteTools.toInt(index.getFirst(indexName, -64424581328L, "1"));
-        index.put(new Content(new Transaction(2), indexName, 0, "1", ByteTools.fromInt(1)));
+        index.put(new Content(new Transaction(), indexName, 0, "1", ByteTools.fromInt(1)));
         assert 1 == ByteTools.toInt(index.getFirst(indexName, 0, "1")) : ByteTools.toInt(index.getFirst(indexName, 0, "1"));
-        index.put(new Content(new Transaction(3), indexName, 1, "1", ByteTools.fromInt(1)));
-        assert 1 == ByteTools.toInt(index.getFirst(indexName, 1, "1")) : ByteTools.toInt(index.getFirst(indexName, 1, "1"));
-        index.put(new Content(new Transaction(4), indexName, 9223372036854775807L, "1", ByteTools.fromLong(9223372036854775807L)));
+        index.put(new Content(new Transaction(), indexName, 1, "1", ByteTools.fromInt(1)));
+        assert 1 == ByteTools.toInt(index.getLast(indexName, 1, "1")) : ByteTools.toInt(index.getLast(indexName, 1, "1"));
+        index.put(new Content(new Transaction(), indexName, 9223372036854775807L, "1", ByteTools.fromLong(9223372036854775807L)));
         assert 9223372036854775807L == ByteTools.toLong(index.getFirst(indexName, 9223372036854775807L, "1")) : ByteTools.toLong(index.getFirst(indexName, 9223372036854775807L, "1"));
     }
 
@@ -206,10 +206,10 @@ public class IndexTests {
         Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
-        index.put(new Content(new Transaction(1), indexName, 1, "1", ByteTools.fromInt(1)));
+        index.put(new Content(new Transaction(), indexName, 1, "1", ByteTools.fromInt(1)));
         assert 1 == ByteTools.toInt(index.getFirst(indexName, 1, "1")) : "1 !=" + ByteTools.toInt(index.getFirst(indexName, 1, "1"));
-        index.put(new Content(new Transaction(1), indexName, 1, "1", ByteTools.fromInt(2)));
-        assert 2 == ByteTools.toInt(index.getFirst(indexName, 1, "1")) : "2 !=" + ByteTools.toInt(index.getFirst(indexName, 1, "1"));
+        index.put(new Content(new Transaction(), indexName, 1, "1", ByteTools.fromInt(2)));
+        assert 2 == ByteTools.toInt(index.getLast(indexName, 1, "1")) : "2 !=" + ByteTools.toInt(index.getFirst(indexName, 1, "1"));
     }
 
     @Test

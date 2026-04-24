@@ -60,7 +60,7 @@ public class Unity extends IEngine {
     /// 索引详情：4个字节版本号、1个字节是否主键、1个字节是否唯一索引、1个字节是否允许为空、8个字节创建时间，总计15个字节，总计15个字节
     byte[] childIndexBytes;
     /// 1005个字节冗余
-    byte[] bakBytes = new byte[1005];
+    static byte[] bakBytes = new byte[1005];
     /// 节点默认收尾，值非默认即异常
     public static byte[] endBytes = {0x00, 0x7A};
 
@@ -74,7 +74,8 @@ public class Unity extends IEngine {
     long dataFileMaxSize;
 
     // 无锁队列，线程安全
-    private final LinkedBlockingQueue<Content> queue;
+    private static final LinkedBlockingQueue<IndexNameContent> queue = new LinkedBlockingQueue<>();
+    private static Thread putThread;
 
     /// 新建索引文件内容
     /// @param rootPath 数据根路径
@@ -99,8 +100,7 @@ public class Unity extends IEngine {
         // 2字节节点默认声明、4个字节版本号、1个字节是否主键、1个字节是否唯一索引、1个字节是否允许为空、8个字节创建时间、1005个字节冗余、2字节节点默认收尾
         byte[] dataBytes = ByteTools.join(startBytes, childIndexBytes, bakBytes, endBytes, new Node().toBytes());
         Channel.append(indexFilepath, dataBytes);
-        queue = new LinkedBlockingQueue<>();
-        startSetThread(indexName);
+        startSetThread();
     }
 
     /// 根据索引文件解析初始索引信息
@@ -115,19 +115,25 @@ public class Unity extends IEngine {
         // 4个字节版本号、1个字节是否主键、1个字节是否唯一索引、1个字节是否允许为空、8个字节创建时间、1005个字节冗余、2字节节点默认收尾
         childIndexBytes = Reader.read(indexFilepath, 2, 15);
         childIndex = new ChildIndex(childIndexBytes);
-        queue = new LinkedBlockingQueue<>();
-        startSetThread(indexName);
+        startSetThread();
     }
 
     /// 单线程真正写入磁盘（无竞争，最快）
-    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-    private void startSetThread(String indexName) {
-        new Thread(() -> {
+    private void startSetThread() {
+        // 避免重复启动线程
+        if (putThread != null && putThread.isAlive()) {
+            return;
+        }
+        log.info("untrace Unity startSetThread");
+        putThread = new Thread(() -> {
             try {
                 while (true) {
-                    Content content = queue.take(); // 阻塞取数据
-                    Path indexFilepath = getIndexFilepath(content.getDegree(indexName), indexName);
-                    put(content, indexName, indexFilepath.toString());
+                    IndexNameContent inc = queue.take(); // 阻塞取数据
+                    Unity unity = inc.unity;
+                    String indexName = inc.indexName;
+                    Content content = inc.content;
+                    Path indexFilepath = Common.unityIndexFilepath(unity.rootPath, indexName, getDegreeInterval(content.getDegree(indexName)));
+                    put(unity, content, indexName, indexFilepath.toString());
                     content.getLock(indexName).lock();
                     try {
                         content.getIsNotified(indexName).set(true);
@@ -137,13 +143,14 @@ public class Unity extends IEngine {
                     }
                 }
             } catch (InterruptedException e) {
-                log.error("Set Thread {} InterruptedException, {}", indexName, e.getMessage(), e);
+                log.error("untrace put Thread InterruptedException, {}", e.getMessage(), e);
             } catch (IOException e) {
-                log.error("Set Thread {} IOException, {}", indexName, e.getMessage(), e);
+                log.error("untrace put Thread IOException, {}", e.getMessage(), e);
             } catch (Exception e) {
-                log.error("Set Thread {} RuntimeException, {}", indexName, e.getMessage(), e);
+                log.error("untrace put Thread RuntimeException, {}", e.getMessage(), e);
             }
-        }, indexName).start();
+        }, "putThread");
+        putThread.start();
     }
 
     /// 重映射度
@@ -197,11 +204,10 @@ public class Unity extends IEngine {
         Channel.force(indexFilepath.toString());
     }
 
-    /// Node插入数据data<p>
-    /// @param content 数据内容
+    record IndexNameContent (Unity unity, String indexName, Content content){};
     @Override
-    public void put(Content content) {
-        queue.offer(content);
+    public void put(IEngine engine, String indexName, Content content) throws IOException {
+        queue.offer(new IndexNameContent((Unity) engine, indexName, content));
     }
 
     /// Node插入数据data<p>
@@ -219,14 +225,14 @@ public class Unity extends IEngine {
     /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
     /// @param indexFilepath 索引文件路径
     /// @throws Exception 数据写入磁盘过程中可能抛出的异常
-    public void put(Content content, String indexName, String indexFilepath) throws Exception {
+    public void put(Unity unity, Content content, String indexName, String indexFilepath) throws Exception {
         long degree = reDegree(content.getDegree(indexName));
         // 获取2层节点
         long nextPosition = Math.divideExact(degree, 16777216); // 度位置; degree=4294967056; nextPosition=255; 4294967296-4294967056=240
         long nextNodeMateSeek = ROOT_NODE_SEEK + 2 + nextPosition * 8; // 向下一节点的数据坐标值在索引文件中的起始偏移量
         if (!new File(indexFilepath).exists()) {
             log.trace("transactionId = {}, indexFilepath {} not found!", content.getTransaction().getNumber(), indexFilepath);
-            fillNodeLeaf(content, indexName, indexFilepath, degree, nextPosition, 4, nextNodeMateSeek);
+            fillNodeLeaf(unity, content, indexName, indexFilepath, degree, nextPosition, 4, nextNodeMateSeek);
             return;
         }
         // 获取根节点
@@ -234,7 +240,7 @@ public class Unity extends IEngine {
         // 获取2层节点
         long nextNodeSeek = ByteTools.toLong(ByteTools.read(node.getData(), nextPosition * 8, 8));
         if (nextNodeSeek <= 0) {
-            fillNodeLeaf(content, indexName, indexFilepath, degree, nextPosition, 3, nextNodeMateSeek);
+            fillNodeLeaf(unity, content, indexName, indexFilepath, degree, nextPosition, 3, nextNodeMateSeek);
             return;
         }
         // 2层节点在索引文件中的起始偏移量
@@ -245,7 +251,7 @@ public class Unity extends IEngine {
         nextNodeMateSeek = nextNode.getSeek() + 2 + nextPosition * 8; // 向下一节点的数据坐标值在索引文件中的起始偏移量
         nextNodeSeek = ByteTools.toLong(ByteTools.read(nextNode.getData(), nextPosition * 8, 8));
         if (nextNodeSeek <= 0) {
-            fillNodeLeaf(content, indexName, indexFilepath, degree, nextPosition, 2, nextNodeMateSeek);
+            fillNodeLeaf(unity, content, indexName, indexFilepath, degree, nextPosition, 2, nextNodeMateSeek);
             return;
         }
         // // 3层节点在索引文件中的起始偏移量
@@ -256,7 +262,7 @@ public class Unity extends IEngine {
         nextNodeMateSeek = nextNode.getSeek() + 2 + nextPosition * 8; // 向下一节点的数据坐标值在索引文件中的起始偏移量
         nextNodeSeek = ByteTools.toLong(ByteTools.read(nextNode.getData(), nextPosition * 8, 8));
         if (nextNodeSeek <= 0) {
-            fillNodeLeaf(content, indexName, indexFilepath, degree, nextPosition, 1, nextNodeMateSeek);
+            fillNodeLeaf(unity, content, indexName, indexFilepath, degree, nextPosition, 1, nextNodeMateSeek);
             return;
         }
         // 4层节点在索引文件中的起始偏移量
@@ -265,7 +271,7 @@ public class Unity extends IEngine {
         degree = degree - nextPosition * 256; // degree=65296-255*256=65296-65280=16
         nextPosition = Math.divideExact(degree, 1); // degree=16; nextPosition=16; 256-16=240
         long leafMateSeek = nextNode.getSeek() + 2 + nextPosition * 8; // 向下一节点的数据坐标值在索引文件中的起始偏移量
-        nextNode.put(content, childIndex, rootPath, indexName, nextPosition, leafMateSeek, dataFileVersion, dataFileMaxSize);
+        nextNode.put(content, unity.childIndex, unity.rootPath, indexName, nextPosition, leafMateSeek, unity.dataFileVersion, unity.dataFileMaxSize);
     }
 
     /// 填充节点叶子
@@ -277,43 +283,43 @@ public class Unity extends IEngine {
     /// @param nodeCount 节点数量
     /// @param nodeMateSeek 节点在索引文件中的起始偏移量
     /// @throws Exception 填充节点叶子过程中可能抛出的异常
-    private void fillNodeLeaf(Content content, String indexName, String indexFilepath, long degree, long nextPosition, int nodeCount, long nodeMateSeek) throws Exception {
+    private void fillNodeLeaf(Unity unity, Content content, String indexName, String indexFilepath, long degree, long nextPosition, int nodeCount, long nodeMateSeek) throws Exception {
         byte[] data; // 待写入字节数组
         Node node = new Node(); // 单个节点
         byte[] nodeBytes = node.toBytes(); // 单个节点的字节数组
-        Leaf leaf = new Leaf(childIndex, indexFilepath, -1); // 叶子节点
+        Leaf leaf = new Leaf(unity.childIndex, indexFilepath, -1); // 叶子节点
         switch (nodeCount) {
             case 1 -> {
                 data = ByteTools.join(nodeBytes);
                 long nodeSeek = Channel.append(indexFilepath, data);
                 Channel.write(indexFilepath, nodeMateSeek, ByteTools.fromLong(nodeSeek)); // 更新下一节点在本节点的持久化数据
                 long leafMateSeek = getLeafMateSeek(indexFilepath, degree, nextPosition, 256, nodeSeek);
-                leaf.put(content, rootPath, indexName, leafMateSeek, dataFileVersion, dataFileMaxSize);
+                leaf.put(content, unity.rootPath, indexName, leafMateSeek, unity.dataFileVersion, unity.dataFileMaxSize);
             }
             case 2 -> {
                 data = ByteTools.join(nodeBytes, nodeBytes);
                 long nodeSeek = Channel.append(indexFilepath, data);
                 Channel.write(indexFilepath, nodeMateSeek, ByteTools.fromLong(nodeSeek)); // 更新下一节点在本节点的持久化数据
                 long leafMateSeek = getLeafMateSeek(indexFilepath, degree, nextPosition, 65536, nodeSeek);
-                leaf.put(content, rootPath, indexName, leafMateSeek, dataFileVersion, dataFileMaxSize);
+                leaf.put(content, unity.rootPath, indexName, leafMateSeek, unity.dataFileVersion, unity.dataFileMaxSize);
             }
             case 3 -> {
                 data = ByteTools.join(nodeBytes, nodeBytes, nodeBytes);
                 long nodeSeek = Channel.append(indexFilepath, data);
                 Channel.write(indexFilepath, nodeMateSeek, ByteTools.fromLong(nodeSeek)); // 更新下一节点在本节点的持久化数据
                 long leafMateSeek = getLeafMateSeek(indexFilepath, degree, nextPosition, 16777216, nodeSeek);
-                leaf.put(content, rootPath, indexName, leafMateSeek, dataFileVersion, dataFileMaxSize);
+                leaf.put(content, unity.rootPath, indexName, leafMateSeek, unity.dataFileVersion, unity.dataFileMaxSize);
             }
             case 4 -> {
                 Filer.createFile(indexFilepath); // tmp/setAndGetBatch/unity/test/1_4294967296.1.idx
                 // 初始化元数据 + 创世节点 + 2层节点 + 3层节点 + 叶子节点
                 // 2字节节点默认声明、4个字节版本号、1个字节是否主键、1个字节是否唯一索引、1个字节是否允许为空、8个字节创建时间、1005个字节冗余、2字节节点默认收尾
-                data = ByteTools.join(startBytes, childIndexBytes, bakBytes, endBytes, nodeBytes, nodeBytes, nodeBytes, nodeBytes);
+                data = ByteTools.join(startBytes, unity.childIndexBytes, bakBytes, endBytes, nodeBytes, nodeBytes, nodeBytes, nodeBytes);
                 Channel.append(indexFilepath, data);
                 long nodeSeek = ROOT_NODE_SEEK + Node.NODE_LENGTH;
                 Channel.write(indexFilepath, nodeMateSeek, ByteTools.fromLong(nodeSeek)); // 更新下一节点在本节点的持久化数据
                 long leafMateSeek = getLeafMateSeek(indexFilepath, degree, nextPosition, 16777216, nodeSeek);
-                leaf.put(content, rootPath, indexName, leafMateSeek, dataFileVersion, dataFileMaxSize);
+                leaf.put(content, unity.rootPath, indexName, leafMateSeek, unity.dataFileVersion, unity.dataFileMaxSize);
             }
             default -> throw new UnexpectedException("nodeCount超出预期");
         }
@@ -377,6 +383,9 @@ public class Unity extends IEngine {
     /// @return 数据
     /// @throws IOException 从Node中获取/删除数据过程中可能抛出的异常
     public List<byte[]> getOrDelete(String indexFilepath, long degree, String key, boolean delete) throws IOException {
+        if (Files.notExists(Path.of(indexFilepath))) {
+            return new ArrayList<>();
+        }
         // 获取根节点
         Node node = new Node(indexFilepath, ROOT_NODE_SEEK, true);
         // 获取2层节点
@@ -454,7 +463,7 @@ public class Unity extends IEngine {
                     }))
                     .toList();
         } catch (IOException e) {
-            log.error("list File {} IOException, {}", search.getIndexName(), e.getMessage(), e);
+            log.error("untrace list File {} IOException, {}", search.getIndexName(), e.getMessage(), e);
             return new ArrayList<>();
         }
         List<byte[]> bytesList = new ArrayList<>();

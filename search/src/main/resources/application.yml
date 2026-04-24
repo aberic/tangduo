@@ -1,11 +1,13 @@
 #公共配置
 spring:
+  main:
+    allow-bean-definition-overriding: true
   security: # Actuator 安全登录账号
     user:
       name: tangduo
       password: tangduo
       roles: ACTUATOR
-  jackson:
+  Jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: GMT+8
   servlet:
@@ -32,7 +34,7 @@ management:
     web:
       # 暴露常用监控端点
       exposure:
-        include: health,info,metrics,beans,mappings,loggers,threaddump
+        include: health,info,metrics,beans,mappings,loggers,threaddump,threadpool
       # 访问路径 /actuator/xxx
       base-path: /actuator
   endpoint:

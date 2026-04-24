@@ -1,0 +1,52 @@
+#公共配置
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  Jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 3MB # 单个上传文件的最大值 这是tomcat容器限制 代码中的判断比这个阈值更小
+      max-request-size: 10MB # 上传文件总的最大值
+  profiles:
+    active: dev
+  application:
+    name: TangDuoClient
+
+logging:
+  file:
+    path: ${LOG_PATH:client/tmp/log}
+
+server:
+  port: ${PORT:22923}
+
+
+---
+#开发环境配置
+spring:
+  config:
+    activate:
+      on-profile: dev
+logging:
+  level:
+    root: ${LOG_LEVEL:DEBUG}
+---
+#测试环境配置
+spring:
+  config:
+    activate:
+      on-profile: test
+logging:
+  level:
+    root: ${LOG_LEVEL:DEBUG}
+---
+#生产环境配置
+spring:
+  config:
+    activate:
+      on-profile: prod
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}

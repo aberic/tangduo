@@ -32,6 +32,27 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Setter
 public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
 
+    public LogCollectAppender() {}
+
+    private static class Holder {
+        private static final LogCollectAppender INSTANCE = new LogCollectAppender();
+    }
+
+    public static LogCollectAppender getInstance() {
+        return Holder.INSTANCE;
+    }
+
+    /// 日志队列，用于存储待发送的日志事件
+    private final LinkedBlockingQueue<LogEntity> queue = new LinkedBlockingQueue<>(5000);
+    /// 发送配置
+    private final AtomicBoolean running = new AtomicBoolean(true);
+    /// 本地IP，用于发送日志时的服务器IP
+    private String localIp;
+    /// 待比较日志级别
+    private Level compareLevel;
+    /// 日志发送线程（实例级）
+    private Thread flushThread;
+
     /// 日志服务器地址，可配置项
     private String serverUrl;
     /// 应用名称，可配置项
@@ -42,35 +63,43 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
     private int batchSize = 20;
     /// 刷新间隔，可配置项
     private long flushInterval = 1000;
-
-    /// 日志队列，用于存储待发送的日志事件
-    private final LinkedBlockingQueue<LogEntity> queue = new LinkedBlockingQueue<>(5000);
-    /// 发送配置
-    private final AtomicBoolean running = new AtomicBoolean(true);
-    /// 本地IP，用于发送日志时的服务器IP
-    private String localIp;
+    /// 捕获的日志级别
+    private String level = "INFO";
     /// 发送配置
     private SenderConfig config;
 
-    public LogCollectAppender() {
-        this.localIp = getLocalIp();
-        startFlushThread();
+    static  {
+        // 仅初始化本地IP，不启动线程
+        try {
+            Holder.INSTANCE.localIp = InetAddress.getLocalHost().getHostAddress();
+        } catch (Exception e) {
+            Holder.INSTANCE.localIp = "unknown";
+        }
     }
 
     @Override
     public void start() {
         super.start();
         localIp = getLocalIp();
+        compareLevel = Level.toLevel(level);
         config = new SenderConfig();
         config.setServerUrl(serverUrl);
         config.setAppName(appName);
         config.setAppKey(appKey);
+        config.setBatchSize(batchSize);
+        config.setFlushInterval(flushInterval);
+        config.setLevel(level);
+
+        // 启动实例级的日志发送线程（仅在start()时启动）
+        running.set(true);
+        startFlushThread();
+        addInfo("日志采集Appender启动成功 - 单线程安全模式");
     }
 
     /// 获取本地IP
     ///
     /// @return 本地IP
-    private String getLocalIp() {
+    private static String getLocalIp() {
         try {
             return InetAddress.getLocalHost().getHostAddress();
         } catch (Exception e) {
@@ -84,11 +113,26 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
     @Override
     protected void append(ILoggingEvent event) {
         if (!isStarted() || !running.get()) return;
-        if (event.getLevel() == Level.DEBUG) return;
+        if (!event.getLevel().isGreaterOrEqual(compareLevel)) return;
+        // 禁止采集日志框架自身日志（防止递归死循环！）
+        String loggerName = event.getLoggerName();
+        if (loggerName.startsWith("org.slf4j")
+                || loggerName.startsWith("ch.qos.logback")
+                || loggerName.startsWith("cn.aberic.tangduo.sdk.log")
+                || loggerName.startsWith("cn.aberic.tangduo.common.http")) {
+            return;
+        }
+        String msg = event.getFormattedMessage();
+        if (msg.contains("untrace") || msg.contains("Failed to start thread")) return;
 
         try {
             LogEntity log = new LogEntity();
-            log.setTraceId(MDC.get("traceId"));
+            // 补充：无TraceId时自动生成
+            String traceId = MDC.get("traceId");
+            if (traceId == null || traceId.isEmpty()) {
+                traceId = MdcTraceTransfer.getOrGenerateTraceId();
+            }
+            log.setTraceId(traceId);
             log.setLevel(event.getLevel().toString());
             log.setMessage(event.getFormattedMessage());
             log.setThreadName(event.getThreadName());
@@ -134,7 +178,11 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
 
     /// 启动批量发送线程
     private void startFlushThread() {
-        Thread t = new Thread(() -> {
+        // 避免重复启动线程
+        if (flushThread != null && flushThread.isAlive()) {
+            return;
+        }
+        flushThread = new Thread(() -> {
             while (running.get()) {
                 try {
                     LogBatchSender.sendBatch(config, queue, batchSize);
@@ -142,14 +190,34 @@ public class LogCollectAppender extends UnsynchronizedAppenderBase<ILoggingEvent
                 } catch (Exception ignored) {}
             }
         }, "log-collect");
-        t.setDaemon(true);
-        t.start();
+        flushThread.setDaemon(true);
+        flushThread.start();
     }
 
     /// 停止批量发送线程
     @Override
     public void stop() {
+        if (!running.get()) {
+            return;
+        }
         running.set(false);
+        if (flushThread != null && flushThread.isAlive()) {
+            flushThread.interrupt(); // 中断线程（优雅停止）
+            try {
+                flushThread.join(1000); // 等待1秒，确保线程退出
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        // 发送剩余日志（关键：避免队列中日志丢失）
+        if (!queue.isEmpty()) {
+            try {
+                LogBatchSender.sendBatch(config, queue, queue.size());
+            } catch (Exception e) {
+                addError("发送剩余日志失败", e);
+            }
+        }
         super.stop();
+        addInfo("日志采集Appender已停止");
     }
 }

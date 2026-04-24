@@ -12,7 +12,7 @@
  * limitations under the License.
  */
 
-package cn.aberic.tangduo.search.cm;
+package cn.aberic.tangduo.client;
 
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;

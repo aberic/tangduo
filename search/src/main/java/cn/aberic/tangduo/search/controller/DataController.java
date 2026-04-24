@@ -58,8 +58,9 @@ public class DataController {
                 KeyHashTools.toLongKey(StringUtils.isEmpty(vo.getKey()) ? SHA256Tools.sha256(String.valueOf(vo.getValue())) : vo.getKey()),
                 SHA256Tools.sha256(String.valueOf(vo.getValue())));
         try {
+            DB db = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize);
             DocPutRequestVO requestVO = new DocPutRequestVO(vo.getDatabase(), vo.getIndex(), null, vo.getKey(), vo.isSeg(), vo.getValue());
-            return Response.success(DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).put(requestVO));
+            return Response.success(db.put(requestVO));
         } catch (Exception e) {
             return Response.failed(e);
         }
@@ -84,7 +85,8 @@ public class DataController {
     public Response getData(@RequestBody ReqGetDataVO vo) {
         log.debug("GET data 从 {}/{} 中读取数据，key={},degree={}", vo.getDatabase(), vo.getIndex(), vo.getKey(), KeyHashTools.toLongKey(vo.getKey()));
         try {
-            return Response.success(DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).get(vo.getDatabase(), vo.getIndex(), null, vo.getKey()));
+            DB db = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize);
+            return Response.success(db.get(vo.getDatabase(), vo.getIndex(), null, vo.getKey()));
         } catch (Exception e) {
             return Response.failed(e);
         }
@@ -95,7 +97,8 @@ public class DataController {
     public Response search(@RequestBody ReqSearchDataVO vo) {
         log.debug("SEARCH data 从 {}/{} 中search数据", vo.getDatabase(), vo.getIndex());
         try {
-            List<DocSearchResponseVO> list = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).search(vo.getDatabase(), vo.getQuery(), createSearch(vo, false));
+            DB db = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize);
+            List<DocSearchResponseVO> list = db.search(vo.getDatabase(), vo.getQuery(), createSearch(vo, false));
             return Response.success(list);
         } catch (Exception e) {
             return Response.failed(e);
@@ -107,7 +110,8 @@ public class DataController {
     public Response select(@RequestBody ReqSelectDataVO vo) {
         log.debug("SELECT data 从 {}/{} 中select数据", vo.getDatabase(), vo.getIndex());
         try {
-            List<DocSearchResponseVO> list = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).select(vo.getDatabase(), createSearch(vo, false));
+            DB db = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize);
+            List<DocSearchResponseVO> list = db.select(vo.getDatabase(), createSearch(vo, false));
             return Response.success(list);
         } catch (Exception e) {
             return Response.failed(e);
@@ -139,7 +143,8 @@ public class DataController {
     public Response removeData(@RequestBody ReqRemoveDataVO vo) {
         log.debug("DELETE data 从 {}/{} 中删除数据，key={},degree={}", vo.getDatabase(), vo.getIndex(), vo.getKey(), vo.getDegree());
         try {
-            DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).remove(vo.getDatabase(), vo.getIndex(), vo.getDegree(), vo.getKey());
+            DB db = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize);
+            db.remove(vo.getDatabase(), vo.getIndex(), vo.getDegree(), vo.getKey());
             return Response.success();
         } catch (Exception e) {
             return Response.failed(e);
@@ -151,7 +156,8 @@ public class DataController {
     public Response delete(@RequestBody ReqDeleteDataVO vo) {
         log.debug("DELETE data 从 {}/{} 中delete数据", vo.getDatabase(), vo.getIndex());
         try {
-            List<DocSearchResponseVO> list = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).delete(vo.getDatabase(), createSearch(vo, true));
+            DB db = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize);
+            List<DocSearchResponseVO> list = db.delete(vo.getDatabase(), createSearch(vo, true));
             return Response.success(list);
         } catch (Exception e) {
             return Response.failed(e);

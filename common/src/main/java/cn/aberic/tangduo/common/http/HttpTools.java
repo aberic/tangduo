@@ -16,12 +16,16 @@ package cn.aberic.tangduo.common.http;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /// HTTP 工具类
 @Slf4j
@@ -34,12 +38,27 @@ public final class HttpTools {
     /// HTTP 客户端
     private static final RestClient REST_CLIENT;
 
+    // 全局唯一、有界的线程池，用于 HTTP 请求
+    private static final ExecutorService HTTP_EXECUTOR = new ThreadPoolExecutor(
+            4,
+            8,
+            60L,
+            TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(200),
+            r -> new Thread(r, "http-client-" + r.hashCode()),
+            new ThreadPoolExecutor.CallerRunsPolicy()
+    );
+
     static {
         /// Java 21 原生 HttpClient，性能最好
-        HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(2))
+                .executor(HTTP_EXECUTOR) // 关键：给 HttpClient 绑定我们的有界线程池
+                .build();
 
-        /// HTTP 请求工厂
-        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
+        // 改用 SimpleClientHttpRequestFactory，它不会创建 SimpleAsyncTaskExecutor
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(2));
         factory.setReadTimeout(Duration.ofSeconds(5));
 
         /// HTTP 客户端
@@ -47,9 +66,12 @@ public final class HttpTools {
     }
 
     // ==================== GET ====================
+
     /// GET 请求
-    /// @param url 请求 URL
+    ///
+    /// @param url     请求 URL
     /// @param headers 请求头
+    ///
     /// @return 响应体
     public static String get(String url, Map<String, String> headers) {
         try {
@@ -59,22 +81,28 @@ public final class HttpTools {
                     .retrieve()
                     .body(String.class);
         } catch (Exception e) {
+            // log.error("untrace - {}", e.getMessage());
             return null;
         }
     }
 
     /// GET 请求
+    ///
     /// @param url 请求 URL
+    ///
     /// @return 响应体
     public static String get(String url) {
         return get(url, Map.of());
     }
 
     // ==================== POST JSON ====================
+
     /// PUT 请求
-    /// @param url 请求 URL
-    /// @param body 请求体
+    ///
+    /// @param url     请求 URL
+    /// @param body    请求体
     /// @param headers 请求头
+    ///
     /// @return 响应体
     public static String put(String url, Object body, Map<String, String> headers) {
         try {
@@ -86,14 +114,16 @@ public final class HttpTools {
                     .retrieve()
                     .body(String.class);
         } catch (Exception e) {
-            log.error(e.getMessage());
+            // log.error("untrace - {}", e.getMessage());
             return null;
         }
     }
 
     /// PUT 请求
-    /// @param url 请求 URL
+    ///
+    /// @param url  请求 URL
     /// @param body 请求体
+    ///
     /// @return 响应体
     public static String put(String url, Object body) {
         return put(url, body, Map.of());

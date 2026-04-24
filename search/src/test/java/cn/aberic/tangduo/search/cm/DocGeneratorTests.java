@@ -12,24 +12,22 @@
  * limitations under the License.
  */
 
-package cn.aberic.tangduo.sdk.log;
+package cn.aberic.tangduo.search.cm;
 
-import lombok.Data;
+import org.junit.jupiter.api.Test;
 
-/// 日志发送配置类，用于配置日志发送的参数
-@Data
-public class SenderConfig {
-    /// 日志服务器URL
-    private String serverUrl;
-    /// 应用名称
-    private String appName;
-    /// 应用密钥
-    private String appKey;
-    /// 批量大小，可配置项
-    private int batchSize = 20;
-    /// 刷新间隔，可配置项
-    private long flushInterval = 1000;
-    /// 捕获的日志级别
-    private String level = "INFO";
+import static cn.aberic.tangduo.search.cm.DocGenerator.generateDoc;
+
+public class DocGeneratorTests {
+
+    @Test
+    void generate() {
+        for (int i = 0; i < 10; i++) {
+            System.out.println("【文档 " + (i + 1) + "】");
+            System.out.println(generateDoc());
+            System.out.println("字数：" + generateDoc().length());
+            System.out.println("---------------------------------------");
+        }
+    }
 
 }
