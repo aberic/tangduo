@@ -8,7 +8,7 @@
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <layout class="ch.qos.logback.classic.PatternLayout">
             <Pattern>
-                %d{yyyy-MM-dd HH:mm:ss} [%thread] [traceId: %X{traceId}] %-5level %logger{36} - %msg%n
+                %d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n
             </Pattern>
         </layout>
     </appender>
@@ -33,7 +33,7 @@
         </rollingPolicy>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
             <!--格式化输出：%d表示日期，%thread表示线程名，%-5level：级别从左显示5个字符宽度%msg：日志消息，%n是换行符-->
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId: %X{traceId}] %-5level %logger{50} - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n</pattern>
         </encoder>
     </appender>
     <!-- 按时间、文件大小和log名称生成日志分类2 -->
@@ -51,7 +51,7 @@
             <totalSizeCap>${LOG_TOTAL_SIZE_CAP:-10GB}</totalSizeCap>
         </rollingPolicy>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId: %X{traceId}] %-5level %logger{50} - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n</pattern>
         </encoder>
     </appender>
     <!-- 按照每天生成日志文件分类3 -->
@@ -70,7 +70,7 @@
             <totalSizeCap>${LOG_TOTAL_SIZE_CAP:-10GB}</totalSizeCap>
         </rollingPolicy>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId: %X{traceId}] %-5level %logger{50} - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n</pattern>
         </encoder>
     </appender>
     <!-- 按照每天生成日志文件分类4 -->
@@ -89,19 +89,21 @@
             <totalSizeCap>${LOG_TOTAL_SIZE_CAP:-10GB}</totalSizeCap>
         </rollingPolicy>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId: %X{traceId}] %-5level %logger{50} - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n</pattern>
         </encoder>
     </appender>
-    <!-- 日志采集追加器 -->
-    <appender name="LOG_COLLECT" class="cn.aberic.tangduo.sdk.log.LogCollectAppender" factoryMethod="getInstance">
-        <!-- 业务项目在这里传入服务器地址 -->
-        <serverUrl>${LOG_TRACE_SERVER_URL:-http://127.0.0.1:19219/data/batch}</serverUrl>
-<!--        <serverUrl>${LOG_TRACE_SERVER_URL:-http://47.95.115.130:19219/data/batch}</serverUrl>-->
-        <appName>${LOG_TRACE_SERVER_APP_NAME:-appName}</appName>
-        <appKey>${LOG_TRACE_SERVER_APP_KEY:-appKey}</appKey>
-        <batchSize>${LOG_TRACE_SERVER_BATCH_SIZE:-30}</batchSize>
-        <flushInterval>${LOG_TRACE_SERVER_FLUSH_INTERVAL:-1000}</flushInterval>
-        <level>${LOG_TRACE_SERVER_LEVEL:-INFO}</level>
+    <appender name="ALL" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/client-all.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/logs/client-all.%d{yyyy-MM-dd}.%i.log.zip</fileNamePattern>
+            <maxFileSize>${LOG_MAX_FILE_SIZE:-100MB}</maxFileSize>
+            <maxHistory>${LOG_MAX_HISTORY:-180}</maxHistory>
+            <totalSizeCap>${LOG_TOTAL_SIZE_CAP:-10GB}</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId: %X{traceId:-N/A}] %-5level %logger{50} - %msg%n</pattern>
+        </encoder>
     </appender>
 
     <!-- 过滤日志路径 -->
@@ -122,6 +124,5 @@
         <appender-ref ref="INFO"/>
         <appender-ref ref="WARN"/>
         <appender-ref ref="ERROR"/>
-        <appender-ref ref="LOG_COLLECT"/> <!-- 新增日志收集，互不影响 -->
     </root>
 </configuration>

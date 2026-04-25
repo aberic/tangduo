@@ -14,6 +14,7 @@
 
 package cn.aberic.tangduo.client;
 
+import cn.aberic.tangduo.sdk.log.MdcTraceTransfer;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +22,9 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
@@ -38,6 +42,15 @@ public class AutoIncludeScheduled {
     // 防定时任务重复执行（核心：避免多次调用叠加创建线程）
     private final AtomicBoolean taskRunning = new AtomicBoolean(false);
 
+    ThreadPoolExecutor poolExecutor = new ThreadPoolExecutor(
+            32,
+            256,
+            60L,
+            TimeUnit.SECONDS,
+            new SynchronousQueue<>(),
+            new ThreadPoolExecutor.CallerRunsPolicy()
+    );
+
     /// initialDelay 项目启动后，等 3 秒再第一次执行。
     /// fixedDelay 上一次执行完之后，等 3 秒，再执行下一次。等上一次跑完再计时（安全、不会叠加）
     /// fixedRate：到点就执行，不管上一次完没完（可能并发堆积）
@@ -49,6 +62,7 @@ public class AutoIncludeScheduled {
         }
         try {
             if (profile.equals("dev")) {
+                MDC.clear();
                 log.info(DocGenerator.generateDoc());
                 traceCycle(10);
             }
@@ -58,9 +72,7 @@ public class AutoIncludeScheduled {
     }
 
     private void traceCycle(int times) {
-        String traceId = MDC.get("traceId");
-        Thread.startVirtualThread(() -> {
-            MDC.put("traceId", traceId);
+        poolExecutor.execute(MdcTraceTransfer.wrapRunnable(() -> {
             try {
                 if (times > 0) {
                     Thread.sleep(1000); // 虚拟线程里 sleep 几乎无开销
@@ -72,7 +84,7 @@ public class AutoIncludeScheduled {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-        });
+        }));
     }
 
 }

@@ -30,7 +30,6 @@ public class ScheduledTraceIdAspect {
     private static final String TRACE_ID = "traceId";
 
     // 拦截所有 @Scheduled 方法
-    /// @param joinPoint 连接点
     /// @return 连接点
     /// @throws Throwable 异常
     @Pointcut("@annotation(org.springframework.scheduling.annotation.Scheduled)")

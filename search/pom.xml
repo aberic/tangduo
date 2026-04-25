@@ -47,10 +47,6 @@
             <groupId>cn.aberic.tangduo</groupId>
             <artifactId>db</artifactId>
         </dependency>
-        <dependency>
-            <groupId>cn.aberic.tangduo</groupId>
-            <artifactId>sdk4j21</artifactId>
-        </dependency>
     </dependencies>
 
     <build>

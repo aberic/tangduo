@@ -15,6 +15,8 @@
 package cn.aberic.tangduo.client;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /** 定时生成 100 字左右随机文档（高词库 + 低相似度） */
 public class DocGenerator {
@@ -31,49 +33,74 @@ public class DocGenerator {
     );
 
     /// 科技类
-    private static final Map<String, List<String>> TECH = Map.of(
-            "arch",   Arrays.asList("微服务架构", "分布式体系", "云原生平台", "服务网格"),
-            "perf",   Arrays.asList("并发处理能力", "延迟优化策略", "吞吐量提升", "资源调度效率"),
-            "safe",   Arrays.asList("权限精细化管控", "数据脱敏加密", "访问安全审计", "风险智能识别"),
-            "ops",    Arrays.asList("自动化运维", "监控告警体系", "弹性扩缩容", "故障自愈能力"),
-            "data",   Arrays.asList("分库分表", "读写分离", "增量同步", "冷热数据分层")
-    );
+    private static final Map<String, List<String>> TECH = Stream.of(
+            new AbstractMap.SimpleEntry<>("arch", Arrays.asList("微服务架构", "分布式体系", "云原生平台", "服务网格")),
+            new AbstractMap.SimpleEntry<>("perf", Arrays.asList("并发处理能力", "延迟优化策略", "吞吐量提升", "资源调度效率")),
+            new AbstractMap.SimpleEntry<>("safe", Arrays.asList("权限精细化管控", "数据脱敏加密", "访问安全审计", "风险智能识别")),
+            new AbstractMap.SimpleEntry<>("ops", Arrays.asList("自动化运维", "监控告警体系", "弹性扩缩容", "故障自愈能力")),
+            new AbstractMap.SimpleEntry<>("data", Arrays.asList("分库分表", "读写分离", "增量同步", "冷热数据分层"))
+    ).collect(Collectors.toMap(
+            Map.Entry::getKey,
+            Map.Entry::getValue,
+            // 解决key重复冲突（旧值覆盖/新值覆盖）
+            (oldValue, newValue) -> newValue
+    ));
 
     /// 人文地理
-    private static final Map<String, List<String>> GEO = Map.of(
-            "scene",  Arrays.asList("山川河谷", "古城街巷", "滨海湾岸", "林海梯田"),
-            "culture",Arrays.asList("民俗传承", "历史文脉", "乡土记忆", "非遗技艺"),
-            "season", Arrays.asList("春日花开", "夏日蝉鸣", "秋染层林", "冬雪覆山"),
-            "human",  Arrays.asList("炊烟村落", "古桥流水", "老街烟火", "庭院深深"),
-            "spirit", Arrays.asList("岁月沉淀", "山河壮阔", "人文温润", "烟火温情")
-    );
+    private static final Map<String, List<String>> GEO = Stream.of(
+            new AbstractMap.SimpleEntry<>("scene", Arrays.asList("山川河谷", "古城街巷", "滨海湾岸", "林海梯田")),
+            new AbstractMap.SimpleEntry<>("culture", Arrays.asList("民俗传承", "历史文脉", "乡土记忆", "非遗技艺")),
+            new AbstractMap.SimpleEntry<>("season", Arrays.asList("春日花开", "夏日蝉鸣", "秋染层林", "冬雪覆山")),
+            new AbstractMap.SimpleEntry<>("human", Arrays.asList("炊烟村落", "古桥流水", "老街烟火", "庭院深深")),
+            new AbstractMap.SimpleEntry<>("spirit", Arrays.asList("岁月沉淀", "山河壮阔", "人文温润", "烟火温情"))
+    ).collect(Collectors.toMap(
+            Map.Entry::getKey,
+            Map.Entry::getValue,
+            // 解决key重复冲突（旧值覆盖/新值覆盖）
+            (oldValue, newValue) -> newValue
+    ));
 
     /// 生活日常
-    private static final Map<String, List<String>> LIFE = Map.of(
-            "moment", Arrays.asList("清晨微光", "午后暖阳", "晚风轻拂", "静夜星空"),
-            "feel",   Arrays.asList("平和安宁", "温暖治愈", "松弛自在", "踏实心安"),
-            "act",    Arrays.asList("读书品茶", "散步闲谈", "静思观云", "下厨烟火"),
-            "people", Arrays.asList("家人闲坐", "好友相聚", "独处清欢", "邻里温情"),
-            "mood",   Arrays.asList("小确幸", "满足感", "温柔力量", "内心丰盈")
-    );
+    private static final Map<String, List<String>> LIFE = Stream.of(
+            new AbstractMap.SimpleEntry<>("moment", Arrays.asList("清晨微光", "午后暖阳", "晚风轻拂", "静夜星空")),
+            new AbstractMap.SimpleEntry<>("feel", Arrays.asList("平和安宁", "温暖治愈", "松弛自在", "踏实心安")),
+            new AbstractMap.SimpleEntry<>("act", Arrays.asList("读书品茶", "散步闲谈", "静思观云", "下厨烟火")),
+            new AbstractMap.SimpleEntry<>("people", Arrays.asList("家人闲坐", "好友相聚", "独处清欢", "邻里温情")),
+            new AbstractMap.SimpleEntry<>("mood", Arrays.asList("小确幸", "满足感", "温柔力量", "内心丰盈"))
+    ).collect(Collectors.toMap(
+            Map.Entry::getKey,
+            Map.Entry::getValue,
+            // 解决key重复冲突（旧值覆盖/新值覆盖）
+            (oldValue, newValue) -> newValue
+    ));
 
     /// 动漫随笔
-    private static final Map<String, List<String>> ANIME = Map.of(
-            "theme",  Arrays.asList("热血成长", "青春日常", "奇幻冒险", "温柔治愈"),
-            "spirit", Arrays.asList("勇气信念", "伙伴羁绊", "初心坚守", "梦想追逐"),
-            "scene",  Arrays.asList("经典名场面", "细腻画面", "动人配乐", "高光时刻"),
-            "role",   Arrays.asList("主角成长线", "配角温柔弧光", "群像鲜活立体", "反派复杂人性"),
-            "feeling",Arrays.asList("深刻共鸣", "热血沸腾", "治愈安心", "热泪盈眶")
-    );
+    private static final Map<String, List<String>> ANIME = Stream.of(
+            new AbstractMap.SimpleEntry<>("theme", Arrays.asList("热血成长", "青春日常", "奇幻冒险", "温柔治愈")),
+            new AbstractMap.SimpleEntry<>("spirit", Arrays.asList("勇气信念", "伙伴羁绊", "初心坚守", "梦想追逐")),
+            new AbstractMap.SimpleEntry<>("scene", Arrays.asList("经典名场面", "细腻画面", "动人配乐", "高光时刻")),
+            new AbstractMap.SimpleEntry<>("role", Arrays.asList("主角成长线", "配角温柔弧光", "群像鲜活立体", "反派复杂人性")),
+            new AbstractMap.SimpleEntry<>("feeling", Arrays.asList("深刻共鸣", "热血沸腾", "治愈安心", "热泪盈眶"))
+    ).collect(Collectors.toMap(
+            Map.Entry::getKey,
+            Map.Entry::getValue,
+            // 解决key重复冲突（旧值覆盖/新值覆盖）
+            (oldValue, newValue) -> newValue
+    ));
 
     /// 自然风景
-    private static final Map<String, List<String>> NATURE = Map.of(
-            "sky",    Arrays.asList("云海日出", "落日余晖", "星河璀璨", "霞光漫天"),
-            "land",   Arrays.asList("青山叠翠", "草原辽阔", "溪流潺潺", "海浪轻拍"),
-            "sound",  Arrays.asList("林间鸟鸣", "清风入耳", "溪水叮咚", "松涛阵阵"),
-            "atm",    Arrays.asList("清新湿润", "宁和悠远", "壮阔苍茫", "温柔静谧"),
-            "time",   Arrays.asList("清晨薄雾", "正午光影", "黄昏暮色", "静夜微凉")
-    );
+    private static final Map<String, List<String>> NATURE = Stream.of(
+            new AbstractMap.SimpleEntry<>("sky", Arrays.asList("云海日出", "落日余晖", "星河璀璨", "霞光漫天")),
+            new AbstractMap.SimpleEntry<>("land", Arrays.asList("青山叠翠", "草原辽阔", "溪流潺潺", "海浪轻拍")),
+            new AbstractMap.SimpleEntry<>("sound", Arrays.asList("林间鸟鸣", "清风入耳", "溪水叮咚", "松涛阵阵")),
+            new AbstractMap.SimpleEntry<>("atm", Arrays.asList("清新湿润", "宁和悠远", "壮阔苍茫", "温柔静谧")),
+            new AbstractMap.SimpleEntry<>("time", Arrays.asList("清晨薄雾", "正午光影", "黄昏暮色", "静夜微凉"))
+    ).collect(Collectors.toMap(
+            Map.Entry::getKey,
+            Map.Entry::getValue,
+            // 解决key重复冲突（旧值覆盖/新值覆盖）
+            (oldValue, newValue) -> newValue
+    ));
 
     /// 动态句式库（真正无重复感）
     private static final List<String> PATTERNS = Arrays.asList(
@@ -87,13 +114,18 @@ public class DocGenerator {
 
     /// 终极生成入口
     public static String generateDoc() {
-        return switch (RANDOM.nextInt(5)) {
-            case 0 -> build(TECH);
-            case 1 -> build(GEO);
-            case 2 -> build(LIFE);
-            case 3 -> build(ANIME);
-            default -> build(NATURE);
-        };
+        switch (RANDOM.nextInt(5)) {
+            case 0:
+                return build(TECH);
+            case 1:
+                return build(GEO);
+            case 2:
+                return build(LIFE);
+            case 3:
+                return build(ANIME);
+            default:
+                return build(NATURE);
+        }
     }
 
     /// 智能构建逻辑

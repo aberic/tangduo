@@ -15,7 +15,9 @@
 package cn.aberic.tangduo.sdk.common;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class JsonTools {
 
     /// 全局单例
@@ -48,6 +50,7 @@ public class JsonTools {
         try {
             return OBJECT_MAPPER.writeValueAsString(obj);
         } catch (Exception e) {
+            log.error("untrace JsonTools toJson fail: {}", e.getMessage());
             return null;
         }
     }
@@ -57,6 +60,7 @@ public class JsonTools {
         try {
             return OBJECT_MAPPER.readValue(json, clazz);
         } catch (Exception e) {
+            log.error("untrace JsonTools toObj fail: {}", e.getMessage());
             return null;
         }
     }
