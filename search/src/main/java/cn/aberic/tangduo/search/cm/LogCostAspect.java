@@ -29,7 +29,6 @@ import org.springframework.stereotype.Component;
 public class LogCostAspect {
 
     /// 控制器方法切点
-    /// @param joinPoint 连接点
     /// @return 连接点
     /// @throws Throwable 异常
     @Pointcut("execution(* cn.aberic.tangduo.search.controller..*.*(..))")

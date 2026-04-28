@@ -16,7 +16,7 @@ package cn.aberic.tangduo.db;
 
 import cn.aberic.tangduo.common.JsonTools;
 import cn.aberic.tangduo.common.file.Filer;
-import cn.aberic.tangduo.db.entity.DocSearchResponseVO;
+import cn.aberic.tangduo.db.entity.DocSelectResponseVO;
 import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.entity.Search;
@@ -97,8 +97,8 @@ public class DBConditionTests {
 
         Search search = new Search(indexName, -50, 50, true, false, 100, true);
         search.addCondition("user.age", "ge", 15);
-        List<DocSearchResponseVO> bytesList = db.select(dbName, search);
-        for (DocSearchResponseVO bytes : bytesList) {
+        List<DocSelectResponseVO> bytesList = db.select(dbName, search);
+        for (DocSelectResponseVO bytes : bytesList) {
             System.out.println(bytes.getValue());
         }
 
@@ -108,7 +108,7 @@ public class DBConditionTests {
         search.addCondition("user.age", "ge", 20);
         search.addCondition("user.age", "lt", 30);
         bytesList = db.select(dbName, search);
-        for (DocSearchResponseVO bytes : bytesList) {
+        for (DocSelectResponseVO bytes : bytesList) {
             System.out.println(bytes.getValue());
         }
     }

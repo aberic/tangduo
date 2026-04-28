@@ -18,7 +18,7 @@ Host: {{host}}
 Content-Type: application/json
 
 {
-  "query": "为实现更好体验"
+  "query": "体验生活不容易"
 }
 
 ### get data kv object
@@ -27,7 +27,7 @@ Host: {{host}}
 Content-Type: application/json
 
 {
-  "key": "6eae1cd9723249ee8fe79ccc97febb83"
+  "key": "5e7b40fa242047169c5de3bc77571fb3"
 }
 
 ### example_log select data
@@ -41,7 +41,7 @@ Content-Type: application/json
     {
       "param": "traceId",
       "compare": "EQ",
-      "compareValue": "671ff36e3414486e836d34109e521c77"
+      "compareValue": "5e7b40fa242047169c5de3bc77571fb3"
     }
   ]
 }

@@ -16,6 +16,7 @@ package cn.aberic.tangduo.search.controller;
 
 import cn.aberic.tangduo.common.http.Response;
 import cn.aberic.tangduo.db.DB;
+import cn.aberic.tangduo.search.cm.ChangeLog;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
@@ -27,7 +28,7 @@ public class DBController {
 
     /// 数据库根路径
     @Value("${custom.db.DB_ROOT_PATH}")
-    String rootpath;
+    String rootPath;
     /// 数据文件大小阈值，单位byte
     @Value("${custom.db.DB_DATA_FILE_MAX_SIZE}")
     long dataFileMaxSize;
@@ -43,7 +44,8 @@ public class DBController {
     public Response create(@PathVariable String dbName) {
         log.trace("CREATE db/{} 建库，库名：{}", dbName, dbName);
         try {
-            DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).createDB(dbName);
+            DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize).createDB(dbName);
+            ChangeLog.append(rootPath, "db/create", dbName);
             return Response.success();
         } catch (Exception e) {
             return Response.failed(e);
@@ -55,7 +57,7 @@ public class DBController {
     public Response list() {
         log.debug("LIST db 数据");
         try {
-            return Response.success(DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).dbList());
+            return Response.success(DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize).dbList());
         } catch (Exception e) {
             return Response.failed(e);
         }
@@ -66,7 +68,8 @@ public class DBController {
     public Response delete(@PathVariable String dbName) {
         log.trace("DELETE db/{} 删库，库名：{}", dbName, dbName);
         try {
-            DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).removeDB(dbName);
+            DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize).removeDB(dbName);
+            ChangeLog.append(rootPath, "db/delete", dbName);
             return Response.success();
         } catch (Exception e) {
             return Response.failed(e);

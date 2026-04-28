@@ -19,10 +19,9 @@ import cn.aberic.tangduo.common.http.Response;
 import cn.aberic.tangduo.db.DB;
 import cn.aberic.tangduo.db.common.CommonTools;
 import cn.aberic.tangduo.db.common.KeyHashTools;
-import cn.aberic.tangduo.db.entity.DocPutBatchRequestVO;
-import cn.aberic.tangduo.db.entity.DocPutRequestVO;
-import cn.aberic.tangduo.db.entity.DocSearchResponseVO;
+import cn.aberic.tangduo.db.entity.*;
 import cn.aberic.tangduo.index.engine.entity.Search;
+import cn.aberic.tangduo.search.cm.ChangeLog;
 import cn.aberic.tangduo.search.entity.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -39,7 +38,7 @@ public class DataController {
 
     /// 数据库根路径
     @Value("${custom.db.DB_ROOT_PATH}")
-    String rootpath;
+    String rootPath;
     /// 数据文件大小阈值，单位byte
     @Value("${custom.db.DB_DATA_FILE_MAX_SIZE}")
     long dataFileMaxSize;
@@ -58,9 +57,11 @@ public class DataController {
                 KeyHashTools.toLongKey(StringUtils.isEmpty(vo.getKey()) ? SHA256Tools.sha256(String.valueOf(vo.getValue())) : vo.getKey()),
                 SHA256Tools.sha256(String.valueOf(vo.getValue())));
         try {
-            DB db = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize);
+            DB db = DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize);
             DocPutRequestVO requestVO = new DocPutRequestVO(vo.getDatabase(), vo.getIndex(), null, vo.getKey(), vo.isSeg(), vo.getValue());
-            return Response.success(db.put(requestVO));
+            DocPutResponseVO responseVO = db.put(requestVO);
+            ChangeLog.append(rootPath, "data", vo);
+            return Response.success(responseVO);
         } catch (Exception e) {
             return Response.failed(e);
         }
@@ -73,8 +74,10 @@ public class DataController {
         List<DocPutBatchRequestVO> batchRequestVOS = new ArrayList<>();
         vo.getValues().forEach(value -> batchRequestVOS.add(new DocPutBatchRequestVO(value.getIndex(), value.getKey(), vo.isSeg(), value.getValue())));
         try {
-            DB db = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize);
-            return Response.success(db.put(vo.getDatabase(), batchRequestVOS));
+            DB db = DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize);
+            String res = db.put(vo.getDatabase(), batchRequestVOS);
+            ChangeLog.append(rootPath, "data/batch", vo);
+            return Response.success(res);
         } catch (Exception e) {
             return Response.failed(e);
         }
@@ -85,7 +88,7 @@ public class DataController {
     public Response getData(@RequestBody ReqGetDataVO vo) {
         log.debug("GET data 从 {}/{} 中读取数据，key={},degree={}", vo.getDatabase(), vo.getIndex(), vo.getKey(), KeyHashTools.toLongKey(vo.getKey()));
         try {
-            DB db = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize);
+            DB db = DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize);
             return Response.success(db.get(vo.getDatabase(), vo.getIndex(), null, vo.getKey()));
         } catch (Exception e) {
             return Response.failed(e);
@@ -97,7 +100,7 @@ public class DataController {
     public Response search(@RequestBody ReqSearchDataVO vo) {
         log.debug("SEARCH data 从 {}/{} 中search数据", vo.getDatabase(), vo.getIndex());
         try {
-            DB db = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize);
+            DB db = DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize);
             List<DocSearchResponseVO> list = db.search(vo.getDatabase(), vo.getQuery(), createSearch(vo, false));
             return Response.success(list);
         } catch (Exception e) {
@@ -110,8 +113,8 @@ public class DataController {
     public Response select(@RequestBody ReqSelectDataVO vo) {
         log.debug("SELECT data 从 {}/{} 中select数据", vo.getDatabase(), vo.getIndex());
         try {
-            DB db = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize);
-            List<DocSearchResponseVO> list = db.select(vo.getDatabase(), createSearch(vo, false));
+            DB db = DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize);
+            List<DocSelectResponseVO> list = db.select(vo.getDatabase(), createSearch(vo, false));
             return Response.success(list);
         } catch (Exception e) {
             return Response.failed(e);
@@ -143,8 +146,9 @@ public class DataController {
     public Response removeData(@RequestBody ReqRemoveDataVO vo) {
         log.debug("DELETE data 从 {}/{} 中删除数据，key={},degree={}", vo.getDatabase(), vo.getIndex(), vo.getKey(), vo.getDegree());
         try {
-            DB db = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize);
+            DB db = DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize);
             db.remove(vo.getDatabase(), vo.getIndex(), vo.getDegree(), vo.getKey());
+            ChangeLog.append(rootPath, "data/rm", vo);
             return Response.success();
         } catch (Exception e) {
             return Response.failed(e);
@@ -156,8 +160,9 @@ public class DataController {
     public Response delete(@RequestBody ReqDeleteDataVO vo) {
         log.debug("DELETE data 从 {}/{} 中delete数据", vo.getDatabase(), vo.getIndex());
         try {
-            DB db = DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize);
-            List<DocSearchResponseVO> list = db.delete(vo.getDatabase(), createSearch(vo, true));
+            DB db = DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize);
+            List<DocSelectResponseVO> list = db.delete(vo.getDatabase(), createSearch(vo, true));
+            ChangeLog.append(rootPath, "data/delete", vo);
             return Response.success(list);
         } catch (Exception e) {
             return Response.failed(e);

@@ -18,6 +18,7 @@ import cn.aberic.tangduo.common.http.Response;
 import cn.aberic.tangduo.db.DB;
 import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.IEngine;
+import cn.aberic.tangduo.search.cm.ChangeLog;
 import cn.aberic.tangduo.search.entity.ReqCreateIndexVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,7 +34,7 @@ public class IndexController {
 
     /// 数据库根路径
     @Value("${custom.db.DB_ROOT_PATH}")
-    String rootpath;
+    String rootPath;
     /// 数据文件大小阈值，单位byte
     @Value("${custom.db.DB_DATA_FILE_MAX_SIZE}")
     long dataFileMaxSize;
@@ -50,7 +51,8 @@ public class IndexController {
         log.trace("PUT index/{}/{} 建索引，库名：{}，索引名：{}", vo.getDatabase(), vo.getIndex(), vo.getDatabase(), vo.getIndex());
         try {
             Index.Info info = new Index.Info(vo.getVersion(), vo.getIndex(), vo.isPrimary(), vo.isUnique(), vo.isNullable());
-            DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).createIndex(vo.getDatabase(), IEngine.UNITY, info);
+            DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize).createIndex(vo.getDatabase(), IEngine.UNITY, info);
+            ChangeLog.append(rootPath, "index/create", vo);
             return Response.success();
         } catch (IOException | NoSuchFieldException | InstanceAlreadyExistsException | NoSuchMethodException e) {
             return Response.failed(e);
@@ -62,7 +64,7 @@ public class IndexController {
     public Response list(@PathVariable String dbName) {
         log.debug("LIST 库 {} 内 index 数据", dbName);
         try {
-            return Response.success(DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).indexList(dbName));
+            return Response.success(DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize).indexList(dbName));
         } catch (Exception e) {
             return Response.failed(e);
         }
@@ -73,7 +75,8 @@ public class IndexController {
     public Response delete(@PathVariable String dbName, @PathVariable String indexName) {
         log.trace("DELETE {}/{} 删索引，库名：{}，索引名：{}", dbName, indexName, dbName, indexName);
         try {
-            DB.getInstance(rootpath, dataFileMaxSize, searchMaxCount, batchMaxSize).removeIndex(dbName, indexName);
+            DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize).removeIndex(dbName, indexName);
+            ChangeLog.append(rootPath, "index/delete", dbName + "." + indexName);
             return Response.success();
         } catch (IOException | NoSuchFieldException | InstanceAlreadyExistsException | NoSuchMethodException e) {
             return Response.failed(e);

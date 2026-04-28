@@ -1026,19 +1026,19 @@ public class DB {
     /// @return 文档搜索响应VO列表
     ///
     /// @throws IOException 异常
-    public List<DocSearchResponseVO> select(String dbName, Search search) throws IOException {
-        List<DocSearchResponseVO> voList = new ArrayList<>();
+    public List<DocSelectResponseVO> select(String dbName, Search search) throws IOException {
+        List<DocSelectResponseVO> voList = new ArrayList<>();
         List<byte[]> bytesList = selectBytesList(dbName, search);
         if (!CollectionUtils.isEmpty(bytesList)) {
             bytesList.forEach(bytes -> {
                 try {
                     Doc doc = new Doc(bytes);
-                    DocSearchResponseVO valueWithSeg = new DocSearchResponseVO(doc);
+                    DocSelectResponseVO valueWithSeg = new DocSelectResponseVO(doc);
                     voList.add(valueWithSeg);
                 } catch (JsonParseException ignore) {}
             });
         }
-        return voList.stream().filter(distinctById(DocSearchResponseVO::getDigests)).collect(Collectors.toList()).subList(0, Math.min(search.getLimit(), voList.size()));
+        return voList.stream().filter(distinctById(DocSelectResponseVO::getDigests)).collect(Collectors.toList()).subList(0, Math.min(search.getLimit(), voList.size()));
     }
 
     /// 去重
@@ -1109,19 +1109,19 @@ public class DB {
     /// @return 文档搜索响应VO列表
     ///
     /// @throws IOException 异常
-    public List<DocSearchResponseVO> delete(String dbName, Search search) throws IOException {
-        List<DocSearchResponseVO> voList = new ArrayList<>();
+    public List<DocSelectResponseVO> delete(String dbName, Search search) throws IOException {
+        List<DocSelectResponseVO> voList = new ArrayList<>();
         List<byte[]> bytesList = deleteBytesList(dbName, search);
         if (!CollectionUtils.isEmpty(bytesList)) {
             bytesList.forEach(bytes -> {
                 try {
                     Doc doc = new Doc(bytes);
-                    DocSearchResponseVO valueWithSeg = new DocSearchResponseVO(doc);
+                    DocSelectResponseVO valueWithSeg = new DocSelectResponseVO(doc);
                     voList.add(valueWithSeg);
                 } catch (JsonParseException ignore) {}
             });
         }
-        return voList.stream().filter(distinctById(DocSearchResponseVO::getDigests)).collect(Collectors.toList()).subList(0, Math.min(search.getLimit(), voList.size()));
+        return voList.stream().filter(distinctById(DocSelectResponseVO::getDigests)).collect(Collectors.toList()).subList(0, Math.min(search.getLimit(), voList.size()));
     }
 
     /// 删除文档

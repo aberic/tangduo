@@ -462,7 +462,7 @@ public class DBTests {
         log.info("setAndGetTimes check over! wrongCount =  {}", wrongCount);
 
         Search search = new Search(indexName, -500, 500, true, true, 100, true);
-        List<DocSearchResponseVO> bytesList = db.select(dbName, search);
+        List<DocSelectResponseVO> bytesList = db.select(dbName, search);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             int value = (int) bytesList.get(i).getValue();
@@ -646,7 +646,7 @@ public class DBTests {
         log.info("setAndGetTimes check success!");
 
         Search search = new Search(CommonTools.indexName(indexName), -100, 100, false, false, 200, true);
-        List<DocSearchResponseVO> bytesList = db.delete(dbName, search);
+        List<DocSelectResponseVO> bytesList = db.delete(dbName, search);
         assert 199 == bytesList.size() : "199 != " + bytesList.size(); // (-99 —— 0) + (1 —— 99) = 199
         for (int i = 0; i < bytesList.size(); i++) {
             int value = (int) bytesList.get(i).getValue();
