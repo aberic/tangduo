@@ -23,7 +23,7 @@ import lombok.Data;
 public class DocPutBatchRequestVO {
 
     /// 索引名称
-    String index;
+    String indexName;
     /// 度数
     Long degree;
     /// 键值
@@ -34,22 +34,24 @@ public class DocPutBatchRequestVO {
     Object value;
 
     /// 文档批量插入请求VO
-    /// @param index 索引名称
-    /// @param key 键值
-    /// @param value 值
-    public DocPutBatchRequestVO(String index, String key, Object value) {
-        this.index = index;
+    ///
+    /// @param indexName 索引名称
+    /// @param key       键值
+    /// @param value     值
+    public DocPutBatchRequestVO(String indexName, String key, Object value) {
+        this.indexName = indexName;
         this.key = key;
         this.value = value;
     }
 
     /// 文档批量插入请求VO
-    /// @param index 索引名称
-    /// @param key 键值
-    /// @param seg 是否分片
-    /// @param value 值
-    public DocPutBatchRequestVO(String index, String key, boolean seg, Object value) {
-        this.index = index;
+    ///
+    /// @param indexName 索引名称
+    /// @param key       键值
+    /// @param seg       是否分片
+    /// @param value     值
+    public DocPutBatchRequestVO(String indexName, String key, boolean seg, Object value) {
+        this.indexName = indexName;
         this.key = key;
         this.seg = seg;
         this.value = value;

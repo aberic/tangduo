@@ -26,6 +26,7 @@ import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.Transaction;
 import cn.aberic.tangduo.index.engine.entity.Condition;
 import cn.aberic.tangduo.index.engine.entity.Content;
+import cn.aberic.tangduo.index.engine.entity.Hit;
 import cn.aberic.tangduo.index.engine.entity.Search;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -385,8 +386,8 @@ public class DB {
     ///
     /// @throws IOException 异常
     public DocPutResponseVO put(@Nonnull DocPutRequestVO vo) throws IOException {
-        String dbName = StringUtils.isEmpty(vo.getDatabase()) ? DATABASE_NAME_DEFAULT : vo.getDatabase();
-        String indexName = CommonTools.indexName(StringUtils.isEmpty(vo.getIndex()) ? INDEX_NAME_DEFAULT : vo.getIndex());
+        String dbName = StringUtils.isEmpty(vo.getDbName()) ? DATABASE_NAME_DEFAULT : vo.getDbName();
+        String indexName = CommonTools.indexName(StringUtils.isEmpty(vo.getIndexName()) ? INDEX_NAME_DEFAULT : vo.getIndexName());
         String key = StringUtils.isEmpty(vo.getKey()) ? UUID.randomUUID().toString() : vo.getKey();
         long degree = Objects.isNull(vo.getDegree()) ? KeyHashTools.toLongKey(key) : vo.getDegree();
         Doc doc = new Doc(dbName, indexName, key, degree, vo.getValue());
@@ -505,7 +506,7 @@ public class DB {
         Index baseIndex = null;
         for (DocPutBatchRequestVO batchRequestVO : batchRequestVOS) {
             String dbName = StringUtils.isEmpty(database) ? DATABASE_NAME_DEFAULT : database;
-            String indexName = CommonTools.indexName(StringUtils.isEmpty(batchRequestVO.getIndex()) ? INDEX_NAME_DEFAULT : batchRequestVO.getIndex());
+            String indexName = CommonTools.indexName(StringUtils.isEmpty(batchRequestVO.getIndexName()) ? INDEX_NAME_DEFAULT : batchRequestVO.getIndexName());
             String key = StringUtils.isEmpty(batchRequestVO.getKey()) ? UUID.randomUUID().toString() : batchRequestVO.getKey();
             long degree = Objects.isNull(batchRequestVO.getDegree()) ? KeyHashTools.toLongKey(key) : batchRequestVO.getDegree();
             Doc doc = new Doc(dbName, indexName, key, degree, batchRequestVO.getValue());
@@ -868,6 +869,8 @@ public class DB {
     ///
     /// @throws IOException 异常
     public List<DocSearchResponseVO> search(String dbName, String query, Search search) throws IOException {
+        search.setLimit(searchMaxCount);
+        search.setSearchFilter(this::doFilter);
         dbName = StringUtils.isEmpty(dbName) ? DATABASE_NAME_DEFAULT : dbName;
         SegIndex segIndex = dbMap.get(dbName);
         if (segIndex == null) {
@@ -884,46 +887,33 @@ public class DB {
             }
         }
         Map<String, DocSearchResponseVO> valueWithSegMap = new ConcurrentHashMap<>();
-        if (StringUtils.isNotEmpty(search.getIndexName())) {
-            List<byte[]> bytesList = segIndex.index.select(new Search(search, search.getIndexName(), searchMaxCount, false, this::doFilter));
-            if (!CollectionUtils.isEmpty(bytesList)) {
-                bytesList.forEach(bytes -> {
+        // 外层循环并行虚拟线程
+        try (ExecutorService parentExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<Future<?>> parentFutures = new ArrayList<>();
+            for (String idxName : indexNameList) {
+                Future<?> parentFuture = parentExecutor.submit(() -> {
                     try {
-                        Doc doc = new Doc(bytes);
-                        DocSearchResponseVO valueWithSeg = new DocSearchResponseVO(doc);
-                        valueWithSegMap.put(valueWithSeg.getDigests(), valueWithSeg);
-                    } catch (JsonParseException ignore) {}
+                        List<byte[]> bytesList = segIndex.index.select(new Search(search, idxName, false));
+                        if (!CollectionUtils.isEmpty(bytesList)) {
+                            bytesList.forEach(bytes -> {
+                                try {
+                                    Doc doc = new Doc(bytes);
+                                    DocSearchResponseVO valueWithSeg = new DocSearchResponseVO(doc);
+                                    valueWithSegMap.put(valueWithSeg.getDigests(), valueWithSeg);
+                                } catch (JsonParseException ignore) {}
+                            });
+                        }
+                    } catch (IOException ignored) {}
                 });
+                parentFutures.add(parentFuture);
             }
-        } else {
-            // 外层循环并行虚拟线程
-            try (ExecutorService parentExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
-                List<Future<?>> parentFutures = new ArrayList<>();
-                for (String idxName : indexNameList) {
-                    Future<?> parentFuture = parentExecutor.submit(() -> {
-                        try {
-                            List<byte[]> bytesList = segIndex.index.select(new Search(search, idxName, searchMaxCount, false, this::doFilter));
-                            if (!CollectionUtils.isEmpty(bytesList)) {
-                                bytesList.forEach(bytes -> {
-                                    try {
-                                        Doc doc = new Doc(bytes);
-                                        DocSearchResponseVO valueWithSeg = new DocSearchResponseVO(doc);
-                                        valueWithSegMap.put(valueWithSeg.getDigests(), valueWithSeg);
-                                    } catch (JsonParseException ignore) {}
-                                });
-                            }
-                        } catch (IOException ignored) {}
-                    });
-                    parentFutures.add(parentFuture);
-                }
-                // 统一等待所有任务，处理异常
-                for (Future<?> future : parentFutures) {
-                    try {
-                        future.get();
-                    } catch (InterruptedException | ExecutionException e) {
-                        Thread.currentThread().interrupt();
-                        throw new RuntimeException(e);
-                    }
+            // 统一等待所有任务，处理异常
+            for (Future<?> future : parentFutures) {
+                try {
+                    future.get();
+                } catch (InterruptedException | ExecutionException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(e);
                 }
             }
         }
@@ -933,12 +923,12 @@ public class DB {
 
     /// 过滤文档
     ///
-    /// @param bytesList  文档字节数组列表
-    /// @param conditions 条件列表
+    /// @param bytesList 文档字节数组列表
+    /// @param hit       命中策略
     ///
     /// @return 过滤后的文档字节数组列表
-    private List<byte[]> doFilter(List<byte[]> bytesList, List<Condition> conditions) {
-        if (CollectionUtils.isEmpty(conditions)) {
+    private List<byte[]> doFilter(List<byte[]> bytesList, Hit hit) {
+        if (CollectionUtils.isEmpty(hit.getConditions())) {
             return bytesList;
         }
         return bytesList.stream().filter(bytes -> {
@@ -961,7 +951,7 @@ public class DB {
                     return false;
                 }
             }
-            for (Condition condition : conditions) {
+            for (Condition condition : hit.getConditions()) {
                 Object obj;
                 try {
                     obj = JsonTools.getValueByPath(JsonTools.toJson(docItem.getValue()), condition.getParam());

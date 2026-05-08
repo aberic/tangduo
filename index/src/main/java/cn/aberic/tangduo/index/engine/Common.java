@@ -29,9 +29,6 @@ public class Common {
         throw new IllegalStateException("Common class");
     }
 
-    /// 联合索引的索引文件和数据文件名默认前缀
-    public static final String UNITY_PATH = "unity";
-
     /**
      * 根据根路径获取记录索引和索引对应文件的文件路径，如"tmp/record.rd"
      *
@@ -51,7 +48,7 @@ public class Common {
      * @return 聚合索引 Path，如"tmp/unity/testIndex"
      */
     public static Path unityIndexFileParentPath(String rootPath, String indexName) {
-        return Path.of(rootPath, UNITY_PATH, indexName);
+        return Path.of(rootPath, indexName);
     }
 
     /**
@@ -62,7 +59,7 @@ public class Common {
      * @return 聚合索引 Path，如"tmp/unity/testIndex/1_4294967296.idx"
      */
     public static Path unityIndexFilepath(String rootPath, String indexName, String degreeInterval) {
-        return Path.of(rootPath, UNITY_PATH, indexName, degreeInterval + ".idx");
+        return Path.of(rootPath, indexName, degreeInterval + ".idx");
     }
 
     /**

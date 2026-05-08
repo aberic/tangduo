@@ -27,7 +27,7 @@ Host: {{host}}
 Content-Type: application/json
 
 {
-  "key": "5e7b40fa242047169c5de3bc77571fb3"
+  "key": "b5d286f11a114726aa7980a3fbdd97c8"
 }
 
 ### example_log select data
@@ -37,11 +37,13 @@ Content-Type: application/json
 
 {
   "index": "traceId",
-  "conditions": [
-    {
-      "param": "traceId",
-      "compare": "EQ",
-      "compareValue": "5e7b40fa242047169c5de3bc77571fb3"
-    }
-  ]
+  "hit": {
+    "conditions": [
+      {
+        "param": "traceId",
+        "compare": "EQ",
+        "compareValue": "b5d286f11a114726aa7980a3fbdd97c8"
+      }
+    ]
+  }
 }

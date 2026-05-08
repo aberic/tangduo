@@ -14,10 +14,11 @@
 
 package cn.aberic.tangduo.search.entity;
 
-import cn.aberic.tangduo.index.engine.entity.Condition;
+import cn.aberic.tangduo.db.common.CommonTools;
+import cn.aberic.tangduo.index.engine.entity.Hit;
+import cn.aberic.tangduo.index.engine.entity.Sort;
 import lombok.Data;
-
-import java.util.List;
+import org.apache.commons.lang3.StringUtils;
 
 /// 查询数据请求体
 @Data
@@ -27,19 +28,22 @@ public class ReqSelectDataVO {
     String database;
     /// 索引名（全名组合确保唯一性，如：库名+表名+索引名）
     String index;
-    /// 最小主键（-9223372036854775807 —— 9223372036854775808）
-    long degreeMin = Long.MIN_VALUE;
-    /// 最大主键（-9223372036854775807 —— 9223372036854775808）
-    long degreeMax = Long.MAX_VALUE;
-    /// 是否包含最小主键
-    boolean includeMin = true;
-    /// 是否包含最大主键
-    boolean includeMax = true;
     /// 限制返回数量
     Integer limit = 10;
-    /// 是否升序
-    boolean asc = true;
-    /// 查询条件
-    List<Condition> conditions;
+    /// 命中策略
+    Hit hit;
+
+    public Hit reHit() {
+        if (hit.sortNotNull()) {
+            if (StringUtils.isEmpty(hit.getSort().getParam())) {
+                hit.setSortIndexName(CommonTools.indexName(hit.getSort().getIndexName()));
+            } else {
+                hit.setSortIndexName(CommonTools.indexName(hit.getSort().getOriginIndexName()));
+            }
+        } else {
+            hit.setSort(new Sort(index));
+        }
+        return hit;
+    }
 
 }

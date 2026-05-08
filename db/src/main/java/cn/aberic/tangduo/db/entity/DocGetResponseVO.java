@@ -31,9 +31,9 @@ import java.util.List;
 public class DocGetResponseVO {
 
     /// 数据库名称
-    private String database;
+    private String dbName;
     /// 索引名称
-    private String index;
+    private String indexName;
     /// 索引键值
     private String key;
     /// 度数
@@ -50,6 +50,8 @@ public class DocGetResponseVO {
     /// @param doc 文档
     public DocGetResponseVO(Doc doc) {
         BeanUtils.copyProperties(doc, this);
+        dbName = doc.database;
+        indexName = doc.index;
         value = JsonTools.parseJsonNode(doc.value);
     }
 

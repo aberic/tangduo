@@ -16,6 +16,7 @@ package cn.aberic.tangduo.db;
 
 import cn.aberic.tangduo.common.JsonTools;
 import cn.aberic.tangduo.common.file.Filer;
+import cn.aberic.tangduo.db.common.CommonTools;
 import cn.aberic.tangduo.db.entity.DocSelectResponseVO;
 import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.IEngine;
@@ -27,12 +28,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import javax.management.InstanceAlreadyExistsException;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
-import java.util.stream.Stream;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
@@ -43,15 +40,7 @@ public class DBConditionTests {
     @Test
     @Order(1)
     void init() {
-        try (Stream<Path> stream = Files.walk(Paths.get(rootpath))) {
-            stream.forEach(f -> {
-                try {
-                    Files.delete(f);
-                } catch (IOException ignore) {}
-            });
-        } catch (IOException e) {
-            log.warn(e.getMessage());
-        }
+        Filer.deleteDirectory(Path.of(rootpath).toAbsolutePath().toString());
     }
 
     record User(String name, int age) {}
@@ -80,7 +69,6 @@ public class DBConditionTests {
     @Order(2)
     void putJsonListAndSelect() throws Exception {
         String dbName = "putJsonListAndSelectDB";
-        Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "putJsonListAndSelectIndex";
         DB db = DB.getInstance(rootpath, 10737418240L);
         db.removeDB(dbName);
@@ -88,23 +76,25 @@ public class DBConditionTests {
             db.createDB(dbName);
             db.createIndex(dbName, IEngine.UNITY, new Index.Info(1, indexName, true, true, false));
         } catch (InstanceAlreadyExistsException e) {
-            System.out.println(e.getMessage());
+            log.error(e.getMessage());
         }
 
         for (int i = 0; i < 1000; i++) {
             db.put(dbName, indexName, String.valueOf(i), false, role(i));
         }
 
-        Search search = new Search(indexName, -50, 50, true, false, 100, true);
+        String searchIndexName = CommonTools.indexName(indexName);
+        Search search = new Search(searchIndexName, -50, 50, true, false, 100, true);
         search.addCondition("user.age", "ge", 15);
         List<DocSelectResponseVO> bytesList = db.select(dbName, search);
         for (DocSelectResponseVO bytes : bytesList) {
-            System.out.println(bytes.getValue());
+            log.info("bytes.getValue() = {}", bytes.getValue());
         }
 
         System.out.println();
 
-        search = new Search(indexName);
+        search = new Search();
+        search.setIndexName(searchIndexName);
         search.addCondition("user.age", "ge", 20);
         search.addCondition("user.age", "lt", 30);
         bytesList = db.select(dbName, search);

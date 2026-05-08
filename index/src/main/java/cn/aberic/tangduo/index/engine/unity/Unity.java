@@ -78,15 +78,16 @@ public class Unity extends IEngine {
     private static Thread putThread;
 
     /// 新建索引文件内容
-    /// @param rootPath 数据根路径
-    /// @param degree   主键（-9223372036854775807 —— 9223372036854775808）
+    ///
+    /// @param rootPath        数据根路径
+    /// @param degree          主键（-9223372036854775807 —— 9223372036854775808）
     /// @param dataFileVersion 数据文件版本号，如 1，与索引版本号结合使用，如1.1，区分相同索引下的不同数据文件
     /// @param dataFileMaxSize 数据文件大小阈值，单位byte
-    /// @param version 索引版本号，如 1.1，区分相同索引下的不同数据文件
-    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-    /// @param primary 是否主键，如 true，区分主键索引和非主键索引
-    /// @param unique 是否唯一索引，如 true，区分唯一索引和非唯一索引
-    /// @param nullable 是否允许为空，如 true，区分允许为空和不允许为空
+    /// @param version         索引版本号，如 1.1，区分相同索引下的不同数据文件
+    /// @param indexName       索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param primary         是否主键，如 true，区分主键索引和非主键索引
+    /// @param unique          是否唯一索引，如 true，区分唯一索引和非唯一索引
+    /// @param nullable        是否允许为空，如 true，区分允许为空和不允许为空
     public Unity(String rootPath, long degree, int dataFileVersion, long dataFileMaxSize, int version, String indexName, boolean primary, boolean unique, boolean nullable) throws IOException {
         this.rootPath = rootPath;
         this.dataFileVersion = dataFileVersion;
@@ -104,8 +105,9 @@ public class Unity extends IEngine {
     }
 
     /// 根据索引文件解析初始索引信息
-    /// @param rootPath 数据根路径
-    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    ///
+    /// @param rootPath        数据根路径
+    /// @param indexName       索引名（全名组合确保唯一性，如：库名+表名+索引名）
     /// @param dataFileMaxSize 数据文件大小阈值，单位byte
     public Unity(String rootPath, String indexName, long dataFileMaxSize) throws IOException {
         this.rootPath = rootPath;
@@ -154,7 +156,9 @@ public class Unity extends IEngine {
     }
 
     /// 重映射度
+    ///
     /// @param degree 度
+    ///
     /// @return 重映射后的度
     private long reDegree(long degree) {
         if (degree >= DEGREE) {
@@ -204,7 +208,10 @@ public class Unity extends IEngine {
         Channel.force(indexFilepath.toString());
     }
 
-    record IndexNameContent (Unity unity, String indexName, Content content){};
+    record IndexNameContent(Unity unity, String indexName, Content content) {}
+
+    ;
+
     @Override
     public void put(IEngine engine, String indexName, Content content) throws IOException {
         queue.offer(new IndexNameContent((Unity) engine, indexName, content));
@@ -221,9 +228,11 @@ public class Unity extends IEngine {
     /// | 1…256 | … | 4294966940…4294967296       | 4层：16777216个节点，每个节点含256个数据坐标，总计4294967296个数据坐标<p>
     /// -------------------------------------------------------------------------------------------------------------------------------------<p>
     /// <p>
-    /// @param content 数据内容
-    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    ///
+    /// @param content       数据内容
+    /// @param indexName     索引名（全名组合确保唯一性，如：库名+表名+索引名）
     /// @param indexFilepath 索引文件路径
+    ///
     /// @throws Exception 数据写入磁盘过程中可能抛出的异常
     public void put(Unity unity, Content content, String indexName, String indexFilepath) throws Exception {
         long degree = reDegree(content.getDegree(indexName));
@@ -275,13 +284,15 @@ public class Unity extends IEngine {
     }
 
     /// 填充节点叶子
-    /// @param content 数据内容
-    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    ///
+    /// @param content       数据内容
+    /// @param indexName     索引名（全名组合确保唯一性，如：库名+表名+索引名）
     /// @param indexFilepath 索引文件路径
-    /// @param degree 度（数据坐标值的范围）
-    /// @param nextPosition 下一个节点的位置（数据坐标值的范围）
-    /// @param nodeCount 节点数量
-    /// @param nodeMateSeek 节点在索引文件中的起始偏移量
+    /// @param degree        度（数据坐标值的范围）
+    /// @param nextPosition  下一个节点的位置（数据坐标值的范围）
+    /// @param nodeCount     节点数量
+    /// @param nodeMateSeek  节点在索引文件中的起始偏移量
+    ///
     /// @throws Exception 填充节点叶子过程中可能抛出的异常
     private void fillNodeLeaf(Unity unity, Content content, String indexName, String indexFilepath, long degree, long nextPosition, int nodeCount, long nodeMateSeek) throws Exception {
         byte[] data; // 待写入字节数组
@@ -326,12 +337,15 @@ public class Unity extends IEngine {
     }
 
     /// 获取叶子节点在索引文件中的起始偏移量
+    ///
     /// @param indexFilepath 索引文件路径
-    /// @param degree 度（数据坐标值的范围）
-    /// @param nextPosition 下一个节点的位置（数据坐标值的范围）
-    /// @param nodeCount 节点数量
-    /// @param nodeSeek 节点在索引文件中的起始偏移量
+    /// @param degree        度（数据坐标值的范围）
+    /// @param nextPosition  下一个节点的位置（数据坐标值的范围）
+    /// @param nodeCount     节点数量
+    /// @param nodeSeek      节点在索引文件中的起始偏移量
+    ///
     /// @return 叶子节点在索引文件中的起始偏移量
+    ///
     /// @throws IOException 获取叶子节点在索引文件中的起始偏移量过程中可能抛出的异常
     private long getLeafMateSeek(String indexFilepath, long degree, long nextPosition, long nodeCount, long nodeSeek) throws IOException {
         degree = degree - nextPosition * nodeCount; // degree=4294967056-255*16777216=4294967056-4278190080=16776976
@@ -376,11 +390,14 @@ public class Unity extends IEngine {
     /// | 1…65536 | … | 18446744073709486080…18446744073709551616  | 4层：281474976710656个节点，每个节点含65536个数据坐标，总计18446744073709551616个数据坐标<p>
     /// -------------------------------------------------------------------------------------------------------------------------------------<p>
     /// <p>
+    ///
     /// @param indexFilepath 索引文件路径
-    /// @param degree 度（数据坐标值的范围）
-    /// @param key 原始key
-    /// @param delete 是否删除数据
+    /// @param degree        度（数据坐标值的范围）
+    /// @param key           原始key
+    /// @param delete        是否删除数据
+    ///
     /// @return 数据
+    ///
     /// @throws IOException 从Node中获取/删除数据过程中可能抛出的异常
     public List<byte[]> getOrDelete(String indexFilepath, long degree, String key, boolean delete) throws IOException {
         if (Files.notExists(Path.of(indexFilepath))) {
@@ -440,8 +457,11 @@ public class Unity extends IEngine {
     }
 
     /// 从Node中获取/删除数据
+    ///
     /// @param search 查询条件
+    ///
     /// @return 数据
+    ///
     /// @throws IOException 从Node中获取/删除数据过程中可能抛出的异常
     public List<byte[]> selectOrDelete(Search search) throws IOException {
         if (search.getDegreeMin() > search.getDegreeMax()) {
@@ -466,22 +486,40 @@ public class Unity extends IEngine {
             log.error("untrace list File {} IOException, {}", search.getIndexName(), e.getMessage(), e);
             return new ArrayList<>();
         }
+        Long afterDegree = search.sortAfterDegree(); // 100
         List<byte[]> bytesList = new ArrayList<>();
         if (search.isAsc()) { // 升序
             for (Path path : pathList) {
                 // 提取文件名（不含后缀）
                 String fileName = path.getFileName().toString();
-                // 0_4294967296 或 neg_9223371968135299072_9223371972430266367.idx
+                // 0_4294967296 或 neg_9223371968135299072_9223371972430266367
                 String baseName = fileName.substring(0, fileName.lastIndexOf("."));
                 String[] baseNameArr = baseName.split("_");
                 boolean baseNeg = baseNameArr[0].equals("neg");
-                long baseMin = baseNeg ? Long.parseLong(baseNameArr[1]) : Long.parseLong(baseNameArr[0]);
-                long baseMax = baseNeg ? Long.parseLong(baseNameArr[2]) : Long.parseLong(baseNameArr[1]);
+                long baseMin = baseNeg ? Long.parseLong(baseNameArr[1]) : Long.parseLong(baseNameArr[0]); // 0 / 9223371968135299072
+                long baseMax = baseNeg ? Long.parseLong(baseNameArr[2]) : Long.parseLong(baseNameArr[1]); // 4294967296 / 9223371972430266367
+                // 根据排序指定的下一检索指定度过滤文件，后续还要精准判断度值过滤
+                if (Objects.nonNull(afterDegree)) {
+                    if (baseNeg) { // 如果是负数文件
+                        if (afterDegree < 0) { // 如果下一检索指定度为负数
+                            long compareDegree = afterDegree + Long.MAX_VALUE; // 先变为正数
+                            if (compareDegree > baseMax) { // 当前为升序，如果下一检索指定度大于当前文件最大度，则跳过本文件
+                                continue;
+                            } // 否则遍历本文件
+                        } else { // 如果下一检索指定度为正数，当前为升序，跳过本文件
+                            continue;
+                        }
+                    } else { // 如果是正数文件
+                        if (afterDegree > baseMax) { // 当前为升序，如果下一检索指定度大于当前文件最大度，则跳过本文件
+                            continue;
+                        } // 否则遍历本文件
+                    }
+                }
                 List<byte[]> bytesListFromNode;
                 if (baseNeg) { // 负数文件
-                    bytesListFromNode = listNegative(search, path, baseMin, baseMax, true);
+                    bytesListFromNode = listNegative(search, path, baseMin, baseMax);
                 } else { // 正数文件
-                    bytesListFromNode = listPositive(search, path, baseMin, baseMax, true);
+                    bytesListFromNode = listPositive(search, path, baseMin, baseMax);
                 }
                 if (bytesList.size() + bytesListFromNode.size() < search.getLimit()) {
                     bytesList.addAll(bytesListFromNode);
@@ -498,17 +536,32 @@ public class Unity extends IEngine {
                 Path path = pathList.get(i);
                 // 提取文件名（不含后缀）
                 String fileName = path.getFileName().toString();
-                // 0_4294967296 或 neg_9223371968135299072_9223371972430266367.idx
+                // 0_4294967296 或 neg_9223371968135299072_9223371972430266367
                 String baseName = fileName.substring(0, fileName.lastIndexOf("."));
                 String[] baseNameArr = baseName.split("_");
                 boolean baseNeg = baseNameArr[0].equals("neg");
                 long baseMin = baseNeg ? Long.parseLong(baseNameArr[1]) : Long.parseLong(baseNameArr[0]);
                 long baseMax = baseNeg ? Long.parseLong(baseNameArr[2]) : Long.parseLong(baseNameArr[1]);
+                // 根据排序指定的下一检索指定度过滤文件，后续还要精准判断度值过滤
+                if (Objects.nonNull(afterDegree)) {
+                    if (baseNeg) { // 如果是负数文件
+                        if (afterDegree < 0) { // 如果下一检索指定度为负数
+                            long compareDegree = afterDegree + Long.MAX_VALUE; // 先变为正数
+                            if (compareDegree < baseMin) { // 当前为倒序，如果下一检索指定度小于当前文件最小度，则跳过本文件
+                                continue;
+                            } // 否则遍历本文件
+                        } // 如果下一检索指定度为正数，当前为倒序，遍历本文件
+                    } else { // 如果是正数文件
+                        if (afterDegree < baseMin) { // 当前为倒序，如果下一检索指定度小于当前文件最小度，则跳过本文件
+                            continue;
+                        } // 否则遍历本文件
+                    }
+                }
                 List<byte[]> bytesListFromNode;
                 if (baseNeg) { // 负数文件
-                    bytesListFromNode = listNegative(search, path, baseMin, baseMax, false);
+                    bytesListFromNode = listNegative(search, path, baseMin, baseMax);
                 } else { // 正数文件
-                    bytesListFromNode = listPositive(search, path, baseMin, baseMax, false);
+                    bytesListFromNode = listPositive(search, path, baseMin, baseMax);
                 }
                 if (bytesList.size() + bytesListFromNode.size() < search.getLimit()) {
                     bytesList.addAll(bytesListFromNode);
@@ -528,14 +581,16 @@ public class Unity extends IEngine {
     }
 
     /// 负数文件
-    /// @param search 查询条件
-    /// @param path 索引文件路径
+    ///
+    /// @param search  查询条件
+    /// @param path    索引文件路径
     /// @param baseMin 基础最小值（数据坐标值的范围）
     /// @param baseMax 基础最大值（数据坐标值的范围）
-    /// @param asc 是否升序
+    ///
     /// @return 数据
+    ///
     /// @throws IOException 负数文件过程中可能抛出的异常
-    private List<byte[]> listNegative(Search search, Path path, long baseMin, long baseMax, boolean asc) throws IOException {
+    private List<byte[]> listNegative(Search search, Path path, long baseMin, long baseMax) throws IOException {
         long degreeMin;
         long degreeMax;
         boolean includeMin = true;
@@ -580,21 +635,23 @@ public class Unity extends IEngine {
             }
         }
         Node node = new Node(path.toString(), ROOT_NODE_SEEK, true);
-        if (asc) {
+        if (search.isAsc()) {
             return listAsc(search, path.toString(), degreeMin, degreeMax, includeMin, includeMax, node, 16777216);
         }
         return listDesc(search, path.toString(), degreeMin, degreeMax, includeMin, includeMax, node, 16777216);
     }
 
     /// 正数文件
-    /// @param search 查询条件
-    /// @param path 索引文件路径
+    ///
+    /// @param search  查询条件
+    /// @param path    索引文件路径
     /// @param baseMin 基础最小值（数据坐标值的范围）
     /// @param baseMax 基础最大值（数据坐标值的范围）
-    /// @param asc 是否升序
+    ///
     /// @return 数据
+    ///
     /// @throws IOException 正数文件过程中可能抛出的异常
-    private List<byte[]> listPositive(Search search, Path path, long baseMin, long baseMax, boolean asc) throws IOException {
+    private List<byte[]> listPositive(Search search, Path path, long baseMin, long baseMax) throws IOException {
         long degreeMin;
         long degreeMax;
         boolean includeMin = true;
@@ -638,23 +695,26 @@ public class Unity extends IEngine {
             }
         }
         Node node = new Node(path.toString(), ROOT_NODE_SEEK, true);
-        if (asc) {
+        if (search.isAsc()) {
             return listAsc(search, path.toString(), degreeMin, degreeMax, includeMin, includeMax, node, 16777216);
         }
         return listDesc(search, path.toString(), degreeMin, degreeMax, includeMin, includeMax, node, 16777216);
     }
 
     /// 从Node中右遍历升序
-    /// @param search 查询条件
+    ///
+    /// @param search        查询条件
     /// @param indexFilepath 索引文件路径
-    /// @param degreeMin 主键（-9223372036854775807 —— 9223372036854775808）
-    /// @param includeMin 是否包含degreeMin
-    /// @param degreeMax 主键（-9223372036854775807 —— 9223372036854775808）
-    /// @param includeMax 是否包含degreeMax
-    /// @param node Node节点
-    /// @param nodeCount 节点数量
+    /// @param degreeMin     主键（-9223372036854775807 —— 9223372036854775808）
+    /// @param includeMin    是否包含degreeMin
+    /// @param degreeMax     主键（-9223372036854775807 —— 9223372036854775808）
+    /// @param includeMax    是否包含degreeMax
+    /// @param node          Node节点
+    /// @param nodeCount     节点数量
+    ///
     /// @return 数据
-    /// @throws IOException 从Node中右遍历升序过程中可能抛出的异常
+    ///
+    /// @throws IOException 从Node中右遍历升序过程中可能抛出的异常 todo degreeMin和degreeMax应该删掉，用afterDegree+limit，其余条件依据search里的condition判断即可
     public List<byte[]> listAsc(Search search, String indexFilepath, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, Node node, long nodeCount) throws IOException {
         List<byte[]> bytesList = new ArrayList<>();
         long nextPositionMin = Math.divideExact(degreeMin, nodeCount);
@@ -670,7 +730,7 @@ public class Unity extends IEngine {
                     continue;
                 }
                 if (Objects.nonNull(search.getSearchFilter())) {
-                    bytesListFromNode = search.getSearchFilter().filter(bytesListFromNode, search.getConditions());
+                    bytesListFromNode = search.getSearchFilter().filter(bytesListFromNode, search.getHit());
                 }
                 if (search.isDelete() && !CollectionUtils.isEmpty(bytesListFromNode)) {
                     long leafMateSeek = node.getSeek() + 2 + position * 8;
@@ -695,7 +755,7 @@ public class Unity extends IEngine {
                     List<byte[]> bytesListTmp = listAsc(search, indexFilepath, degreeMinTmp, degreeMaxTmp, includeMin, includeMax, nextNode, nodeCount / 256);
                     if (!bytesListTmp.isEmpty()) {
                         if (Objects.nonNull(search.getSearchFilter())) {
-                            bytesListTmp = search.getSearchFilter().filter(bytesListTmp, search.getConditions());
+                            bytesListTmp = search.getSearchFilter().filter(bytesListTmp, search.getHit());
                         }
                         if (bytesList.size() + bytesListTmp.size() < search.getLimit()) {
                             bytesList.addAll(bytesListTmp);
@@ -714,15 +774,18 @@ public class Unity extends IEngine {
     }
 
     /// 从Node中右遍历降序
-    /// @param search 查询条件
+    ///
+    /// @param search        查询条件
     /// @param indexFilepath 索引文件路径
-    /// @param degreeMin 主键（-9223372036854775807 —— 9223372036854775808）
-    /// @param includeMin 是否包含degreeMin
-    /// @param degreeMax 主键（-9223372036854775807 —— 9223372036854775808）
-    /// @param includeMax 是否包含degreeMax
-    /// @param node Node节点
-    /// @param nodeCount 节点数量
+    /// @param degreeMin     主键（-9223372036854775807 —— 9223372036854775808）
+    /// @param includeMin    是否包含degreeMin
+    /// @param degreeMax     主键（-9223372036854775807 —— 9223372036854775808）
+    /// @param includeMax    是否包含degreeMax
+    /// @param node          Node节点
+    /// @param nodeCount     节点数量
+    ///
     /// @return 数据
+    ///
     /// @throws IOException 从Node中右遍历降序过程中可能抛出的异常
     public List<byte[]> listDesc(Search search, String indexFilepath, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, Node node, long nodeCount) throws IOException {
         List<byte[]> bytesList = new ArrayList<>();
@@ -739,7 +802,7 @@ public class Unity extends IEngine {
                     continue;
                 }
                 if (Objects.nonNull(search.getSearchFilter())) {
-                    bytesListFromNode = search.getSearchFilter().filter(bytesListFromNode, search.getConditions());
+                    bytesListFromNode = search.getSearchFilter().filter(bytesListFromNode, search.getHit());
                 }
                 if (search.isDelete() && !CollectionUtils.isEmpty(bytesListFromNode)) {
                     long leafMateSeek = node.getSeek() + 2 + position * 8;
@@ -768,7 +831,7 @@ public class Unity extends IEngine {
                     List<byte[]> bytesListTmp = listDesc(search, indexFilepath, degreeMinTmp, degreeMaxTmp, includeMin, includeMax, nextNode, nodeCount / 256);
                     if (!bytesListTmp.isEmpty()) {
                         if (Objects.nonNull(search.getSearchFilter())) {
-                            bytesListTmp = search.getSearchFilter().filter(bytesListTmp, search.getConditions());
+                            bytesListTmp = search.getSearchFilter().filter(bytesListTmp, search.getHit());
                         }
                         if (bytesList.size() + bytesListTmp.size() < search.getLimit()) {
                             bytesList.addAll(bytesListTmp);
@@ -787,9 +850,12 @@ public class Unity extends IEngine {
     }
 
     /// 查找节点
+    ///
     /// @param indexFilepath 索引文件路径
-    /// @param nodeSeek 节点数据在索引文件中的起始偏移量
+    /// @param nodeSeek      节点数据在索引文件中的起始偏移量
+    ///
     /// @return 节点
+    ///
     /// @throws IOException 查找节点过程中可能抛出的异常
     private Node getNode(String indexFilepath, long nodeSeek) throws IOException {
         Node nextNode;

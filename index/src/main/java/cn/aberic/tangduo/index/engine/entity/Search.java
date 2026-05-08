@@ -14,48 +14,33 @@
 
 package cn.aberic.tangduo.index.engine.entity;
 
-import lombok.AllArgsConstructor;
+import jakarta.annotation.Nullable;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 
 import java.rmi.UnexpectedException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Objects;
 
 /// 查询对象
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
 public class Search {
 
-    /// 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// 处理后的索引名（全名组合确保唯一性，如：库名+表名+索引名）
     String indexName;
-    /// 最小主键（-9223372036854775807 —— 9223372036854775808）
-    long degreeMin = Long.MIN_VALUE;
-    /// 最大主键（-9223372036854775807 —— 9223372036854775808）
-    long degreeMax = Long.MAX_VALUE;
-    /// 是否包含最小主键
-    boolean includeMin = true;
-    /// 是否包含最大主键
-    boolean includeMax = true;
+    /// 限定取出数量
     Integer limit = Integer.MAX_VALUE;
-    /// 是否升序排序
-    boolean asc = true;
     /// 是否删除操作
     boolean delete = false;
+    /// 命中策略
+    Hit hit = new Hit();
     /// 过滤器
     SearchFilter searchFilter;
-    /// 查询条件
-    List<Condition> conditions = new ArrayList<>();
 
-    /// 构造方法
-    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-    public Search(String indexName) {
-        this.indexName = indexName;
-    }
-
-    /// 构造方法
+    /// 构造方法，db用
+    ///
     /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
     /// @param limit     查询数量
     public Search(String indexName, Integer limit) {
@@ -63,82 +48,117 @@ public class Search {
         this.limit = limit;
     }
 
-    /// 构造方法
-    /// @param search    查询对象
-    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-    /// @param limit     查询数量
-    /// @param asc       是否升序排序
-    /// @param searchFilter 过滤器
-    public Search(Search search, String indexName, Integer limit, boolean asc, SearchFilter searchFilter) {
+    /// 构造方法，db用
+    ///
+    /// @param search       查询对象
+    /// @param indexName    索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param asc          是否升序排序
+    public Search(Search search, String indexName, boolean asc) {
         BeanUtils.copyProperties(search, this);
         this.indexName = indexName;
-        this.limit = limit;
-        this.asc = asc;
-        this.searchFilter = searchFilter;
+        this.hit = new Hit(indexName, asc);
     }
 
-    /// 构造方法
-    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-    /// @param limit     查询数量
-    /// @param asc       是否升序排序
-    public Search(String indexName, Integer limit, boolean asc) {
-        this.indexName = indexName;
-        this.limit = limit;
-        this.asc = asc;
-    }
-
-    /// 构造方法
-    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-    /// @param degreeMin 最小主键（-9223372036854775807 —— 9223372036854775808）
-    /// @param degreeMax 最大主键（-9223372036854775807 —— 9223372036854775808）
+    /// 构造方法，测试用
+    ///
+    /// @param indexName  索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param degreeMin  最小主键（-9223372036854775807 —— 9223372036854775808）
+    /// @param degreeMax  最大主键（-9223372036854775807 —— 9223372036854775808）
     /// @param includeMin 是否包含最小主键
     /// @param includeMax 是否包含最大主键
     /// @param asc        是否升序排序
     public Search(String indexName, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, boolean asc) {
-        this.indexName = indexName;
-        this.degreeMin = degreeMin;
-        this.degreeMax = degreeMax;
-        this.includeMin = includeMin;
-        this.includeMax = includeMax;
-        this.asc = asc;
+        hit = new Hit(indexName, asc);
+        hit.area.startDegree = degreeMin;
+        hit.area.endDegree = degreeMax;
+        hit.area.includeStart = includeMin;
+        hit.area.includeEnd = includeMax;
     }
 
-    /// 构造方法
-    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-    /// @param degreeMin 最小主键（-9223372036854775807 —— 9223372036854775808）
-    /// @param degreeMax 最大主键（-9223372036854775807 —— 9223372036854775808）
+    /// 构造方法，测试用
+    ///
+    /// @param indexName  索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param degreeMin  最小主键（-9223372036854775807 —— 9223372036854775808）
+    /// @param degreeMax  最大主键（-9223372036854775807 —— 9223372036854775808）
     /// @param includeMin 是否包含最小主键
     /// @param includeMax 是否包含最大主键
     /// @param limit      查询数量
-    /// @param asc        是否升序排序  
+    /// @param asc        是否升序排序
     public Search(String indexName, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, int limit, boolean asc) {
         this.indexName = indexName;
-        this.degreeMin = degreeMin;
-        this.degreeMax = degreeMax;
-        this.includeMin = includeMin;
-        this.includeMax = includeMax;
         this.limit = limit;
-        this.asc = asc;
+        hit = new Hit(indexName, asc);
+        hit.area.startDegree = degreeMin;
+        hit.area.endDegree = degreeMax;
+        hit.area.includeStart = includeMin;
+        hit.area.includeEnd = includeMax;
     }
 
     /// 构造方法
-    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-    /// @param degreeMin 最小主键（-9223372036854775807 —— 9223372036854775808）
-    /// @param degreeMax 最大主键（-9223372036854775807 —— 9223372036854775808）
-    /// @param includeMin 是否包含最小主键
-    /// @param includeMax 是否包含最大主键
-    /// @param limit      查询数量
-    /// @param asc        是否升序排序  
-    /// @param searchFilter 过滤器
-    public Search(String indexName, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, int limit, boolean asc, SearchFilter searchFilter) {
-        this.indexName = indexName;
-        this.degreeMin = degreeMin;
-        this.degreeMax = degreeMax;
-        this.includeMin = includeMin;
-        this.includeMax = includeMax;
+    ///
+    /// @param indexName    索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param limit        查询数量
+    /// @param delete       是否删除操作
+    /// @param hit          命中策略
+    /// @param searchFilter 自定义过滤接口
+    public Search(@Nullable String indexName, Integer limit, boolean delete, Hit hit, SearchFilter searchFilter) {
         this.limit = limit;
-        this.asc = asc;
+        this.delete = delete;
+        if (hit.sortIsNull()) {
+            if (StringUtils.isEmpty(indexName)) {
+                throw new NullPointerException("indexName and sort both null!");
+            }
+            hit.sort = new Sort(indexName);
+        }
+        this.hit = hit;
+        if (hit.sortNotNull() && Objects.nonNull(hit.sort.afterDegree)) {
+            if (hit.sort.asc) { // 如果是升序，则 afterDegree 是最小值，最大值无限
+                this.hit.area.startDegree = hit.sort.afterDegree;
+            } else { // 如果是降序，则 afterDegree 是最大值，最小值无限
+                this.hit.area.endDegree = hit.sort.afterDegree;
+            }
+        }
         this.searchFilter = searchFilter;
+    }
+
+    public String getIndexName() {
+        if (hit.sortNotNull()) {
+            return hit.sort.indexName;
+        } else {
+            return indexName;
+        }
+    }
+
+    /// 是否升序排序
+    public boolean isAsc() {
+        if (hit.sortNotNull()) {
+            return hit.sort.asc;
+        } else {
+            return true;
+        }
+    }
+
+    public long getDegreeMin() {
+        return hit.area.startDegree;
+    }
+
+    public long getDegreeMax() {
+        return hit.area.endDegree;
+    }
+
+    public boolean isIncludeMin() {
+        return hit.area.includeStart;
+    }
+
+    public boolean isIncludeMax() {
+        return hit.area.includeEnd;
+    }
+
+    public Long sortAfterDegree() {
+        if (Objects.isNull(hit.sort)) {
+            return null;
+        }
+        return hit.sort.afterDegree;
     }
 
     /// 新增条件
@@ -147,7 +167,18 @@ public class Search {
     /// @param compare      条件 gt/ge/lt/le/eq/ne 大于/大于等于/小于/小于等于/等于/不等
     /// @param compareValue 要比较的值，大于或等于当前Object的内容
     public void addCondition(String param, String compare, Object compareValue) throws UnexpectedException {
-        conditions.add(new Condition(param, Condition.Compare.getByType(compare), compareValue));
+        hit.addCondition(param, compare, compareValue);
+    }
+
+    /// 新增要返回并显示的key
+    public void addField(String field) {
+        hit.fields.add(field);
+    }
+
+
+    /// 排序
+    public void setSort(Sort sort) {
+        hit.sort = sort;
     }
 
 }

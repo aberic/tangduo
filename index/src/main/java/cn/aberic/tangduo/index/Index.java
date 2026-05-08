@@ -22,6 +22,7 @@ import cn.aberic.tangduo.index.engine.Datum;
 import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.Transaction;
 import cn.aberic.tangduo.index.engine.entity.Content;
+import cn.aberic.tangduo.index.engine.entity.Hit;
 import cn.aberic.tangduo.index.engine.entity.Search;
 import cn.aberic.tangduo.index.engine.unity.Unity;
 import lombok.Data;
@@ -114,6 +115,7 @@ public class Index {
     }
 
     /// 获取所有索引名称
+    ///
     /// @return 索引名称列表
     public List<String> indexList() {
         return indexMap.keySet().stream().toList();
@@ -498,8 +500,8 @@ public class Index {
         if (indexMap.containsKey(indexName)) {
             return indexMap.get(indexName).select(search);
         } else {
-            log.info("untrace select indexMap.get({}) is null", indexName);
-            return null;
+            log.warn("untrace select indexMap.get({}) is null", indexName);
+            return new ArrayList<>();
         }
     }
 

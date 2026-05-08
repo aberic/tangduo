@@ -29,9 +29,9 @@ import org.springframework.beans.BeanUtils;
 @NoArgsConstructor
 public class DocPutResponseVO {
     /// 数据库名称
-    String database;
+    String dbName;
     /// 索引名称
-    String index;
+    String indexName;
     /// 键值
     String key;
     /// 度数
@@ -43,10 +43,13 @@ public class DocPutResponseVO {
     Content content;
 
     /// 构造函数
-    /// @param doc 文档
+    ///
+    /// @param doc     文档
     /// @param content 内容
     public DocPutResponseVO(Doc doc, Content content) {
         BeanUtils.copyProperties(doc, this);
+        dbName = doc.database;
+        indexName = doc.index;
         this.content = content;
     }
 

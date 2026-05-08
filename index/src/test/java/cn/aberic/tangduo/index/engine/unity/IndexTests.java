@@ -19,7 +19,9 @@ import cn.aberic.tangduo.common.file.Filer;
 import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.Transaction;
+import cn.aberic.tangduo.index.engine.entity.Area;
 import cn.aberic.tangduo.index.engine.entity.Content;
+import cn.aberic.tangduo.index.engine.entity.Hit;
 import cn.aberic.tangduo.index.engine.entity.Search;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.MethodOrderer;
@@ -29,7 +31,6 @@ import org.junit.jupiter.api.TestMethodOrder;
 
 import javax.management.InstanceAlreadyExistsException;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -41,7 +42,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Stream;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
@@ -53,22 +53,16 @@ public class IndexTests {
 
     @Test
     @Order(1)
-    void init() throws IOException {
-        try (Stream<Path> stream = Files.walk(Paths.get("tmp"))) {
-            stream.forEach(f -> {
-                try {
-                    Files.delete(f);
-                } catch (IOException e) {}
-            });
-        }
+    void init() {
+        Filer.deleteDirectory(Path.of(rootpath).toAbsolutePath().toString());
     }
 
     @Test
     @Order(2)
     void create() throws IOException, NoSuchFieldException, NoSuchMethodException {
-        Filer.deleteDirectory(rootpath);
         String indexName = "create";
         Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
+        index.removeIndex(indexName);
         try {
             index.createIndex(IEngine.UNITY, new Index.Info(1, indexName, true, true, false));
         } catch (InstanceAlreadyExistsException e) {
@@ -80,7 +74,6 @@ public class IndexTests {
     @Order(3)
     void putAndGetFirstOne() throws IOException, NoSuchFieldException {
         String indexName = "putAndGetFirstOne";
-        Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
         Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
@@ -92,7 +85,6 @@ public class IndexTests {
     @Order(3)
     void putAndGetFirst() throws IOException, NoSuchFieldException {
         String indexName = "putAndGetFirst";
-        Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
         Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
@@ -110,7 +102,6 @@ public class IndexTests {
     @Order(3)
     void putAndGetFirstAndRemove() throws IOException, NoSuchFieldException {
         String indexName = "putAndGetFirstAndRemove";
-        Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
         Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
@@ -202,7 +193,6 @@ public class IndexTests {
     @Order(3)
     void resetAndGetFirst() throws IOException, NoSuchFieldException {
         String indexName = "resetAndGetFirst";
-        Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
         Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
@@ -216,7 +206,6 @@ public class IndexTests {
     @Order(3)
     void putAndGetFirstTimes() throws IOException, NoSuchFieldException {
         String indexName = "putAndGetFirstTimes";
-        Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
         Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
@@ -224,24 +213,25 @@ public class IndexTests {
         for (int i = 0; i < count; i++) {
             index.put(new Content(new Transaction(i), indexName, i, String.valueOf(i), ByteTools.fromInt(i)));
         }
-        log.debug("putAndGetFirstTimes set success!");
+        log.info("putAndGetFirstTimes set success!");
         for (int i = 0; i < count; i++) {
             assert i == ByteTools.toInt(index.getFirst(indexName, i, String.valueOf(i))) : i;
         }
-        log.debug("putAndGetFirstTimes check success!");
+        log.info("putAndGetFirstTimes check success!");
     }
 
     @Test
     @Order(3)
     void putAndGetFirstTimesAsync() throws IOException, NoSuchFieldException, InterruptedException {
         String indexName = "putAndGetFirstTimesAsync";
-        Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
         Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
         int threadCount = 100000; // 10000000 1小时16分钟
         int startIndex = threadCount / 2 - threadCount;
         CountDownLatch latch = new CountDownLatch(threadCount); // 计数3
+
+        long start = System.currentTimeMillis();
         try (ThreadPoolExecutor executor = new ThreadPoolExecutor(
                 10,                  // 核心线程
                 50,                  // 最大线程（关键！限制线程总数）
@@ -264,8 +254,13 @@ public class IndexTests {
         }
         // 等待计数减到0（所有线程完成）
         latch.await();
-        index.force(1, indexName);
-        log.debug("putAndGetFirstTimesAsync set success!");
+        long ms = System.currentTimeMillis() - start;
+        long minutes = ms / (1000 * 60);
+        long seconds = (ms / 1000) % 60;
+        long millis = ms % 1000;
+        String timeStr = String.format("%02d.%02d.%03d", minutes, seconds, millis);
+        log.info("setAndGetTimes set success! 插入执行耗时：{}", timeStr);
+
 
         AtomicLong wrongCount = new AtomicLong(0);
         CountDownLatch latchGet = new CountDownLatch(threadCount); // 计数3
@@ -282,7 +277,7 @@ public class IndexTests {
                     try {
                         byte[] bytes = index.getFirst(indexName, finalI, String.valueOf(finalI));
                         if (finalI != ByteTools.toInt(Objects.isNull(bytes) ? new byte[4] : bytes)) {
-                            log.debug("i = {}, | read = {}", finalI, ByteTools.toInt(Objects.isNull(bytes) ? new byte[4] : bytes));
+                            log.info("i = {}, | read = {}", finalI, ByteTools.toInt(Objects.isNull(bytes) ? new byte[4] : bytes));
                             wrongCount.getAndAdd(1);
                         }
                     } catch (IOException e) {
@@ -293,7 +288,12 @@ public class IndexTests {
                 });
             }
         }
-        log.debug("putAndGetFirstTimesAsync check over! wrongCount = {}", wrongCount.get());
+        ms = System.currentTimeMillis() - start;
+        minutes = ms / (1000 * 60);
+        seconds = (ms / 1000) % 60;
+        millis = ms % 1000;
+        timeStr = String.format("%02d.%02d.%03d", minutes, seconds, millis);
+        log.info("setAndGetTimes check over! 查询执行耗时：{},  wrongCount = {}", timeStr, wrongCount.get());
         assert wrongCount.get() == 0 : wrongCount;
     }
 
@@ -306,11 +306,111 @@ public class IndexTests {
         for (int i = -500; i < 500; i++) {
             byte[] bytes = index.getFirst(indexName, i, String.valueOf(i));
             if (i != ByteTools.toInt(Objects.isNull(bytes) ? new byte[4] : bytes)) {
-                log.debug("select i = {}, | read = {}", i, ByteTools.toInt(Objects.isNull(bytes) ? new byte[4] : bytes));
+                log.info("select i = {}, | read = {}", i, ByteTools.toInt(Objects.isNull(bytes) ? new byte[4] : bytes));
                 wrongCount++;
             }
         }
-        log.debug("select check over! wrongCount =  {}", wrongCount);
+        log.info("select check over! wrongCount =  {}", wrongCount);
+
+        List<byte[]> bytesList;
+
+        Hit hit1 = new Hit(indexName, true);
+        hit1.setArea(new Area(-500, 500, true, true));
+        Search search1 = new Search(null, 100, false, hit1, null);
+        bytesList = index.select(search1);
+        log.info("select hit1 list size =  {}", bytesList.size());
+        for (int i = 0; i < bytesList.size(); i++) {
+            System.out.print(ByteTools.toInt(bytesList.get(i)) + " ");
+            assert ByteTools.toInt(bytesList.get(i)) == -500 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-500 + i);
+        }
+
+        Hit hit2 = new Hit(indexName, true);
+        hit2.setArea(new Area(-500, 500, false, false));
+        Search search2 = new Search(null, 100, false, hit2, null);
+        bytesList = index.select(search2);
+        log.info("select hit2 list size =  {}", bytesList.size());
+        for (int i = 0; i < bytesList.size(); i++) {
+            assert ByteTools.toInt(bytesList.get(i)) == -499 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-499 + i);
+        }
+
+
+        Hit hit3 = new Hit(indexName, false);
+        hit3.setArea(new Area(-500, 500, true, true));
+        Search search3 = new Search(null, 100, false, hit3, null);
+        bytesList = index.select(search3);
+        log.info("select hit3 list size =  {}", bytesList.size());
+        for (int i = 0; i < bytesList.size(); i++) {
+            assert ByteTools.toInt(bytesList.get(i)) == 500 - i : ByteTools.toInt(bytesList.get(i)) + " != " + (500 - i);
+        }
+
+        Hit hit4 = new Hit(indexName, false);
+        hit4.setArea(new Area(-500, 500, false, false));
+        Search search4 = new Search(null, 100, false, hit4, null);
+        bytesList = index.select(search4);
+        log.info("select hit4 list size =  {}", bytesList.size());
+        for (int i = 0; i < bytesList.size(); i++) {
+            assert ByteTools.toInt(bytesList.get(i)) == 499 - i : ByteTools.toInt(bytesList.get(i)) + " != " + (499 - i);
+        }
+
+        Hit hit5 = new Hit(indexName, true);
+        hit5.setArea(new Area(-50, 50, true, true));
+        Search search5 = new Search(null, 100, false, hit5, null);
+        bytesList = index.select(search5);
+        log.info("select hit5 list size =  {}", bytesList.size());
+        for (int i = 0; i < bytesList.size(); i++) {
+            assert ByteTools.toInt(bytesList.get(i)) == -50 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-50 + i);
+        }
+
+        Hit hit6 = new Hit(indexName, true);
+        hit6.setArea(new Area(-50, 50, false, false));
+        Search search6 = new Search(null, 100, false, hit6, null);
+        bytesList = index.select(search6);
+        log.info("select hit6 list size =  {}", bytesList.size());
+        for (int i = 0; i < bytesList.size(); i++) {
+            System.out.print(ByteTools.toInt(bytesList.get(i)) + " ");
+            assert ByteTools.toInt(bytesList.get(i)) == -49 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-49 + i);
+        }
+        System.out.println();
+
+        Hit hit7 = new Hit(indexName, true);
+        hit7.setArea(new Area(-50, 50, false, false));
+        Search search7 = new Search(null, 100, true, hit7, (bsList, conditionList) -> {
+            List<byte[]> bl = new ArrayList<>();
+            for (byte[] bytes : bsList) {
+                if (0 != ByteTools.toInt(bytes)) {
+                    bl.add(bytes);
+                }
+            }
+            return bl;
+        });
+        bytesList = index.select(search7);
+        log.info("select hit7 list size =  {}", bytesList.size());
+        for (int i = 0; i < bytesList.size(); i++) {
+            if (i < 49) {
+                System.out.print(ByteTools.toInt(bytesList.get(i)) + " ");
+                assert ByteTools.toInt(bytesList.get(i)) == -49 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-49 + i);
+            } else {
+                System.out.print(ByteTools.toInt(bytesList.get(i)) + " ");
+                assert ByteTools.toInt(bytesList.get(i)) == -48 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-48 + i);
+            }
+        }
+        System.out.println();
+    }
+
+    @Test
+    @Order(4)
+    void selectOld() throws IOException, NoSuchFieldException {
+        String indexName = "putAndGetFirstTimesAsync";
+        Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
+        long wrongCount = 0;
+        for (int i = -500; i < 500; i++) {
+            byte[] bytes = index.getFirst(indexName, i, String.valueOf(i));
+            if (i != ByteTools.toInt(Objects.isNull(bytes) ? new byte[4] : bytes)) {
+                log.info("select i = {}, | read = {}", i, ByteTools.toInt(Objects.isNull(bytes) ? new byte[4] : bytes));
+                wrongCount++;
+            }
+        }
+        log.info("select check over! wrongCount =  {}", wrongCount);
 
         Search search = new Search(indexName, -500, 500, true, true, 100, true);
         List<byte[]> bytesList = index.select(search);
@@ -356,7 +456,9 @@ public class IndexTests {
         }
         System.out.println();
 
-        search = new Search(indexName, -50, 50, false, false, 100, true, (bsList, conditionList) -> {
+        Hit hit = new Hit(indexName, true);
+        hit.setArea(new Area(-50, 50, false, false));
+        search = new Search(null, 100, true, hit, (bsList, conditionList) -> {
             List<byte[]> bl = new ArrayList<>();
             for (byte[] bytes : bsList) {
                 if (0 != ByteTools.toInt(bytes)) {
@@ -383,7 +485,6 @@ public class IndexTests {
     @Order(3)
     void putAndGetFirstBatch() throws IOException, NoSuchFieldException {
         String indexName = "putAndGetFirstBatch";
-        Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
         Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
@@ -396,7 +497,7 @@ public class IndexTests {
             contentList.add(new Content(indexName, i, String.valueOf(i), ByteTools.fromInt(i)));
         }
         index.put(contentList);
-        log.debug("putAndGetFirstBatch set success!");
+        log.info("putAndGetFirstBatch set success!");
 
         AtomicLong wrongCount = new AtomicLong(0);
         CountDownLatch latchGet = new CountDownLatch(threadCount); // 计数3
@@ -429,7 +530,7 @@ public class IndexTests {
                 });
             }
         }
-        log.debug("putAndGetFirstBatch check over! wrongCount = {}", wrongCount.get());
+        log.info("putAndGetFirstBatch check over! wrongCount = {}", wrongCount.get());
         assert wrongCount.get() == 0 : wrongCount;
     }
 
@@ -474,7 +575,7 @@ public class IndexTests {
                 });
             }
         }
-        log.debug("putAndGetFirstBatchTmp check over! wrongCount = {}", wrongCount.get());
+        log.info("putAndGetFirstBatchTmp check over! wrongCount = {}", wrongCount.get());
         assert wrongCount.get() == 0 : wrongCount;
     }
 
@@ -482,7 +583,6 @@ public class IndexTests {
     @Order(3)
     void putAndGetFirstAndAreaSelectTimes() throws IOException, NoSuchFieldException {
         String indexName = "putAndGetFirstAndAreaSelectTimes";
-        Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
         Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
@@ -490,7 +590,7 @@ public class IndexTests {
         for (int i = 0; i < count; i++) {
             index.put(new Content(new Transaction(i), indexName, i, String.valueOf(i), ByteTools.fromInt(i)));
         }
-        log.debug("putAndGetFirstAndAreaSelectTimes 0 set success!");
+        log.info("putAndGetFirstAndAreaSelectTimes 0 set success!");
         for (int i = 0; i < count; i++) {
             assert i == ByteTools.toInt(index.getFirst(indexName, i, String.valueOf(i))) : i;
         }
@@ -499,7 +599,7 @@ public class IndexTests {
             long degree = -64424581328L + i;
             index.put(new Content(new Transaction(i), indexName, degree, String.valueOf(i), ByteTools.fromLong(degree)));
         }
-        log.debug("putAndGetFirstAndAreaSelectTimes -64424581328L set success!");
+        log.info("putAndGetFirstAndAreaSelectTimes -64424581328L set success!");
         for (int i = 0; i < count; i++) {
             long degree = -64424581328L + i;
             assert degree == ByteTools.toLong(index.getFirst(indexName, degree, String.valueOf(i))) : degree;
@@ -509,13 +609,13 @@ public class IndexTests {
             long degree = 9223372036854775507L + i;
             index.put(new Content(new Transaction(i), indexName, degree, String.valueOf(i), ByteTools.fromLong(degree)));
         }
-        log.debug("putAndGetFirstAndAreaSelectTimes set 9223372036854775507L success!");
+        log.info("putAndGetFirstAndAreaSelectTimes set 9223372036854775507L success!");
         for (int i = 0; i < count; i++) {
             long degree = 9223372036854775507L + i;
             assert degree == ByteTools.toLong(index.getFirst(indexName, degree, String.valueOf(i))) : degree;
         }
 
-        log.debug("putAndGetFirstAndAreaSelectTimes check success!");
+        log.info("putAndGetFirstAndAreaSelectTimes check success!");
     }
 
     @Test
@@ -524,7 +624,9 @@ public class IndexTests {
         String indexName = "putAndGetFirstAndAreaSelectTimes";
         Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
 
-        Search search = new Search(indexName, 15, false);
+        Search search = new Search();
+        search.setLimit(15);
+        search.setHit(new Hit(indexName, false));
         List<byte[]> bytesList = index.select(search);
         System.out.println("list size = " + bytesList.size());
         for (byte[] bytes : bytesList) {
@@ -536,7 +638,6 @@ public class IndexTests {
     @Order(3)
     void deleteList() throws IOException, NoSuchFieldException {
         String indexName = "deleteList";
-        Filer.deleteDirectory(Path.of(rootpath, indexName).toAbsolutePath().toString());
         Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName);
 
@@ -544,11 +645,11 @@ public class IndexTests {
         for (int i = -5000; i < count; i++) {
             index.put(new Content(new Transaction(), indexName, i, String.valueOf(i), ByteTools.fromInt(i)));
         }
-        log.debug("setAndGetTimes set success!");
+        log.info("setAndGetTimes set success!");
         for (int i = -5000; i < count; i++) {
             assert i == ByteTools.toInt(index.getFirst(indexName, i, String.valueOf(i))) : i;
         }
-        log.debug("setAndGetTimes check success!");
+        log.info("setAndGetTimes check success!");
 
         Search search = new Search(indexName, -100, 100, false, false, true);
         List<byte[]> bytesList = index.delete(search);
@@ -576,10 +677,6 @@ public class IndexTests {
         String indexName2 = "mutilPutAndGetFirst_index2";
         String indexName3 = "mutilPutAndGetFirst_index3";
         String indexName4 = "mutilPutAndGetFirst_index4";
-        Filer.deleteDirectory(Path.of(rootpath, indexName1).toAbsolutePath().toString());
-        Filer.deleteDirectory(Path.of(rootpath, indexName2).toAbsolutePath().toString());
-        Filer.deleteDirectory(Path.of(rootpath, indexName3).toAbsolutePath().toString());
-        Filer.deleteDirectory(Path.of(rootpath, indexName4).toAbsolutePath().toString());
         Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName1);
         index.removeIndex(indexName2);
@@ -613,10 +710,6 @@ public class IndexTests {
         String indexName2 = "mutilPutAndGetFirstAuto_index2";
         String indexName3 = "mutilPutAndGetFirstAuto_index3";
         String indexName4 = "mutilPutAndGetFirstAuto_index4";
-        Filer.deleteDirectory(Path.of(rootpath, indexName1).toAbsolutePath().toString());
-        Filer.deleteDirectory(Path.of(rootpath, indexName2).toAbsolutePath().toString());
-        Filer.deleteDirectory(Path.of(rootpath, indexName3).toAbsolutePath().toString());
-        Filer.deleteDirectory(Path.of(rootpath, indexName4).toAbsolutePath().toString());
         Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName1);
         index.removeIndex(indexName2);
@@ -641,10 +734,6 @@ public class IndexTests {
         String indexName2 = "mutilPutBatchAndGetFirst_index2";
         String indexName3 = "mutilPutBatchAndGetFirst_index3";
         String indexName4 = "mutilPutBatchAndGetFirst_index4";
-        Filer.deleteDirectory(Path.of(rootpath, indexName1).toAbsolutePath().toString());
-        Filer.deleteDirectory(Path.of(rootpath, indexName2).toAbsolutePath().toString());
-        Filer.deleteDirectory(Path.of(rootpath, indexName3).toAbsolutePath().toString());
-        Filer.deleteDirectory(Path.of(rootpath, indexName4).toAbsolutePath().toString());
         Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
         index.removeIndex(indexName1);
         index.removeIndex(indexName2);

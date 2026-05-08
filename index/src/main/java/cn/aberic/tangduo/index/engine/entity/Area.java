@@ -12,27 +12,25 @@
  * limitations under the License.
  */
 
-package cn.aberic.tangduo.db.entity;
+package cn.aberic.tangduo.index.engine.entity;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
-/// 文档插入请求VO
+/// 区域策略
+@NoArgsConstructor
 @AllArgsConstructor
-@Data
-public class DocPutRequestVO {
+@Getter
+public class Area {
 
-    /// 数据库名称
-    private String dbName;
-    /// 索引名称
-    private String indexName;
-    /// 度数
-    private Long degree;
-    /// 键值
-    private String key;
-    /// 是否分词
-    private boolean seg;
-    /// 内容
-    private Object value;
-    
+    /// 区域起始度，最小主键（-9223372036854775807 —— 9223372036854775808）
+    long startDegree = Long.MIN_VALUE;
+    /// 区域终止度，最大主键（-9223372036854775807 —— 9223372036854775808）
+    long endDegree = Long.MAX_VALUE;
+    /// 是否包含区域起始度
+    boolean includeStart = false;
+    /// 是否包含区域终止度
+    boolean includeEnd = false;
+
 }

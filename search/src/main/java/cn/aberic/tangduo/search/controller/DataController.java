@@ -101,7 +101,12 @@ public class DataController {
         log.debug("SEARCH data 从 {}/{} 中search数据", vo.getDatabase(), vo.getIndex());
         try {
             DB db = DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize);
-            List<DocSearchResponseVO> list = db.search(vo.getDatabase(), vo.getQuery(), createSearch(vo, false));
+            Search search = new Search();
+            search.setIndexName(StringUtils.isEmpty(vo.getIndex()) ? null : CommonTools.indexName(vo.getIndex()));
+            search.setLimit(vo.getLimit());
+            search.setHit(vo.getHit());
+            search.setDelete(false);
+            List<DocSearchResponseVO> list = db.search(vo.getDatabase(), vo.getQuery(), search);
             return Response.success(list);
         } catch (Exception e) {
             return Response.failed(e);
@@ -114,31 +119,11 @@ public class DataController {
         log.debug("SELECT data 从 {}/{} 中select数据", vo.getDatabase(), vo.getIndex());
         try {
             DB db = DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize);
-            List<DocSelectResponseVO> list = db.select(vo.getDatabase(), createSearch(vo, false));
+            List<DocSelectResponseVO> list = db.select(vo.getDatabase(), new Search(null, vo.getLimit(), false, vo.reHit(), null));
             return Response.success(list);
         } catch (Exception e) {
             return Response.failed(e);
         }
-    }
-
-    /// 创建搜索条件
-    ///
-    /// @param vo     搜索请求VO
-    /// @param delete 是否删除
-    ///
-    /// @return 搜索条件
-    private Search createSearch(ReqSelectDataVO vo, boolean delete) {
-        Search search = new Search();
-        search.setIndexName(StringUtils.isEmpty(vo.getIndex()) ? null : CommonTools.indexName(vo.getIndex()));
-        search.setDegreeMin(vo.getDegreeMin());
-        search.setDegreeMax(vo.getDegreeMax());
-        search.setIncludeMin(vo.isIncludeMin());
-        search.setIncludeMax(vo.isIncludeMax());
-        search.setLimit(vo.getLimit());
-        search.setAsc(vo.isAsc());
-        search.setConditions(vo.getConditions());
-        search.setDelete(delete);
-        return search;
     }
 
     /// 删除数据
@@ -161,7 +146,7 @@ public class DataController {
         log.debug("DELETE data 从 {}/{} 中delete数据", vo.getDatabase(), vo.getIndex());
         try {
             DB db = DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize);
-            List<DocSelectResponseVO> list = db.delete(vo.getDatabase(), createSearch(vo, true));
+            List<DocSelectResponseVO> list = db.select(vo.getDatabase(), new Search(null, vo.getLimit(), true, vo.reHit(), null));
             ChangeLog.append(rootPath, "data/delete", vo);
             return Response.success(list);
         } catch (Exception e) {

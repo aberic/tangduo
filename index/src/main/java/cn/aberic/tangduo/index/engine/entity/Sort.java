@@ -12,27 +12,32 @@
  * limitations under the License.
  */
 
-package cn.aberic.tangduo.db.entity;
+package cn.aberic.tangduo.index.engine.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
-/// 文档插入请求VO
+/// 排序策略
 @AllArgsConstructor
 @Data
-public class DocPutRequestVO {
+public class Sort {
 
-    /// 数据库名称
-    private String dbName;
-    /// 索引名称
-    private String indexName;
-    /// 度数
-    private Long degree;
-    /// 键值
-    private String key;
-    /// 是否分词
-    private boolean seg;
-    /// 内容
-    private Object value;
-    
+    String indexName;
+    /// 选中的key，目标为json对象中的key，通过.的方式拼接，允许指定深层次，如 name，school.student.name 等
+    String param;
+    /// 下一页的起始度
+    Long afterDegree;
+    /// 是否升序排序
+    boolean asc = true;
+
+    public Sort(String indexName) {
+        this.indexName = indexName;
+    }
+
+    /// 获取未处理的索引名称，如 name，school.student.name 都返回name
+    public String getOriginIndexName() {
+        String[] arr = param.split("\\.");
+        return arr[arr.length - 1];
+    }
+
 }

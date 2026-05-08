@@ -22,9 +22,7 @@ import cn.aberic.tangduo.db.common.IkTokenizerTools;
 import cn.aberic.tangduo.db.entity.*;
 import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.IEngine;
-import cn.aberic.tangduo.index.engine.entity.Condition;
-import cn.aberic.tangduo.index.engine.entity.Content;
-import cn.aberic.tangduo.index.engine.entity.Search;
+import cn.aberic.tangduo.index.engine.entity.*;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -364,7 +362,7 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void putAndSelectFirstTimesAsync() throws Exception, NoSuchMethodException, InterruptedException {
+    void putAndSelectFirstTimesAsync() throws Exception {
         String dbName = "putAndGetFirstTimesAsyncDB";
         Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "putAndGetFirstTimesAsyncIndex";
@@ -381,8 +379,8 @@ public class DBTests {
         int startIndex = threadCount / 2 - threadCount;
         CountDownLatch latch = new CountDownLatch(threadCount); // 计数3
         indexName = CommonTools.indexName(indexName);
-        long start = System.currentTimeMillis();
 
+        long start = System.currentTimeMillis();
         try (ThreadPoolExecutor executor = new ThreadPoolExecutor(
                 10,                  // 核心线程
                 50,                  // 最大线程（关键！限制线程总数）
@@ -511,7 +509,9 @@ public class DBTests {
         }
         System.out.println();
 
-        search = new Search(indexName, -50, 50, false, false, 100, true, (bsList, conditionList) -> {
+        Hit hit = new Hit(indexName, true);
+        hit.setArea(new Area(-50, 50, false, false));
+        search = new Search(null, 100, true, hit, (bsList, conditionList) -> {
             List<byte[]> bl = new ArrayList<>();
             for (byte[] bytes : bsList) {
                 int value = new Doc(bytes).getValue().asInt();
