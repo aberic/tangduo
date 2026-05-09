@@ -67,7 +67,7 @@ public final class CommonTools {
         return (c < 'a' || c > 'z') && (c < 'A' || c > 'Z');
     }
 
-    /// 生成索引名称
+    /// 生成索引名称：schema_indexName_key，如 default_aberic_key 等
     /// @param indexName 索引名称
     /// @return 索引名称
     /// @see #indexName(String, String, String)
@@ -75,7 +75,7 @@ public final class CommonTools {
         return indexName(indexName, "key");
     }
 
-    /// 生成索引名称
+    /// 生成索引名称：schema_indexName_fieldName，如 default_active_datetime 等
     /// @param indexName 索引名称
     /// @return 索引名称
     /// @see #indexName(String, String, String)
@@ -83,7 +83,7 @@ public final class CommonTools {
         return indexName(indexName, "datetime");
     }
 
-    /// 生成索引名称
+    /// 生成索引名称：schema_indexName_fieldName，如 default_32_key 等
     /// @param value 值
     /// @return 索引名称
     /// @see #indexName(String, String, String)
@@ -91,7 +91,7 @@ public final class CommonTools {
         return indexName(String.valueOf(value.length()), "key");
     }
 
-    /// 生成索引名称
+    /// 生成索引名称：schema_indexName_fieldName，如 default_active_datetime、default_32_key 等
     /// @param indexName 索引名称
     /// @param fieldName 字段名
     /// @return 索引名称
@@ -100,7 +100,7 @@ public final class CommonTools {
         return indexName("default", indexName, fieldName);
     }
 
-    /// 生成索引名称
+    /// 生成索引名称：schema_indexName_fieldName，如 default_active_datetime、default_32_key 等
     /// @param schema  数据库模式
     /// @param indexName 索引名称
     /// @param fieldName 字段名

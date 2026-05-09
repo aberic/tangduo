@@ -253,16 +253,22 @@ try {
 ```
 
 ##### 批量删除（按条件）
-```java
-import cn.aberic.tangduo.index.engine.entity.Search;
 
-try {
-    // 构造搜索条件，删除my_db中索引为user_index、包含“李四”的内容
-    Search search = new Search("user_index", 10);
-    List<DocSearchResponseVO> deletedList = db.delete("my_db", search);
-    System.out.println("删除条数：" + deletedList.size());
-} catch (IOException e) {
-    e.printStackTrace();
+```java
+import cn.aberic.tangduo.index.engine.entity.Select;
+
+try{
+// 构造搜索条件，删除my_db中索引为user_index、包含“李四”的内容
+Select search = new Select("user_index", 10);
+        List<DocSearchResponseVO> deletedList = db.delete("my_db", search);
+    System.out.
+
+        println("删除条数："+deletedList.size());
+        }catch(
+        IOException e){
+        e.
+
+        printStackTrace();
 }
 ```
 

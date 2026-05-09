@@ -15,7 +15,7 @@
 package cn.aberic.tangduo.index.engine;
 
 import cn.aberic.tangduo.index.engine.entity.Content;
-import cn.aberic.tangduo.index.engine.entity.Search;
+import cn.aberic.tangduo.index.engine.entity.Select;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -74,7 +74,7 @@ public abstract class IEngine extends Number {
     /// @return 数据
     ///
     /// @throws IOException 数据查询磁盘过程中可能抛出的异常
-    public abstract List<byte[]> select(Search search) throws IOException;
+    public abstract List<byte[]> select(Select search) throws IOException;
 
     /// 从Node中删除数据
     ///
@@ -83,7 +83,7 @@ public abstract class IEngine extends Number {
     /// @return 数据
     ///
     /// @throws IOException 数据删除磁盘过程中可能抛出的异常
-    public abstract List<byte[]> delete(Search search) throws IOException;
+    public abstract List<byte[]> delete(Select search) throws IOException;
 
     @Override
     public long longValue() {

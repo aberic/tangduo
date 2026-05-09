@@ -15,6 +15,7 @@
 package cn.aberic.tangduo.db;
 
 import cn.aberic.tangduo.db.entity.DocSearchResponseVO;
+import cn.aberic.tangduo.index.engine.entity.Select;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -168,9 +169,9 @@ public class DBCallbackTests {
             用心对待每一餐，平凡日子也能过得有滋有味。
             """;
 
-    final static String search1 = "读书学习有什么好处？";
-    final static String search2 = "坚持阅读能带来什么？";
-    final static String search3 = "学习对人有哪些帮助？";
+    final static String select1 = "读书学习有什么好处？";
+    final static String select2 = "坚持阅读能带来什么？";
+    final static String select3 = "学习对人有哪些帮助？";
 
     final static String rootpath = "tmp/callback";
 
@@ -244,7 +245,7 @@ public class DBCallbackTests {
     void searchText() throws Exception {
         String dbName = "putTextDB";
         DB db = DB.getInstance(rootpath, 10737418240L);
-        List<DocSearchResponseVO> docItems = db.search(dbName, search1, 100);
+        List<DocSearchResponseVO> docItems = db.search(dbName, select1);
         System.out.println("size = " + docItems.size());
         docItems.forEach(System.out::println);
     }
@@ -254,7 +255,7 @@ public class DBCallbackTests {
     void searchText1() throws Exception {
         String dbName = "putTextDB";
         DB db = DB.getInstance(rootpath, 10737418240L);
-        List<DocSearchResponseVO> docItems = db.search(dbName, search2);
+        List<DocSearchResponseVO> docItems = db.search(dbName, select2);
         System.out.println("size = " + docItems.size());
         docItems.forEach(System.out::println);
     }
@@ -264,7 +265,7 @@ public class DBCallbackTests {
     void searchText2() throws Exception {
         String dbName = "putTextDB";
         DB db = DB.getInstance(rootpath, 10737418240L);
-        List<DocSearchResponseVO> docItems = db.search(dbName, search3);
+        List<DocSearchResponseVO> docItems = db.search(dbName, select3);
         System.out.println("size = " + docItems.size());
         docItems.forEach(System.out::println);
     }

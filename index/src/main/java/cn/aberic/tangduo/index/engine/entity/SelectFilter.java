@@ -17,7 +17,7 @@ package cn.aberic.tangduo.index.engine.entity;
 import java.util.List;
 
 /// 自定义过滤接口
-public interface SearchFilter {
+public interface SelectFilter {
 
     /**
      * 过滤数据

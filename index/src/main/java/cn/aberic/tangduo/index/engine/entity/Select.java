@@ -26,7 +26,7 @@ import java.util.Objects;
 /// 查询对象
 @Data
 @NoArgsConstructor
-public class Search {
+public class Select {
 
     /// 处理后的索引名（全名组合确保唯一性，如：库名+表名+索引名）
     String indexName;
@@ -37,24 +37,24 @@ public class Search {
     /// 命中策略
     Hit hit = new Hit();
     /// 过滤器
-    SearchFilter searchFilter;
+    SelectFilter selectFilter;
 
     /// 构造方法，db用
     ///
     /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
     /// @param limit     查询数量
-    public Search(String indexName, Integer limit) {
+    public Select(String indexName, Integer limit) {
         this.indexName = indexName;
         this.limit = limit;
     }
 
     /// 构造方法，db用
     ///
-    /// @param search       查询对象
-    /// @param indexName    索引名（全名组合确保唯一性，如：库名+表名+索引名）
-    /// @param asc          是否升序排序
-    public Search(Search search, String indexName, boolean asc) {
-        BeanUtils.copyProperties(search, this);
+    /// @param select    查询对象
+    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param asc       是否升序排序
+    public Select(Select select, String indexName, boolean asc) {
+        BeanUtils.copyProperties(select, this);
         this.indexName = indexName;
         this.hit = new Hit(indexName, asc);
     }
@@ -67,7 +67,7 @@ public class Search {
     /// @param includeMin 是否包含最小主键
     /// @param includeMax 是否包含最大主键
     /// @param asc        是否升序排序
-    public Search(String indexName, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, boolean asc) {
+    public Select(String indexName, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, boolean asc) {
         hit = new Hit(indexName, asc);
         hit.area.startDegree = degreeMin;
         hit.area.endDegree = degreeMax;
@@ -84,7 +84,7 @@ public class Search {
     /// @param includeMax 是否包含最大主键
     /// @param limit      查询数量
     /// @param asc        是否升序排序
-    public Search(String indexName, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, int limit, boolean asc) {
+    public Select(String indexName, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, int limit, boolean asc) {
         this.indexName = indexName;
         this.limit = limit;
         hit = new Hit(indexName, asc);
@@ -100,8 +100,8 @@ public class Search {
     /// @param limit        查询数量
     /// @param delete       是否删除操作
     /// @param hit          命中策略
-    /// @param searchFilter 自定义过滤接口
-    public Search(@Nullable String indexName, Integer limit, boolean delete, Hit hit, SearchFilter searchFilter) {
+    /// @param selectFilter 自定义过滤接口
+    public Select(@Nullable String indexName, Integer limit, boolean delete, Hit hit, SelectFilter selectFilter) {
         this.limit = limit;
         this.delete = delete;
         if (hit.sortIsNull()) {
@@ -118,7 +118,7 @@ public class Search {
                 this.hit.area.endDegree = hit.sort.afterDegree;
             }
         }
-        this.searchFilter = searchFilter;
+        this.selectFilter = selectFilter;
     }
 
     public String getIndexName() {
@@ -139,11 +139,23 @@ public class Search {
     }
 
     public long getDegreeMin() {
+        if (Objects.isNull(hit.sort)) {
+            return hit.area.startDegree;
+        }
+        if (hit.sort.asc) {
+            return Objects.isNull(hit.sort.afterDegree) ? hit.area.startDegree : hit.sort.afterDegree;
+        }
         return hit.area.startDegree;
     }
 
     public long getDegreeMax() {
-        return hit.area.endDegree;
+        if (Objects.isNull(hit.sort)) {
+            return hit.area.endDegree;
+        }
+        if (hit.sort.asc) {
+            return hit.area.endDegree;
+        }
+        return Objects.isNull(hit.sort.afterDegree) ? hit.area.endDegree : hit.sort.afterDegree;
     }
 
     public boolean isIncludeMin() {
@@ -159,6 +171,10 @@ public class Search {
             return null;
         }
         return hit.sort.afterDegree;
+    }
+
+    public void reHit() {
+        hit.reSet();
     }
 
     /// 新增条件

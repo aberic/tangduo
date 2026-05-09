@@ -20,7 +20,7 @@ import cn.aberic.tangduo.db.DB;
 import cn.aberic.tangduo.db.common.CommonTools;
 import cn.aberic.tangduo.db.common.KeyHashTools;
 import cn.aberic.tangduo.db.entity.*;
-import cn.aberic.tangduo.index.engine.entity.Search;
+import cn.aberic.tangduo.index.engine.entity.Select;
 import cn.aberic.tangduo.search.cm.ChangeLog;
 import cn.aberic.tangduo.search.entity.*;
 import lombok.extern.slf4j.Slf4j;
@@ -98,15 +98,10 @@ public class DataController {
     /// 搜索数据
     @GetMapping("search")
     public Response search(@RequestBody ReqSearchDataVO vo) {
-        log.debug("SEARCH data 从 {}/{} 中search数据", vo.getDatabase(), vo.getIndex());
+        log.debug("SEARCH data 从 {} 中search数据", vo.getDatabase());
         try {
             DB db = DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize);
-            Search search = new Search();
-            search.setIndexName(StringUtils.isEmpty(vo.getIndex()) ? null : CommonTools.indexName(vo.getIndex()));
-            search.setLimit(vo.getLimit());
-            search.setHit(vo.getHit());
-            search.setDelete(false);
-            List<DocSearchResponseVO> list = db.search(vo.getDatabase(), vo.getQuery(), search);
+            List<DocSearchResponseVO> list = db.search(vo.getDatabase(), vo.getQuery());
             return Response.success(list);
         } catch (Exception e) {
             return Response.failed(e);
@@ -119,7 +114,7 @@ public class DataController {
         log.debug("SELECT data 从 {}/{} 中select数据", vo.getDatabase(), vo.getIndex());
         try {
             DB db = DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize);
-            List<DocSelectResponseVO> list = db.select(vo.getDatabase(), new Search(null, vo.getLimit(), false, vo.reHit(), null));
+            List<DocSelectResponseVO> list = db.select(vo.getDatabase(), new Select(null, vo.getLimit(), false, vo.reHit(), null));
             return Response.success(list);
         } catch (Exception e) {
             return Response.failed(e);
@@ -146,7 +141,7 @@ public class DataController {
         log.debug("DELETE data 从 {}/{} 中delete数据", vo.getDatabase(), vo.getIndex());
         try {
             DB db = DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize);
-            List<DocSelectResponseVO> list = db.select(vo.getDatabase(), new Search(null, vo.getLimit(), true, vo.reHit(), null));
+            List<DocSelectResponseVO> list = db.select(vo.getDatabase(), new Select(null, vo.getLimit(), true, vo.reHit(), null));
             ChangeLog.append(rootPath, "data/delete", vo);
             return Response.success(list);
         } catch (Exception e) {

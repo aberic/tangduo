@@ -22,7 +22,7 @@ import cn.aberic.tangduo.common.file.Reader;
 import cn.aberic.tangduo.index.engine.Common;
 import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.entity.Content;
-import cn.aberic.tangduo.index.engine.entity.Search;
+import cn.aberic.tangduo.index.engine.entity.Select;
 import cn.aberic.tangduo.index.engine.unity.entity.Leaf;
 import cn.aberic.tangduo.index.engine.unity.entity.Node;
 import lombok.Data;
@@ -439,35 +439,36 @@ public class Unity extends IEngine {
     }
 
     @Override
-    public List<byte[]> select(Search search) throws IOException {
-        search.setDelete(false);
-        if (Objects.isNull(search.getLimit())) {
-            search.setLimit(10);
+    public List<byte[]> select(Select select) throws IOException {
+        select.setDelete(false);
+        if (Objects.isNull(select.getLimit())) {
+            select.setLimit(10);
         }
-        return selectOrDelete(search);
+        return selectOrDelete(select);
     }
 
     @Override
-    public List<byte[]> delete(Search search) throws IOException {
-        search.setDelete(true);
-        if (Objects.isNull(search.getLimit())) {
-            search.setLimit(Integer.MAX_VALUE);
+    public List<byte[]> delete(Select select) throws IOException {
+        select.setDelete(true);
+        if (Objects.isNull(select.getLimit())) {
+            select.setLimit(Integer.MAX_VALUE);
         }
-        return selectOrDelete(search);
+        return selectOrDelete(select);
     }
 
     /// 从Node中获取/删除数据
     ///
-    /// @param search 查询条件
+    /// @param select 查询条件
     ///
     /// @return 数据
     ///
     /// @throws IOException 从Node中获取/删除数据过程中可能抛出的异常
-    public List<byte[]> selectOrDelete(Search search) throws IOException {
-        if (search.getDegreeMin() > search.getDegreeMax()) {
+    public List<byte[]> selectOrDelete(Select select) throws IOException {
+        select.reHit();
+        if (select.getDegreeMin() > select.getDegreeMax()) {
             return new ArrayList<>();
         }
-        Path indexParentPath = Common.unityIndexFileParentPath(rootPath, search.getIndexName());
+        Path indexParentPath = Common.unityIndexFileParentPath(rootPath, select.getIndexName());
         List<Path> pathList;
         try (Stream<Path> pathStream = Files.list(indexParentPath)) {
             pathList = pathStream
@@ -483,12 +484,12 @@ public class Unity extends IEngine {
                     }))
                     .toList();
         } catch (IOException e) {
-            log.error("untrace list File {} IOException, {}", search.getIndexName(), e.getMessage(), e);
+            log.error("untrace list File {} IOException, {}", select.getIndexName(), e.getMessage(), e);
             return new ArrayList<>();
         }
-        Long afterDegree = search.sortAfterDegree(); // 100
+        Long afterDegree = select.sortAfterDegree(); // 100
         List<byte[]> bytesList = new ArrayList<>();
-        if (search.isAsc()) { // 升序
+        if (select.isAsc()) { // 升序
             for (Path path : pathList) {
                 // 提取文件名（不含后缀）
                 String fileName = path.getFileName().toString();
@@ -517,17 +518,17 @@ public class Unity extends IEngine {
                 }
                 List<byte[]> bytesListFromNode;
                 if (baseNeg) { // 负数文件
-                    bytesListFromNode = listNegative(search, path, baseMin, baseMax);
+                    bytesListFromNode = listNegative(select, path, baseMin, baseMax, select.getLimit() - bytesList.size());
                 } else { // 正数文件
-                    bytesListFromNode = listPositive(search, path, baseMin, baseMax);
+                    bytesListFromNode = listPositive(select, path, baseMin, baseMax, select.getLimit() - bytesList.size());
                 }
-                if (bytesList.size() + bytesListFromNode.size() < search.getLimit()) {
+                if (bytesList.size() + bytesListFromNode.size() < select.getLimit()) {
                     bytesList.addAll(bytesListFromNode);
-                } else if (bytesList.size() + bytesListFromNode.size() == search.getLimit()) {
+                } else if (bytesList.size() + bytesListFromNode.size() == select.getLimit()) {
                     bytesList.addAll(bytesListFromNode);
                     return bytesList;
                 } else {
-                    bytesList.addAll(bytesListFromNode.subList(0, search.getLimit() - bytesList.size()));
+                    bytesList.addAll(bytesListFromNode.subList(0, select.getLimit() - bytesList.size()));
                     return bytesList;
                 }
             }
@@ -559,19 +560,18 @@ public class Unity extends IEngine {
                 }
                 List<byte[]> bytesListFromNode;
                 if (baseNeg) { // 负数文件
-                    bytesListFromNode = listNegative(search, path, baseMin, baseMax);
+                    bytesListFromNode = listNegative(select, path, baseMin, baseMax, select.getLimit() - bytesList.size());
                 } else { // 正数文件
-                    bytesListFromNode = listPositive(search, path, baseMin, baseMax);
+                    bytesListFromNode = listPositive(select, path, baseMin, baseMax, select.getLimit() - bytesList.size());
                 }
-                if (bytesList.size() + bytesListFromNode.size() < search.getLimit()) {
+                if (bytesList.size() + bytesListFromNode.size() < select.getLimit()) {
                     bytesList.addAll(bytesListFromNode);
-                } else if (bytesList.size() + bytesListFromNode.size() == search.getLimit()) {
+                } else if (bytesList.size() + bytesListFromNode.size() == select.getLimit()) {
                     bytesList.addAll(bytesListFromNode);
                     return bytesList;
                 } else {
-                    int size = bytesList.size();
-                    for (int l = bytesListFromNode.size() - 1; l >= search.getLimit() - size; l--) {
-                        bytesList.add(bytesListFromNode.get(l));
+                    for (int i1 = 1; i1 <= select.getLimit() - bytesList.size(); i1++) {
+                        bytesList.add(bytesListFromNode.get(bytesListFromNode.size() - i1));
                     }
                     return bytesList;
                 }
@@ -582,7 +582,7 @@ public class Unity extends IEngine {
 
     /// 负数文件
     ///
-    /// @param search  查询条件
+    /// @param select  查询条件
     /// @param path    索引文件路径
     /// @param baseMin 基础最小值（数据坐标值的范围）
     /// @param baseMax 基础最大值（数据坐标值的范围）
@@ -590,25 +590,27 @@ public class Unity extends IEngine {
     /// @return 数据
     ///
     /// @throws IOException 负数文件过程中可能抛出的异常
-    private List<byte[]> listNegative(Search search, Path path, long baseMin, long baseMax) throws IOException {
+    private List<byte[]> listNegative(Select select, Path path, long baseMin, long baseMax, int limit) throws IOException {
         long degreeMin;
         long degreeMax;
         boolean includeMin = true;
         boolean includeMax = true;
+        long selectDegreeMax = select.getDegreeMax();
+        long selectDegreeMin = select.getDegreeMin();
         // 优先从左开始判断
-        if (search.getDegreeMax() < 0) {
-            long compareDegreeMax = search.getDegreeMax() + Long.MAX_VALUE;
-            long compareDegreeMin = search.getDegreeMin() + Long.MAX_VALUE;
+        if (selectDegreeMax < 0) {
+            long compareDegreeMax = selectDegreeMax + Long.MAX_VALUE;
+            long compareDegreeMin = selectDegreeMin + Long.MAX_VALUE;
             if (compareDegreeMax < baseMin || compareDegreeMin > baseMax) {
                 return new ArrayList<>();
             } else if (compareDegreeMax <= baseMax) {
                 degreeMax = 4294967295L - (baseMax - compareDegreeMax);
-                includeMax = search.isIncludeMax();
+                includeMax = select.isIncludeMax();
                 if (compareDegreeMin <= baseMin) {
                     degreeMin = 0;
                 } else {
                     degreeMin = compareDegreeMin - baseMin;
-                    includeMin = search.isIncludeMin();
+                    includeMin = select.isIncludeMin();
                 }
             } else { // compareDegreeMax > baseMax
                 degreeMax = 4294967295L;
@@ -616,34 +618,34 @@ public class Unity extends IEngine {
                     degreeMin = 0;
                 } else {
                     degreeMin = compareDegreeMin - baseMin;
-                    includeMin = search.isIncludeMin();
+                    includeMin = select.isIncludeMin();
                 }
             }
         } else {
             degreeMax = 4294967295L;
-            if (search.getDegreeMin() >= 0) {
+            if (selectDegreeMin >= 0) {
                 return new ArrayList<>();
             }
-            long compareDegreeMin = search.getDegreeMin() + Long.MAX_VALUE;
+            long compareDegreeMin = selectDegreeMin + Long.MAX_VALUE;
             if (compareDegreeMin <= baseMin) {
                 degreeMin = 0;
             } else if (compareDegreeMin <= baseMax) {
                 degreeMin = compareDegreeMin - baseMin;
-                includeMin = search.isIncludeMin();
+                includeMin = select.isIncludeMin();
             } else {
                 return new ArrayList<>();
             }
         }
         Node node = new Node(path.toString(), ROOT_NODE_SEEK, true);
-        if (search.isAsc()) {
-            return listAsc(search, path.toString(), degreeMin, degreeMax, includeMin, includeMax, node, 16777216);
+        if (select.isAsc()) {
+            return listAsc(select, path.toString(), degreeMin, degreeMax, includeMin, includeMax, node, 16777216, limit);
         }
-        return listDesc(search, path.toString(), degreeMin, degreeMax, includeMin, includeMax, node, 16777216);
+        return listDesc(select, path.toString(), degreeMin, degreeMax, includeMin, includeMax, node, 16777216, limit);
     }
 
     /// 正数文件
     ///
-    /// @param search  查询条件
+    /// @param select  查询条件
     /// @param path    索引文件路径
     /// @param baseMin 基础最小值（数据坐标值的范围）
     /// @param baseMax 基础最大值（数据坐标值的范围）
@@ -651,59 +653,58 @@ public class Unity extends IEngine {
     /// @return 数据
     ///
     /// @throws IOException 正数文件过程中可能抛出的异常
-    private List<byte[]> listPositive(Search search, Path path, long baseMin, long baseMax) throws IOException {
+    private List<byte[]> listPositive(Select select, Path path, long baseMin, long baseMax, int limit) throws IOException {
         long degreeMin;
         long degreeMax;
         boolean includeMin = true;
         boolean includeMax = true;
+        long selectDegreeMax = select.getDegreeMax();
+        long selectDegreeMin = select.getDegreeMin();
         // 优先从左开始判断
-        if (search.getDegreeMax() < 0) {
+        if (selectDegreeMax < 0) {
             return new ArrayList<>();
-        } else if (search.getDegreeMin() < 0) {
+        } else if (selectDegreeMin < 0) {
             degreeMin = 0;
-            long compareDegreeMax = search.getDegreeMax();
-            if (compareDegreeMax < baseMin) {
+            if (selectDegreeMax < baseMin) {
                 return new ArrayList<>();
-            } else if (compareDegreeMax <= baseMax) {
-                degreeMax = compareDegreeMax - baseMin;
-                includeMax = search.isIncludeMax();
-            } else { // compareDegreeMax > baseMax
+            } else if (selectDegreeMax <= baseMax) {
+                degreeMax = selectDegreeMax - baseMin;
+                includeMax = select.isIncludeMax();
+            } else { // selectDegreeMax > baseMax
                 degreeMax = 4294967295L;
             }
-        } else { // search.getDegreeMin() >= 0
-            long compareDegreeMax = search.getDegreeMax();
-            long compareDegreeMin = search.getDegreeMin();
-            if (compareDegreeMax < baseMin || compareDegreeMin > baseMax) {
+        } else { // selectDegreeMin >= 0
+            if (selectDegreeMax < baseMin || selectDegreeMin > baseMax) {
                 return new ArrayList<>();
-            } else if (compareDegreeMin <= baseMin) {
+            } else if (selectDegreeMin <= baseMin) {
                 degreeMin = 0;
-                if (compareDegreeMax <= baseMax) {
-                    degreeMax = compareDegreeMax - baseMin;
-                    includeMax = search.isIncludeMax();
-                } else { // compareDegreeMax > baseMax
+                if (selectDegreeMax <= baseMax) {
+                    degreeMax = selectDegreeMax - baseMin;
+                    includeMax = select.isIncludeMax();
+                } else { // selectDegreeMax > baseMax
                     degreeMax = 4294967295L;
                 }
             } else {
-                degreeMin = compareDegreeMin - baseMin;
-                includeMin = search.isIncludeMin();
-                if (compareDegreeMax <= baseMax) {
-                    degreeMax = compareDegreeMax - baseMin;
-                    includeMax = search.isIncludeMax();
-                } else { // compareDegreeMax > baseMax
+                degreeMin = selectDegreeMin - baseMin;
+                includeMin = select.isIncludeMin();
+                if (selectDegreeMax <= baseMax) {
+                    degreeMax = selectDegreeMax - baseMin;
+                    includeMax = select.isIncludeMax();
+                } else { // selectDegreeMax > baseMax
                     degreeMax = 4294967295L;
                 }
             }
         }
         Node node = new Node(path.toString(), ROOT_NODE_SEEK, true);
-        if (search.isAsc()) {
-            return listAsc(search, path.toString(), degreeMin, degreeMax, includeMin, includeMax, node, 16777216);
+        if (select.isAsc()) {
+            return listAsc(select, path.toString(), degreeMin, degreeMax, includeMin, includeMax, node, 16777216, limit);
         }
-        return listDesc(search, path.toString(), degreeMin, degreeMax, includeMin, includeMax, node, 16777216);
+        return listDesc(select, path.toString(), degreeMin, degreeMax, includeMin, includeMax, node, 16777216, limit);
     }
 
     /// 从Node中右遍历升序
     ///
-    /// @param search        查询条件
+    /// @param select        查询条件
     /// @param indexFilepath 索引文件路径
     /// @param degreeMin     主键（-9223372036854775807 —— 9223372036854775808）
     /// @param includeMin    是否包含degreeMin
@@ -714,9 +715,12 @@ public class Unity extends IEngine {
     ///
     /// @return 数据
     ///
-    /// @throws IOException 从Node中右遍历升序过程中可能抛出的异常 todo degreeMin和degreeMax应该删掉，用afterDegree+limit，其余条件依据search里的condition判断即可
-    public List<byte[]> listAsc(Search search, String indexFilepath, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, Node node, long nodeCount) throws IOException {
+    /// @throws IOException 从Node中右遍历升序过程中可能抛出的异常
+    public List<byte[]> listAsc(Select select, String indexFilepath, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, Node node, long nodeCount, int limit) throws IOException {
         List<byte[]> bytesList = new ArrayList<>();
+        if (limit <= 0) {
+            return bytesList;
+        }
         long nextPositionMin = Math.divideExact(degreeMin, nodeCount);
         long nextPositionMax = Math.divideExact(degreeMax, nodeCount);
         if (nodeCount == 1) {
@@ -729,20 +733,23 @@ public class Unity extends IEngine {
                 if (CollectionUtils.isEmpty(bytesListFromNode)) {
                     continue;
                 }
-                if (Objects.nonNull(search.getSearchFilter())) {
-                    bytesListFromNode = search.getSearchFilter().filter(bytesListFromNode, search.getHit());
+                if (Objects.nonNull(select.getSelectFilter())) {
+                    bytesListFromNode = select.getSelectFilter().filter(bytesListFromNode, select.getHit());
                 }
-                if (search.isDelete() && !CollectionUtils.isEmpty(bytesListFromNode)) {
+                if (CollectionUtils.isEmpty(bytesListFromNode)) {
+                    continue;
+                }
+                if (select.isDelete()) {
                     long leafMateSeek = node.getSeek() + 2 + position * 8;
                     Channel.write(indexFilepath, leafMateSeek, new byte[8]);
                 }
-                if (bytesList.size() + bytesListFromNode.size() < search.getLimit()) {
+                if (bytesList.size() + bytesListFromNode.size() < limit) {
                     bytesList.addAll(bytesListFromNode);
-                } else if (bytesList.size() + bytesListFromNode.size() == search.getLimit()) {
+                } else if (bytesList.size() + bytesListFromNode.size() == limit) {
                     bytesList.addAll(bytesListFromNode);
                     break;
                 } else {
-                    bytesList.addAll(bytesListFromNode.subList(0, search.getLimit() - bytesList.size()));
+                    bytesList.addAll(bytesListFromNode.subList(0, limit - bytesList.size()));
                 }
             }
         } else {
@@ -752,18 +759,18 @@ public class Unity extends IEngine {
                 if (Objects.nonNull(nextNode)) {
                     long degreeMinTmp = Math.max(degreeMin - nextPositionMin * nodeCount, 0);
                     long degreeMaxTmp = Math.min(degreeMax - nextPositionMax * nodeCount, nodeCount);
-                    List<byte[]> bytesListTmp = listAsc(search, indexFilepath, degreeMinTmp, degreeMaxTmp, includeMin, includeMax, nextNode, nodeCount / 256);
+                    List<byte[]> bytesListTmp = listAsc(select, indexFilepath, degreeMinTmp, degreeMaxTmp, includeMin, includeMax, nextNode, nodeCount / 256, limit - bytesList.size());
                     if (!bytesListTmp.isEmpty()) {
-                        if (Objects.nonNull(search.getSearchFilter())) {
-                            bytesListTmp = search.getSearchFilter().filter(bytesListTmp, search.getHit());
+                        if (Objects.nonNull(select.getSelectFilter())) {
+                            bytesListTmp = select.getSelectFilter().filter(bytesListTmp, select.getHit());
                         }
-                        if (bytesList.size() + bytesListTmp.size() < search.getLimit()) {
+                        if (bytesList.size() + bytesListTmp.size() < limit) {
                             bytesList.addAll(bytesListTmp);
-                        } else if (bytesList.size() + bytesListTmp.size() == search.getLimit()) {
+                        } else if (bytesList.size() + bytesListTmp.size() == limit) {
                             bytesList.addAll(bytesListTmp);
                             break;
                         } else {
-                            bytesList.addAll(bytesListTmp.subList(0, search.getLimit() - bytesList.size()));
+                            bytesList.addAll(bytesListTmp.subList(0, limit - bytesList.size()));
                         }
                     }
                 }
@@ -775,7 +782,7 @@ public class Unity extends IEngine {
 
     /// 从Node中右遍历降序
     ///
-    /// @param search        查询条件
+    /// @param select        查询条件
     /// @param indexFilepath 索引文件路径
     /// @param degreeMin     主键（-9223372036854775807 —— 9223372036854775808）
     /// @param includeMin    是否包含degreeMin
@@ -787,8 +794,11 @@ public class Unity extends IEngine {
     /// @return 数据
     ///
     /// @throws IOException 从Node中右遍历降序过程中可能抛出的异常
-    public List<byte[]> listDesc(Search search, String indexFilepath, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, Node node, long nodeCount) throws IOException {
+    public List<byte[]> listDesc(Select select, String indexFilepath, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, Node node, long nodeCount, int limit) throws IOException {
         List<byte[]> bytesList = new ArrayList<>();
+        if (limit <= 0) {
+            return bytesList;
+        }
         long nextPositionMin = Math.divideExact(degreeMin, nodeCount);
         long nextPositionMax = Math.divideExact(degreeMax, nodeCount);
         if (nodeCount == 1) {
@@ -801,21 +811,21 @@ public class Unity extends IEngine {
                 if (CollectionUtils.isEmpty(bytesListFromNode)) {
                     continue;
                 }
-                if (Objects.nonNull(search.getSearchFilter())) {
-                    bytesListFromNode = search.getSearchFilter().filter(bytesListFromNode, search.getHit());
+                if (Objects.nonNull(select.getSelectFilter())) {
+                    bytesListFromNode = select.getSelectFilter().filter(bytesListFromNode, select.getHit());
                 }
-                if (search.isDelete() && !CollectionUtils.isEmpty(bytesListFromNode)) {
+                if (select.isDelete() && !CollectionUtils.isEmpty(bytesListFromNode)) {
                     long leafMateSeek = node.getSeek() + 2 + position * 8;
                     Channel.write(indexFilepath, leafMateSeek, new byte[8]);
                 }
-                if (bytesList.size() + bytesListFromNode.size() < search.getLimit()) {
+                if (bytesList.size() + bytesListFromNode.size() < limit) {
                     bytesList.addAll(bytesListFromNode);
-                } else if (bytesList.size() + bytesListFromNode.size() == search.getLimit()) {
+                } else if (bytesList.size() + bytesListFromNode.size() == limit) {
                     bytesList.addAll(bytesListFromNode);
                     break;
                 } else {
                     int size = bytesList.size();
-                    for (int i = bytesListFromNode.size() - 1; i >= search.getLimit() - size; i--) {
+                    for (int i = bytesListFromNode.size() - 1; i >= limit - size; i--) {
                         bytesList.add(bytesListFromNode.get(i));
                     }
                 }
@@ -828,18 +838,18 @@ public class Unity extends IEngine {
                     long degreeMinTmp = Math.max(degreeMin - nextPositionMin * nodeCount, 0);
                     long degreeMaxTmp = Math.min(degreeMax - nextPositionMax * nodeCount, nodeCount);
 
-                    List<byte[]> bytesListTmp = listDesc(search, indexFilepath, degreeMinTmp, degreeMaxTmp, includeMin, includeMax, nextNode, nodeCount / 256);
+                    List<byte[]> bytesListTmp = listDesc(select, indexFilepath, degreeMinTmp, degreeMaxTmp, includeMin, includeMax, nextNode, nodeCount / 256, limit - bytesList.size());
                     if (!bytesListTmp.isEmpty()) {
-                        if (Objects.nonNull(search.getSearchFilter())) {
-                            bytesListTmp = search.getSearchFilter().filter(bytesListTmp, search.getHit());
+                        if (Objects.nonNull(select.getSelectFilter())) {
+                            bytesListTmp = select.getSelectFilter().filter(bytesListTmp, select.getHit());
                         }
-                        if (bytesList.size() + bytesListTmp.size() < search.getLimit()) {
+                        if (bytesList.size() + bytesListTmp.size() < limit) {
                             bytesList.addAll(bytesListTmp);
-                        } else if (bytesList.size() + bytesListTmp.size() == search.getLimit()) {
+                        } else if (bytesList.size() + bytesListTmp.size() == limit) {
                             bytesList.addAll(bytesListTmp);
                             break;
                         } else {
-                            bytesList.addAll(bytesListTmp.subList(0, search.getLimit() - bytesList.size()));
+                            bytesList.addAll(bytesListTmp.subList(0, limit - bytesList.size()));
                         }
                     }
                 }

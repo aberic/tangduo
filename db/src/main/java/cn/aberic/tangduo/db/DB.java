@@ -24,10 +24,7 @@ import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.Common;
 import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.Transaction;
-import cn.aberic.tangduo.index.engine.entity.Condition;
-import cn.aberic.tangduo.index.engine.entity.Content;
-import cn.aberic.tangduo.index.engine.entity.Hit;
-import cn.aberic.tangduo.index.engine.entity.Search;
+import cn.aberic.tangduo.index.engine.entity.*;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
@@ -65,7 +62,7 @@ public class DB {
     /// 单批次最大数量
     int batchMaxSize = INDEX_BATCH_MAX_SIZE;
     /// 每条索引检索的最大数据量，默认10000条
-    int searchMaxCount = SEARCH_MAX_COUNT;
+    int selectMaxCount = SEARCH_MAX_COUNT;
 
     private static final String blockSkip = "@@##@@";
     private static final String dbSkip = "#@#";
@@ -95,16 +92,16 @@ public class DB {
     ///
     /// @param rootPath        数据根路径
     /// @param dataFileMaxSize 数据文件大小阈值，单位byte
-    /// @param searchMaxCount  每条索引检索的最大数据量，默认10000条
+    /// @param selectMaxCount  每条索引检索的最大数据量，默认10000条
     /// @param batchMaxSize    索引批量最大数量，默认5000条
     ///
     /// @return 数据库实例
-    public static DB getInstance(String rootPath, long dataFileMaxSize, int searchMaxCount, int batchMaxSize) throws IOException, NoSuchFieldException, InstanceAlreadyExistsException {
+    public static DB getInstance(String rootPath, long dataFileMaxSize, int selectMaxCount, int batchMaxSize) throws IOException, NoSuchFieldException, InstanceAlreadyExistsException {
         if (instance == null) {
             lock.lock(); // 加锁
             try {
                 if (instance == null) {
-                    instance = new DB(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize);
+                    instance = new DB(rootPath, dataFileMaxSize, selectMaxCount, batchMaxSize);
                 }
             } finally {
                 lock.unlock(); // 释放锁
@@ -119,13 +116,13 @@ public class DB {
     ///
     /// @param rootPath        数据根路径
     /// @param dataFileMaxSize 数据文件大小阈值，单位byte
-    /// @param searchMaxCount  每条索引检索的最大数据量，默认10000条
+    /// @param selectMaxCount  每条索引检索的最大数据量，默认10000条
     /// @param batchMaxSize    索引批量最大数量，默认5000条
-    private DB(String rootPath, long dataFileMaxSize, int searchMaxCount, int batchMaxSize) throws IOException, NoSuchFieldException, InstanceAlreadyExistsException {
+    private DB(String rootPath, long dataFileMaxSize, int selectMaxCount, int batchMaxSize) throws IOException, NoSuchFieldException, InstanceAlreadyExistsException {
         this();
         this.rootPath = rootPath;
         this.dataFileMaxSize = dataFileMaxSize;
-        this.searchMaxCount = searchMaxCount;
+        this.selectMaxCount = selectMaxCount;
         this.batchMaxSize = batchMaxSize;
         Channel.startWriteThread();
         init();
@@ -784,8 +781,8 @@ public class DB {
         dbName = StringUtils.isEmpty(dbName) ? DATABASE_NAME_DEFAULT : dbName;
         List<DocGetResponseVO> docGetResponseVOList = new ArrayList<>();
         if (StringUtils.isEmpty(key)) {
-            Search search = new Search(indexName, 10);
-            List<byte[]> bytesList = selectBytesList(dbName, search);
+            Select select = new Select(indexName, 10);
+            List<byte[]> bytesList = selectBytesList(dbName, select);
             bytesList.forEach(bytes -> {
                 if (Objects.nonNull(bytes) && bytes.length > 0) {
                     try {
@@ -829,48 +826,8 @@ public class DB {
     ///
     /// @throws IOException 异常
     public List<DocSearchResponseVO> search(String dbName, String query) throws IOException {
-        return search(dbName, null, query, 10);
-    }
-
-    /// 搜索文档
-    ///
-    /// @param dbName        数据库名
-    /// @param query         检索字符串
-    /// @param callbackCount 回调次数
-    ///
-    /// @return 文档搜索响应VO列表
-    ///
-    /// @throws IOException 异常
-    public List<DocSearchResponseVO> search(String dbName, String query, int callbackCount) throws IOException {
-        return search(dbName, null, query, callbackCount);
-    }
-
-    /// 搜索文档
-    ///
-    /// @param dbName        数据库名
-    /// @param indexName     索引名（全名组合确保唯一性，如：库名+表名+索引名）
-    /// @param query         检索字符串
-    /// @param callbackCount 回调次数
-    ///
-    /// @return 文档搜索响应VO列表
-    ///
-    /// @throws IOException 异常
-    public List<DocSearchResponseVO> search(String dbName, String indexName, String query, int callbackCount) throws IOException {
-        return search(dbName, query, new Search(StringUtils.isEmpty(indexName) ? null : CommonTools.indexName(indexName), callbackCount));
-    }
-
-    /// 搜索文档
-    ///
-    /// @param dbName 数据库名
-    /// @param query  检索字符串
-    /// @param search 搜索参数
-    ///
-    /// @return 文档搜索响应VO列表
-    ///
-    /// @throws IOException 异常
-    public List<DocSearchResponseVO> search(String dbName, String query, Search search) throws IOException {
-        search.setLimit(searchMaxCount);
-        search.setSearchFilter(this::doFilter);
+        Select select = new Select();
+        select.setLimit(selectMaxCount);
         dbName = StringUtils.isEmpty(dbName) ? DATABASE_NAME_DEFAULT : dbName;
         SegIndex segIndex = dbMap.get(dbName);
         if (segIndex == null) {
@@ -893,7 +850,7 @@ public class DB {
             for (String idxName : indexNameList) {
                 Future<?> parentFuture = parentExecutor.submit(() -> {
                     try {
-                        List<byte[]> bytesList = segIndex.index.select(new Search(search, idxName, false));
+                        List<byte[]> bytesList = segIndex.index.select(new Select(select, idxName, false));
                         if (!CollectionUtils.isEmpty(bytesList)) {
                             bytesList.forEach(bytes -> {
                                 try {
@@ -918,7 +875,7 @@ public class DB {
             }
         }
         List<DocSearchResponseVO> docItems = Bm25Tools.rank(valueWithSegMap.values().stream().toList(), query, segIndex.seg);
-        return docItems.subList(0, Math.min(search.getLimit(), docItems.size()));
+        return docItems.subList(0, Math.min(selectMaxCount, docItems.size()));
     }
 
     /// 过滤文档
@@ -1011,14 +968,14 @@ public class DB {
     /// 查询文档
     ///
     /// @param dbName 数据库名
-    /// @param search 搜索参数
+    /// @param select 搜索参数
     ///
     /// @return 文档搜索响应VO列表
     ///
     /// @throws IOException 异常
-    public List<DocSelectResponseVO> select(String dbName, Search search) throws IOException {
+    public List<DocSelectResponseVO> select(String dbName, Select select) throws IOException {
         List<DocSelectResponseVO> voList = new ArrayList<>();
-        List<byte[]> bytesList = selectBytesList(dbName, search);
+        List<byte[]> bytesList = selectBytesList(dbName, select);
         if (!CollectionUtils.isEmpty(bytesList)) {
             bytesList.forEach(bytes -> {
                 try {
@@ -1028,7 +985,7 @@ public class DB {
                 } catch (JsonParseException ignore) {}
             });
         }
-        return voList.stream().filter(distinctById(DocSelectResponseVO::getDigests)).collect(Collectors.toList()).subList(0, Math.min(search.getLimit(), voList.size()));
+        return voList.stream().filter(distinctById(DocSelectResponseVO::getDigests)).collect(Collectors.toList()).subList(0, Math.min(select.getLimit(), voList.size()));
     }
 
     /// 去重
@@ -1044,21 +1001,21 @@ public class DB {
     /// 查询文档字节数组列表
     ///
     /// @param dbName 数据库名
-    /// @param search 搜索参数
+    /// @param select 搜索参数
     ///
     /// @return 文档字节数组列表
     ///
     /// @throws IOException 异常
-    private List<byte[]> selectBytesList(String dbName, Search search) throws IOException {
+    private List<byte[]> selectBytesList(String dbName, Select select) throws IOException {
         dbName = StringUtils.isEmpty(dbName) ? DATABASE_NAME_DEFAULT : dbName;
         Index index = getIndex(dbName);
         if (index == null) {
             throw new NoSuchFileException("数据库实例不存在");
         }
-        if (Objects.isNull(search.getSearchFilter())) {
-            search.setSearchFilter(this::doFilter);
+        if (Objects.isNull(select.getSelectFilter())) {
+            select.setSelectFilter(this::doFilter);
         }
-        return index.select(search);
+        return index.select(select);
     }
 
     /// 删除文档
@@ -1094,14 +1051,14 @@ public class DB {
     /// 删除文档
     ///
     /// @param dbName 数据库名
-    /// @param search 搜索参数
+    /// @param select 搜索参数
     ///
     /// @return 文档搜索响应VO列表
     ///
     /// @throws IOException 异常
-    public List<DocSelectResponseVO> delete(String dbName, Search search) throws IOException {
+    public List<DocSelectResponseVO> delete(String dbName, Select select) throws IOException {
         List<DocSelectResponseVO> voList = new ArrayList<>();
-        List<byte[]> bytesList = deleteBytesList(dbName, search);
+        List<byte[]> bytesList = deleteBytesList(dbName, select);
         if (!CollectionUtils.isEmpty(bytesList)) {
             bytesList.forEach(bytes -> {
                 try {
@@ -1111,26 +1068,26 @@ public class DB {
                 } catch (JsonParseException ignore) {}
             });
         }
-        return voList.stream().filter(distinctById(DocSelectResponseVO::getDigests)).collect(Collectors.toList()).subList(0, Math.min(search.getLimit(), voList.size()));
+        return voList.stream().filter(distinctById(DocSelectResponseVO::getDigests)).collect(Collectors.toList()).subList(0, Math.min(select.getLimit(), voList.size()));
     }
 
     /// 删除文档
     ///
     /// @param dbName 数据库名
-    /// @param search 搜索参数
+    /// @param select 搜索参数
     ///
     /// @return 文档字节数组列表
     ///
     /// @throws IOException 异常
-    private List<byte[]> deleteBytesList(String dbName, Search search) throws IOException {
+    private List<byte[]> deleteBytesList(String dbName, Select select) throws IOException {
         Index index = getIndex(dbName);
         if (index == null) {
             throw new NoSuchFileException("数据库实例不存在");
         }
-        if (Objects.isNull(search.getSearchFilter())) {
-            search.setSearchFilter(this::doFilter);
+        if (Objects.isNull(select.getSelectFilter())) {
+            select.setSelectFilter(this::doFilter);
         }
-        return index.delete(search);
+        return index.delete(select);
     }
 
 }

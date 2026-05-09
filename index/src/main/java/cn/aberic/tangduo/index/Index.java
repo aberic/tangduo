@@ -22,8 +22,7 @@ import cn.aberic.tangduo.index.engine.Datum;
 import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.Transaction;
 import cn.aberic.tangduo.index.engine.entity.Content;
-import cn.aberic.tangduo.index.engine.entity.Hit;
-import cn.aberic.tangduo.index.engine.entity.Search;
+import cn.aberic.tangduo.index.engine.entity.Select;
 import cn.aberic.tangduo.index.engine.unity.Unity;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -489,31 +488,31 @@ public class Index {
 
     /// 查询集合
     ///
-    /// @param search 查询条件
+    /// @param select 查询条件
     ///
     /// @throws IOException 异常
-    public List<byte[]> select(Search search) throws IOException {
-        String indexName = search.getIndexName();
+    public List<byte[]> select(Select select) throws IOException {
+        String indexName = select.getIndexName();
         if (StringUtils.isEmpty(indexName)) {
             return new ArrayList<>();
         }
         if (indexMap.containsKey(indexName)) {
-            return indexMap.get(indexName).select(search);
+            return indexMap.get(indexName).select(select);
         } else {
-            log.warn("untrace select indexMap.get({}) is null", indexName);
+            log.info("untrace select indexMap.get({}) is null", indexName);
             return new ArrayList<>();
         }
     }
 
     /// 删除集合
     ///
-    /// @param search 删除条件
+    /// @param select 删除条件
     ///
     /// @throws IOException 异常
-    public List<byte[]> delete(Search search) throws IOException {
-        String indexName = search.getIndexName();
+    public List<byte[]> delete(Select select) throws IOException {
+        String indexName = select.getIndexName();
         if (indexMap.containsKey(indexName)) {
-            return indexMap.get(indexName).delete(search);
+            return indexMap.get(indexName).delete(select);
         } else {
             log.info("untrace delete indexMap.get({}) is null", indexName);
             return null;

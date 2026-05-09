@@ -15,13 +15,13 @@
 package cn.aberic.tangduo.search.entity;
 
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 /// 查询数据请求体
-@EqualsAndHashCode(callSuper = true)
 @Data
-public class ReqSearchDataVO extends ReqSelectDataVO {
+public class ReqSearchDataVO {
 
+    /// 数据库名
+    String database;
     /// 查询的问题
     String query;
 

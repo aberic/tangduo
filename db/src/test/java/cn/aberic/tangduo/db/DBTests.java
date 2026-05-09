@@ -16,7 +16,6 @@ package cn.aberic.tangduo.db;
 
 import cn.aberic.tangduo.common.ByteTools;
 import cn.aberic.tangduo.common.JsonTools;
-import cn.aberic.tangduo.common.file.Filer;
 import cn.aberic.tangduo.db.common.CommonTools;
 import cn.aberic.tangduo.db.common.IkTokenizerTools;
 import cn.aberic.tangduo.db.entity.*;
@@ -93,7 +92,6 @@ public class DBTests {
     @Order(2)
     void dbRemove() throws Exception {
         String dbName = "dbRemove";
-        Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         DB db = DB.getInstance(rootpath, 10737418240L);
         db.removeDB(dbName);
         try {
@@ -118,7 +116,6 @@ public class DBTests {
     @Order(2)
     void putAndGetFirst() throws Exception, NoSuchMethodException {
         String dbName = "putAndGetFirstDB";
-        Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "putAndGetFirstIndex";
         DB db = DB.getInstance(rootpath, 10737418240L);
         db.removeDB(dbName);
@@ -148,7 +145,6 @@ public class DBTests {
     @Order(2)
     void putAndGetFirstAndRemove() throws Exception, NoSuchMethodException {
         String dbName = "putAndGetFirstAndRemoveDB";
-        Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "putAndGetFirstAndRemoveIndex";
         DB db = DB.getInstance(rootpath, 10737418240L);
         db.removeDB(dbName);
@@ -198,7 +194,6 @@ public class DBTests {
     @Order(2)
     void putStringContent() throws Exception, NoSuchMethodException {
         String dbName = "putStringContentDB";
-        Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "putStringContentIndex";
         DB db = DB.getInstance(rootpath, 10737418240L);
         db.removeDB(dbName);
@@ -243,7 +238,6 @@ public class DBTests {
     @Order(2)
     void putStringDefaultIndexContent() throws Exception {
         String dbName = "putStringDefaultIndexContentDB";
-        Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         DB db = DB.getInstance(rootpath, 10737418240L);
         db.removeDB(dbName);
         try {
@@ -286,7 +280,6 @@ public class DBTests {
     @Order(2)
     void putStringDefaultIndexAndKeyContent() throws Exception {
         String dbName = "putStringDefaultIndexAndKeyContentDB";
-        Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         DB db = DB.getInstance(rootpath, 10737418240L);
         db.removeDB(dbName);
         try {
@@ -327,7 +320,6 @@ public class DBTests {
     @Test
     @Order(2)
     void putStringDefaultDatabaseIndexAndKeyContent() throws Exception {
-        Filer.deleteDirectory(Path.of(rootpath, DB.DATABASE_NAME_DEFAULT).toAbsolutePath().toString());
         DB db = DB.getInstance(rootpath, 10737418240L);
         db.removeDB(DB.DATABASE_NAME_DEFAULT);
 
@@ -362,9 +354,8 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void putAndSelectFirstTimesAsync() throws Exception {
+    void putAndSearchFirstTimesAsync() throws Exception {
         String dbName = "putAndGetFirstTimesAsyncDB";
-        Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "putAndGetFirstTimesAsyncIndex";
         DB db = DB.getInstance(rootpath, 10737418240L);
         db.removeDB(dbName);
@@ -444,7 +435,7 @@ public class DBTests {
 
     @Test
     @Order(3)
-    void select() throws Exception {
+    void search() throws Exception {
         String dbName = "putAndGetFirstTimesAsyncDB";
         String indexName = "putAndGetFirstTimesAsyncIndex";
         DB db = DB.getInstance(rootpath, 10737418240L);
@@ -459,48 +450,48 @@ public class DBTests {
         }
         log.info("setAndGetTimes check over! wrongCount =  {}", wrongCount);
 
-        Search search = new Search(indexName, -500, 500, true, true, 100, true);
-        List<DocSelectResponseVO> bytesList = db.select(dbName, search);
+        Select select = new Select(indexName, -500, 500, true, true, 100, true);
+        List<DocSelectResponseVO> bytesList = db.select(dbName, select);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             int value = (int) bytesList.get(i).getValue();
             assert value == -500 + i : value + " != " + (-500 + i);
         }
 
-        search = new Search(indexName, -500, 500, false, false, 100, true);
-        bytesList = db.select(dbName, search);
+        select = new Select(indexName, -500, 500, false, false, 100, true);
+        bytesList = db.select(dbName, select);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             int value = (int) bytesList.get(i).getValue();
             assert value == -499 + i : value + " != " + (-499 + i);
         }
 
-        search = new Search(indexName, -500, 500, true, true, 100, false);
-        bytesList = db.select(dbName, search);
+        select = new Select(indexName, -500, 500, true, true, 100, false);
+        bytesList = db.select(dbName, select);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             int value = (int) bytesList.get(i).getValue();
             assert value == 500 - i : value + " != " + (500 - i);
         }
 
-        search = new Search(indexName, -500, 500, false, false, 100, false);
-        bytesList = db.select(dbName, search);
+        select = new Select(indexName, -500, 500, false, false, 100, false);
+        bytesList = db.select(dbName, select);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             int value = (int) bytesList.get(i).getValue();
             assert value == 499 - i : value + " != " + (499 - i);
         }
 
-        search = new Search(indexName, -50, 50, true, true, 100, true);
-        bytesList = db.select(dbName, search);
+        select = new Select(indexName, -50, 50, true, true, 100, true);
+        bytesList = db.select(dbName, select);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             int value = (int) bytesList.get(i).getValue();
             assert value == -50 + i : value + " != " + (-50 + i);
         }
 
-        search = new Search(indexName, -50, 50, false, false, 100, true);
-        bytesList = db.select(dbName, search);
+        select = new Select(indexName, -50, 50, false, false, 100, true);
+        bytesList = db.select(dbName, select);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             int value = (int) bytesList.get(i).getValue();
@@ -511,7 +502,7 @@ public class DBTests {
 
         Hit hit = new Hit(indexName, true);
         hit.setArea(new Area(-50, 50, false, false));
-        search = new Search(null, 100, true, hit, (bsList, conditionList) -> {
+        select = new Select(null, 100, true, hit, (bsList, conditionList) -> {
             List<byte[]> bl = new ArrayList<>();
             for (byte[] bytes : bsList) {
                 int value = new Doc(bytes).getValue().asInt();
@@ -521,7 +512,7 @@ public class DBTests {
             }
             return bl;
         });
-        bytesList = db.select(dbName, search);
+        bytesList = db.select(dbName, select);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             int value = (int) bytesList.get(i).getValue();
@@ -539,7 +530,6 @@ public class DBTests {
     @Order(2)
     void putAndGetFirstInSameIndex0() throws Exception, NoSuchMethodException {
         String dbName = "putAndGetFirstInSameIndexDB";
-        Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "putAndGetFirstInSameIndex0Index";
         DB db = DB.getInstance(rootpath, 10737418240L);
         db.removeDB(dbName);
@@ -624,7 +614,6 @@ public class DBTests {
     @Order(2)
     void deleteList() throws Exception {
         String dbName = "deleteListDB";
-        Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "deleteListIndex";
         DB db = DB.getInstance(rootpath, 10737418240L);
         db.removeDB(dbName);
@@ -645,15 +634,15 @@ public class DBTests {
         }
         log.info("setAndGetTimes check success!");
 
-        Search search = new Search(CommonTools.indexName(indexName), -100, 100, false, false, 200, true);
-        List<DocSelectResponseVO> bytesList = db.delete(dbName, search);
+        Select select = new Select(CommonTools.indexName(indexName), -100, 100, false, false, 200, true);
+        List<DocSelectResponseVO> bytesList = db.delete(dbName, select);
         assert 199 == bytesList.size() : "199 != " + bytesList.size(); // (-99 —— 0) + (1 —— 99) = 199
         for (int i = 0; i < bytesList.size(); i++) {
             int value = (int) bytesList.get(i).getValue();
             assert (i - 99) == value : (i - 99) + " != " + value; // (-99 —— 0) + (1 —— 99) = 199
         }
-        search = new Search(CommonTools.indexName(indexName), -120, 150, false, false, 100, true);
-        bytesList = db.select(dbName, search); // -99 —— 99 上一轮已删
+        select = new Select(CommonTools.indexName(indexName), -120, 150, false, false, 100, true);
+        bytesList = db.select(dbName, select); // -99 —— 99 上一轮已删
         assert 70 == bytesList.size() : "70 != " + bytesList.size(); // -120——150总计271个数字，减去上一轮的199，还剩70个数字
         for (int i = 0; i < bytesList.size(); i++) {
             int value = (int) bytesList.get(i).getValue();
@@ -780,9 +769,8 @@ public class DBTests {
 
     @Test
     @Order(2)
-    void putAndSelectFirstBatch() throws Exception, NoSuchMethodException, InterruptedException {
+    void putAndSearchFirstBatch() throws Exception, NoSuchMethodException, InterruptedException {
         String dbName = "putAndSelectFirstBatchDB";
-        Filer.deleteDirectory(Path.of(rootpath, dbName).toAbsolutePath().toString());
         String indexName = "putAndSelectFirstBatchIndex";
         DB db = DB.getInstance(rootpath, 10737418240L);
         db.removeDB(dbName);
@@ -866,5 +854,67 @@ public class DBTests {
             assert wrongCount.get() == 0 : wrongCount;
         }
     }
+
+    record User(String name, int age) {}
+
+    record Role(int id, User user) {}
+
+    Role role(int i) {
+        User user = new User("name" + i, i);
+        return new Role(i, user);
+    }
+
+//    @Test
+//    @Order(2)
+//    void afterDegree() throws Exception {
+//        String dbName = "afterDegreeDB";
+//        String indexName = "afterDegreeIndex";
+//        DB db = DB.getInstance(rootpath, 10737418240L);
+//        db.removeDB(dbName);
+//        try {
+//            db.createDB(dbName);
+//            db.createIndex(dbName, IEngine.UNITY, new Index.Info(1, indexName, true, true, false));
+//        } catch (InstanceAlreadyExistsException e) {
+//            System.out.println(e.getMessage());
+//        }
+////        int threadCount = 10000000; // 已测 插入执行耗时：14.52.055，查询执行耗时：33.37.622s，wrongCount = 0
+//        int threadCount = 100000;
+//        int startIndex = threadCount / 2 - threadCount;
+//        CountDownLatch latch = new CountDownLatch(threadCount); // 计数3
+//        indexName = CommonTools.indexName(indexName);
+//
+//        long start = System.currentTimeMillis();
+//        try (ThreadPoolExecutor executor = new ThreadPoolExecutor(
+//                10,                  // 核心线程
+//                50,                  // 最大线程（关键！限制线程总数）
+//                60L, TimeUnit.SECONDS,
+//                new ArrayBlockingQueue<>(200),  // 有界队列！！绝对不用无界 LinkedBlockingQueue
+//                new ThreadPoolExecutor.CallerRunsPolicy()  // 拒绝策略
+//        )) {
+//            for (int i = startIndex; i < threadCount; i++) {
+//                int finalI = i;
+//                String finalIndexName = indexName;
+//                executor.execute(() -> {
+//                    try {
+//                        db.put(dbName, finalIndexName, String.valueOf(finalI), false, role(finalI));
+//                    } catch (IOException e) {
+//                        throw new RuntimeException(e);
+//                    } finally {
+//                        latch.countDown();
+//                    }
+//                });
+//            }
+//            // 等待计数减到0（所有线程完成）
+//            latch.await();
+//            long ms = System.currentTimeMillis() - start;
+//            long minutes = ms / (1000 * 60);
+//            long seconds = (ms / 1000) % 60;
+//            long millis = ms % 1000;
+//            String timeStr = String.format("%02d.%02d.%03d", minutes, seconds, millis);
+//            log.info("afterDegree set success! 插入执行耗时：{}", timeStr);
+//
+//
+//        }
+//    }
 
 }

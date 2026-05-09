@@ -15,22 +15,22 @@
 package cn.aberic.tangduo.index.engine.unity;
 
 import cn.aberic.tangduo.common.ByteTools;
+import cn.aberic.tangduo.common.JsonTools;
 import cn.aberic.tangduo.common.file.Filer;
 import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.Transaction;
-import cn.aberic.tangduo.index.engine.entity.Area;
-import cn.aberic.tangduo.index.engine.entity.Content;
-import cn.aberic.tangduo.index.engine.entity.Hit;
-import cn.aberic.tangduo.index.engine.entity.Search;
+import cn.aberic.tangduo.index.engine.entity.*;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.springframework.util.CollectionUtils;
 
 import javax.management.InstanceAlreadyExistsException;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -42,6 +42,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
@@ -316,8 +317,8 @@ public class IndexTests {
 
         Hit hit1 = new Hit(indexName, true);
         hit1.setArea(new Area(-500, 500, true, true));
-        Search search1 = new Search(null, 100, false, hit1, null);
-        bytesList = index.select(search1);
+        Select select1 = new Select(null, 100, false, hit1, null);
+        bytesList = index.select(select1);
         log.info("select hit1 list size =  {}", bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             System.out.print(ByteTools.toInt(bytesList.get(i)) + " ");
@@ -326,8 +327,8 @@ public class IndexTests {
 
         Hit hit2 = new Hit(indexName, true);
         hit2.setArea(new Area(-500, 500, false, false));
-        Search search2 = new Search(null, 100, false, hit2, null);
-        bytesList = index.select(search2);
+        Select select2 = new Select(null, 100, false, hit2, null);
+        bytesList = index.select(select2);
         log.info("select hit2 list size =  {}", bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             assert ByteTools.toInt(bytesList.get(i)) == -499 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-499 + i);
@@ -336,8 +337,8 @@ public class IndexTests {
 
         Hit hit3 = new Hit(indexName, false);
         hit3.setArea(new Area(-500, 500, true, true));
-        Search search3 = new Search(null, 100, false, hit3, null);
-        bytesList = index.select(search3);
+        Select select3 = new Select(null, 100, false, hit3, null);
+        bytesList = index.select(select3);
         log.info("select hit3 list size =  {}", bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             assert ByteTools.toInt(bytesList.get(i)) == 500 - i : ByteTools.toInt(bytesList.get(i)) + " != " + (500 - i);
@@ -345,8 +346,8 @@ public class IndexTests {
 
         Hit hit4 = new Hit(indexName, false);
         hit4.setArea(new Area(-500, 500, false, false));
-        Search search4 = new Search(null, 100, false, hit4, null);
-        bytesList = index.select(search4);
+        Select select4 = new Select(null, 100, false, hit4, null);
+        bytesList = index.select(select4);
         log.info("select hit4 list size =  {}", bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             assert ByteTools.toInt(bytesList.get(i)) == 499 - i : ByteTools.toInt(bytesList.get(i)) + " != " + (499 - i);
@@ -354,8 +355,8 @@ public class IndexTests {
 
         Hit hit5 = new Hit(indexName, true);
         hit5.setArea(new Area(-50, 50, true, true));
-        Search search5 = new Search(null, 100, false, hit5, null);
-        bytesList = index.select(search5);
+        Select select5 = new Select(null, 100, false, hit5, null);
+        bytesList = index.select(select5);
         log.info("select hit5 list size =  {}", bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             assert ByteTools.toInt(bytesList.get(i)) == -50 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-50 + i);
@@ -363,8 +364,8 @@ public class IndexTests {
 
         Hit hit6 = new Hit(indexName, true);
         hit6.setArea(new Area(-50, 50, false, false));
-        Search search6 = new Search(null, 100, false, hit6, null);
-        bytesList = index.select(search6);
+        Select select6 = new Select(null, 100, false, hit6, null);
+        bytesList = index.select(select6);
         log.info("select hit6 list size =  {}", bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             System.out.print(ByteTools.toInt(bytesList.get(i)) + " ");
@@ -374,7 +375,7 @@ public class IndexTests {
 
         Hit hit7 = new Hit(indexName, true);
         hit7.setArea(new Area(-50, 50, false, false));
-        Search search7 = new Search(null, 100, true, hit7, (bsList, conditionList) -> {
+        Select select7 = new Select(null, 100, true, hit7, (bsList, conditionList) -> {
             List<byte[]> bl = new ArrayList<>();
             for (byte[] bytes : bsList) {
                 if (0 != ByteTools.toInt(bytes)) {
@@ -383,7 +384,7 @@ public class IndexTests {
             }
             return bl;
         });
-        bytesList = index.select(search7);
+        bytesList = index.select(select7);
         log.info("select hit7 list size =  {}", bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             if (i < 49) {
@@ -412,43 +413,43 @@ public class IndexTests {
         }
         log.info("select check over! wrongCount =  {}", wrongCount);
 
-        Search search = new Search(indexName, -500, 500, true, true, 100, true);
-        List<byte[]> bytesList = index.select(search);
+        Select select = new Select(indexName, -500, 500, true, true, 100, true);
+        List<byte[]> bytesList = index.select(select);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             assert ByteTools.toInt(bytesList.get(i)) == -500 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-500 + i);
         }
 
-        search = new Search(indexName, -500, 500, false, false, 100, true);
-        bytesList = index.select(search);
+        select = new Select(indexName, -500, 500, false, false, 100, true);
+        bytesList = index.select(select);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             assert ByteTools.toInt(bytesList.get(i)) == -499 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-499 + i);
         }
 
-        search = new Search(indexName, -500, 500, true, true, 100, false);
-        bytesList = index.select(search);
+        select = new Select(indexName, -500, 500, true, true, 100, false);
+        bytesList = index.select(select);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             assert ByteTools.toInt(bytesList.get(i)) == 500 - i : ByteTools.toInt(bytesList.get(i)) + " != " + (500 - i);
         }
 
-        search = new Search(indexName, -500, 500, false, false, 100, false);
-        bytesList = index.select(search);
+        select = new Select(indexName, -500, 500, false, false, 100, false);
+        bytesList = index.select(select);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             assert ByteTools.toInt(bytesList.get(i)) == 499 - i : ByteTools.toInt(bytesList.get(i)) + " != " + (499 - i);
         }
 
-        search = new Search(indexName, -50, 50, true, true, 100, true);
-        bytesList = index.select(search);
+        select = new Select(indexName, -50, 50, true, true, 100, true);
+        bytesList = index.select(select);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             assert ByteTools.toInt(bytesList.get(i)) == -50 + i : ByteTools.toInt(bytesList.get(i)) + " != " + (-50 + i);
         }
 
-        search = new Search(indexName, -50, 50, false, false, 100, true);
-        bytesList = index.select(search);
+        select = new Select(indexName, -50, 50, false, false, 100, true);
+        bytesList = index.select(select);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             System.out.print(ByteTools.toInt(bytesList.get(i)) + " ");
@@ -458,7 +459,7 @@ public class IndexTests {
 
         Hit hit = new Hit(indexName, true);
         hit.setArea(new Area(-50, 50, false, false));
-        search = new Search(null, 100, true, hit, (bsList, conditionList) -> {
+        select = new Select(null, 100, true, hit, (bsList, conditionList) -> {
             List<byte[]> bl = new ArrayList<>();
             for (byte[] bytes : bsList) {
                 if (0 != ByteTools.toInt(bytes)) {
@@ -467,7 +468,7 @@ public class IndexTests {
             }
             return bl;
         });
-        bytesList = index.select(search);
+        bytesList = index.select(select);
         System.out.println("list size = " + bytesList.size());
         for (int i = 0; i < bytesList.size(); i++) {
             if (i < 49) {
@@ -624,10 +625,10 @@ public class IndexTests {
         String indexName = "putAndGetFirstAndAreaSelectTimes";
         Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
 
-        Search search = new Search();
-        search.setLimit(15);
-        search.setHit(new Hit(indexName, false));
-        List<byte[]> bytesList = index.select(search);
+        Select select = new Select();
+        select.setLimit(15);
+        select.setHit(new Hit(indexName, false));
+        List<byte[]> bytesList = index.select(select);
         System.out.println("list size = " + bytesList.size());
         for (byte[] bytes : bytesList) {
             System.out.println(ByteTools.toLong(bytes));
@@ -651,14 +652,14 @@ public class IndexTests {
         }
         log.info("setAndGetTimes check success!");
 
-        Search search = new Search(indexName, -100, 100, false, false, true);
-        List<byte[]> bytesList = index.delete(search);
+        Select select = new Select(indexName, -100, 100, false, false, true);
+        List<byte[]> bytesList = index.delete(select);
         assert 199 == bytesList.size() : "199 != " + bytesList.size(); // (-99 —— 0) + (1 —— 99) = 199
         for (int i = 0; i < bytesList.size(); i++) {
             assert (i - 99) == ByteTools.toInt(bytesList.get(i)) : (i - 99) + " != " + ByteTools.toInt(bytesList.get(i)); // (-99 —— 0) + (1 —— 99) = 199
         }
-        search = new Search(indexName, -120, 150, false, false, 100, true);
-        bytesList = index.select(search); // -99 —— 99 上一轮已删
+        select = new Select(indexName, -120, 150, false, false, 100, true);
+        bytesList = index.select(select); // -99 —— 99 上一轮已删
         assert 70 == bytesList.size() : "70 != " + bytesList.size(); // -120——150总计271个数字，减去上一轮的199，还剩70个数字
         for (int i = 0; i < bytesList.size(); i++) {
             // (-99 —— 0) + (1 —— 99) 因获取不到，被过滤掉
@@ -750,6 +751,142 @@ public class IndexTests {
         assert 1 == ByteTools.toInt(index.getFirst(indexName2, 0, "1")) : ByteTools.toInt(index.getFirst(indexName2, 0, "1"));
         assert 1 == ByteTools.toInt(index.getFirst(indexName3, 1, "1")) : ByteTools.toInt(index.getFirst(indexName3, 1, "1"));
         assert 1 == ByteTools.toInt(index.getFirst(indexName4, 9223372036854775807L, "1")) : ByteTools.toInt(index.getFirst(indexName4, 9223372036854775807L, "1"));
+    }
+
+    record User(String name, int age) {}
+
+    record Role(int id, User user) {}
+
+    Role role(int i) {
+        User user = new User("name_" + i, i);
+        return new Role(i, user);
+    }
+
+    @Test
+    @Order(3)
+    void afterDegree() throws IOException, NoSuchFieldException, InterruptedException {
+        String indexName = "afterDegree";
+        Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
+        index.removeIndex(indexName);
+
+        int threadCount = 100; // 10000000 1小时16分钟
+        int endIndex = threadCount / 2;
+        int startIndex = endIndex - threadCount;
+        log.info("startIndex = {}, count = {}", startIndex, threadCount);
+        CountDownLatch latch = new CountDownLatch(threadCount); // 计数3
+
+        try (ThreadPoolExecutor executor = new ThreadPoolExecutor(
+                10,                  // 核心线程
+                50,                  // 最大线程（关键！限制线程总数）
+                60L, TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(200),  // 有界队列！！绝对不用无界 LinkedBlockingQueue
+                new ThreadPoolExecutor.CallerRunsPolicy()  // 拒绝策略
+        )) {
+            for (int i = startIndex; i < endIndex; i++) {
+                int finalI = i;
+                executor.execute(() -> {
+                    try {
+                        index.put(new Content(new Transaction(finalI), indexName, finalI, String.valueOf(finalI), Objects.requireNonNull(JsonTools.toJson(role(finalI))).getBytes(StandardCharsets.UTF_8)));
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    } finally {
+                        latch.countDown();
+                    }
+                });
+            }
+        }
+        // 等待计数减到0（所有线程完成）
+        latch.await();
+
+        afterDegreeSelect(index, indexName, 0, true);
+        afterDegreeSelect(index, indexName, 9, true);
+        afterDegreeSelect(index, indexName, -5, true);
+
+        afterDegreeSelect(index, indexName, 0, false);
+        afterDegreeSelect(index, indexName, 9, false);
+        afterDegreeSelect(index, indexName, -15, false);
+    }
+
+    void afterDegreeSelect(Index index, String indexName, long afterDegree, boolean asc) throws IOException {
+        Select select = new Select();
+        select.setLimit(10);
+        Hit hit = new Hit();
+        hit.setSort(new Sort(indexName, "user.age", afterDegree, asc));
+        select.setHit(hit);
+        select.setSelectFilter(this::doFilter);
+        List<byte[]> bytesList = index.select(select);
+        System.out.println("list size = " + bytesList.size() + " | afterDegree = " + afterDegree + " | asc = " + asc);
+        for (byte[] bytes : bytesList) {
+            System.out.println(JsonTools.toObj(new String(bytes), Role.class));
+        }
+    }
+
+    /// 过滤文档
+    ///
+    /// @param bytesList 文档字节数组列表
+    /// @param hit       命中策略
+    ///
+    /// @return 过滤后的文档字节数组列表
+    private List<byte[]> doFilter(List<byte[]> bytesList, Hit hit) {
+        if (CollectionUtils.isEmpty(hit.getConditions())) {
+            return bytesList;
+        }
+        return bytesList.stream().filter(bytes -> {
+            for (Condition condition : hit.getConditions()) {
+                Object obj;
+                try {
+                    obj = JsonTools.getValueByPath(JsonTools.toJson(JsonTools.toObj(new String(bytes), Role.class)), condition.getParam());
+                } catch (Exception ignore) {
+                    return false;
+                }
+                boolean pass;
+                if (obj instanceof String) {
+                    pass = switch (condition.getCompare()) {
+                        case EQ -> obj.equals(condition.getCompareValue());
+                        case NE -> !obj.equals(condition.getCompareValue());
+                        default -> false;
+                    };
+                } else if (obj instanceof Number) {
+                    int compareNumber = compareNumber((Number) obj, (Number) condition.getCompareValue());
+                    pass = switch (condition.getCompare()) {
+                        case EQ -> compareNumber == 0;
+                        case NE -> compareNumber != 0;
+                        case GE -> compareNumber > 0 || compareNumber == 0;
+                        case GT -> compareNumber > 0;
+                        case LE -> compareNumber < 0 || compareNumber == 0;
+                        case LT -> compareNumber < 0;
+                    };
+                } else {
+                    pass = false;
+                }
+                if (!pass) {
+                    return false;
+                }
+            }
+            return true;
+        }).collect(Collectors.toList());
+    }
+
+    /// 比较两个 Number 大小
+    ///
+    /// @param n1 第一个 Number
+    /// @param n2 第二个 Number
+    ///
+    /// @return 负数：n1 < n2
+    /// 0：n1 == n2
+    /// 正数：n1 > n2
+    private int compareNumber(Number n1, Number n2) {
+        if (n1 == null && n2 == null) {
+            return 0;
+        }
+        if (n1 == null) {
+            return -1;
+        }
+        if (n2 == null) {
+            return 1;
+        }
+        // 统一转成 double 比较
+        return Double.compare(n1.doubleValue(), n2.doubleValue());
     }
 
 }

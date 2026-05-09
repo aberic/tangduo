@@ -61,6 +61,18 @@ public class Hit {
         sort.indexName = indexName;
     }
 
+    public void reSet() {
+        if (Objects.nonNull(sort) && Objects.nonNull(sort.afterDegree) && Objects.nonNull(sort.param)) {
+            if (sort.asc) {
+                area.startDegree = sort.afterDegree;
+                conditions.add(new Condition(sort.param, Condition.Compare.GT, sort.afterDegree));
+            } else {
+                area.endDegree = sort.afterDegree;
+                conditions.add(new Condition(sort.param, Condition.Compare.LT, sort.afterDegree));
+            }
+        }
+    }
+
     /// 新增条件
     ///
     /// @param param        选中的key，目标为json对象中的key，通过.的方式拼接，允许指定深层次，如 name，school.student.name 等

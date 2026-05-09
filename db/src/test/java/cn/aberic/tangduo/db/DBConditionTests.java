@@ -20,7 +20,7 @@ import cn.aberic.tangduo.db.common.CommonTools;
 import cn.aberic.tangduo.db.entity.DocSelectResponseVO;
 import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.IEngine;
-import cn.aberic.tangduo.index.engine.entity.Search;
+import cn.aberic.tangduo.index.engine.entity.Select;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -67,7 +67,7 @@ public class DBConditionTests {
 
     @Test
     @Order(2)
-    void putJsonListAndSelect() throws Exception {
+    void putJsonListAndSearch() throws Exception {
         String dbName = "putJsonListAndSelectDB";
         String indexName = "putJsonListAndSelectIndex";
         DB db = DB.getInstance(rootpath, 10737418240L);
@@ -83,21 +83,21 @@ public class DBConditionTests {
             db.put(dbName, indexName, String.valueOf(i), false, role(i));
         }
 
-        String searchIndexName = CommonTools.indexName(indexName);
-        Search search = new Search(searchIndexName, -50, 50, true, false, 100, true);
-        search.addCondition("user.age", "ge", 15);
-        List<DocSelectResponseVO> bytesList = db.select(dbName, search);
+        String selectIndexName = CommonTools.indexName(indexName);
+        Select select = new Select(selectIndexName, -50, 50, true, false, 100, true);
+        select.addCondition("user.age", "ge", 15);
+        List<DocSelectResponseVO> bytesList = db.select(dbName, select);
         for (DocSelectResponseVO bytes : bytesList) {
             log.info("bytes.getValue() = {}", bytes.getValue());
         }
 
         System.out.println();
 
-        search = new Search();
-        search.setIndexName(searchIndexName);
-        search.addCondition("user.age", "ge", 20);
-        search.addCondition("user.age", "lt", 30);
-        bytesList = db.select(dbName, search);
+        select = new Select();
+        select.setIndexName(selectIndexName);
+        select.addCondition("user.age", "ge", 20);
+        select.addCondition("user.age", "lt", 30);
+        bytesList = db.select(dbName, select);
         for (DocSelectResponseVO bytes : bytesList) {
             System.out.println(bytes.getValue());
         }
