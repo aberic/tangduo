@@ -30,7 +30,6 @@ import org.springframework.util.CollectionUtils;
 
 import javax.management.InstanceAlreadyExistsException;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -753,13 +752,13 @@ public class IndexTests {
         assert 1 == ByteTools.toInt(index.getFirst(indexName4, 9223372036854775807L, "1")) : ByteTools.toInt(index.getFirst(indexName4, 9223372036854775807L, "1"));
     }
 
-    record User(String name, int age) {}
+    record User(String name, int age, int a, int b, int c, int d) {}
 
-    record Role(int id, User user) {}
+    record Role(int id, int e, int f, int g, User user) {}
 
     Role role(int i) {
-        User user = new User("name_" + i, i);
-        return new Role(i, user);
+        User user = new User("name_" + i, i, i, i, i, i);
+        return new Role(i, i, i, i, user);
     }
 
     @Test
@@ -786,7 +785,7 @@ public class IndexTests {
                 int finalI = i;
                 executor.execute(() -> {
                     try {
-                        index.put(new Content(new Transaction(finalI), indexName, finalI, String.valueOf(finalI), Objects.requireNonNull(JsonTools.toJson(role(finalI))).getBytes(StandardCharsets.UTF_8)));
+                        index.put(new Content(new Transaction(finalI), indexName, finalI, String.valueOf(finalI), ByteTools.fromString(Objects.requireNonNull(JsonTools.toJson(role(finalI))))));
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     } finally {
@@ -798,26 +797,34 @@ public class IndexTests {
         // 等待计数减到0（所有线程完成）
         latch.await();
 
-        afterDegreeSelect(index, indexName, 0, true);
-        afterDegreeSelect(index, indexName, 9, true);
-        afterDegreeSelect(index, indexName, -5, true);
+        List<String> fields = new ArrayList<>();
+        afterDegreeSelect(index, indexName, 0, true, fields);
+        fields = List.of("id", "e", "f", "user.name", "user.age", "user.a", "user.b", "user.c");
+        afterDegreeSelect(index, indexName, 9, true, fields);
+        fields = List.of("id", "e", "user.name", "user.age", "user.a", "user.b");
+        afterDegreeSelect(index, indexName, -5, true, fields);
 
-        afterDegreeSelect(index, indexName, 0, false);
-        afterDegreeSelect(index, indexName, 9, false);
-        afterDegreeSelect(index, indexName, -15, false);
+        fields = List.of("id", "user.name", "user.age", "user.a");
+        afterDegreeSelect(index, indexName, 0, false, fields);
+        fields = List.of("id", "user.name", "user.age");
+        afterDegreeSelect(index, indexName, 9, false, fields);
+        fields = List.of("id", "user.name");
+        afterDegreeSelect(index, indexName, -15, false, fields);
     }
 
-    void afterDegreeSelect(Index index, String indexName, long afterDegree, boolean asc) throws IOException {
+    void afterDegreeSelect(Index index, String indexName, long afterDegree, boolean asc, List<String> fields) throws IOException {
         Select select = new Select();
         select.setLimit(10);
         Hit hit = new Hit();
         hit.setSort(new Sort(indexName, "user.age", afterDegree, asc));
+        hit.setFields(fields);
         select.setHit(hit);
         select.setSelectFilter(this::doFilter);
         List<byte[]> bytesList = index.select(select);
         System.out.println("list size = " + bytesList.size() + " | afterDegree = " + afterDegree + " | asc = " + asc);
         for (byte[] bytes : bytesList) {
-            System.out.println(JsonTools.toObj(new String(bytes), Role.class));
+//            System.out.println(JsonTools.toObj(new String(bytes), Role.class));
+            System.out.println(new String(bytes));
         }
     }
 
@@ -835,7 +842,7 @@ public class IndexTests {
             for (Condition condition : hit.getConditions()) {
                 Object obj;
                 try {
-                    obj = JsonTools.getValueByPath(JsonTools.toJson(JsonTools.toObj(new String(bytes), Role.class)), condition.getParam());
+                    obj = JsonTools.getValueByPath(JsonTools.toJson(JsonTools.toObj(ByteTools.toString(bytes), Role.class)), condition.getParam());
                 } catch (Exception ignore) {
                     return false;
                 }

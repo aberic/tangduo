@@ -18,6 +18,9 @@ import lombok.extern.slf4j.Slf4j;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.JsonNodeFactory;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.util.List;
 import java.util.Map;
@@ -235,5 +238,113 @@ public final class JsonTools {
             prev = c;
         }
         return sb.toString();
+    }
+
+
+    /**
+     * 只保留指定路径的节点，其余全部删除
+     * @param jsonStr 源
+     * @param keepPaths 要保留的路径列表，例如 ["user.name", "list.0.age"]
+     * @return 过滤后的新 jsonStr
+     */
+    public static String keepOnlyPathsStr(String jsonStr, List<String> keepPaths) {
+        JsonNode root = JsonTools.OBJECT_MAPPER.readTree(jsonStr);
+        return toJson(keepOnlyPaths(root, keepPaths));
+    }
+
+
+    /**
+     * 只保留指定路径的节点，其余全部删除
+     * @param jsonStr 源
+     * @param keepPaths 要保留的路径列表，例如 ["user.name", "list.0.age"]
+     * @return 过滤后的新 JsonNode
+     */
+    public static JsonNode keepOnlyPaths(String jsonStr, List<String> keepPaths) {
+        JsonNode root = JsonTools.OBJECT_MAPPER.readTree(jsonStr);
+        return keepOnlyPaths(root, keepPaths);
+    }
+
+
+    /**
+     * 只保留指定路径的节点，其余全部删除
+     * @param source 源 JsonNode
+     * @param keepPaths 要保留的路径列表，例如 ["user.name", "list.0.age"]
+     * @return 过滤后的新 JsonNode
+     */
+    public static JsonNode keepOnlyPaths(JsonNode source, List<String> keepPaths) {
+        if (source == null || keepPaths == null || keepPaths.isEmpty()) {
+            return JsonNodeFactory.instance.objectNode();
+        }
+
+        JsonNode result = duplicateEmpty(source);
+
+        for (String path : keepPaths) {
+            String[] keys = path.split("\\.");
+            copyByPath(source, result, keys, 0);
+        }
+
+        return result;
+    }
+
+    /// 递归复制指定路径
+    private static void copyByPath(JsonNode source, JsonNode target, String[] keys, int index) {
+        if (index >= keys.length) return;
+
+        String key = keys[index];
+        boolean isLast = index == keys.length - 1;
+
+        try {
+            // 数组
+            if (target.isArray() && source.isArray()) {
+                int arrIdx = Integer.parseInt(key);
+                ArrayNode targetArr = (ArrayNode) target;
+                ArrayNode sourceArr = (ArrayNode) source;
+
+                if (arrIdx < 0 || arrIdx >= sourceArr.size()) return;
+
+                // 确保目标数组有这个位置
+                while (targetArr.size() <= arrIdx) {
+                    targetArr.add(duplicateEmpty(sourceArr.get(arrIdx)));
+                }
+
+                JsonNode sourceChild = sourceArr.get(arrIdx);
+                JsonNode targetChild = targetArr.get(arrIdx);
+
+                if (isLast) {
+                    targetArr.set(arrIdx, sourceChild.deepCopy());
+                } else {
+                    copyByPath(sourceChild, targetChild, keys, index + 1);
+                }
+            }
+
+            // 对象
+            else if (target.isObject() && source.isObject()) {
+                ObjectNode targetObj = (ObjectNode) target;
+                ObjectNode sourceObj = (ObjectNode) source;
+
+                if (!sourceObj.has(key)) return;
+                JsonNode sourceChild = sourceObj.get(key);
+
+                if (isLast) {
+                    targetObj.set(key, sourceChild.deepCopy());
+                } else {
+                    JsonNode targetChild = targetObj.get(key);
+                    if (targetChild == null || targetChild.isMissingNode()) {
+                        targetChild = duplicateEmpty(sourceChild);
+                        targetObj.set(key, targetChild);
+                    }
+                    copyByPath(sourceChild, targetChild, keys, index + 1);
+                }
+            }
+        } catch (Exception e) {
+            // 路径不合法直接忽略
+        }
+    }
+
+    // 创建空结构（保持类型：对象/数组）
+    private static JsonNode duplicateEmpty(JsonNode node) {
+        if (node.isArray()) return JsonNodeFactory.instance.arrayNode();
+        if (node.isObject()) return JsonNodeFactory.instance.objectNode();
+        return node;
     }
 }

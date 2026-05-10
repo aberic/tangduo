@@ -15,6 +15,7 @@
 package cn.aberic.tangduo.common;
 
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
 
 import java.util.Arrays;
 import java.util.List;
@@ -109,7 +110,7 @@ public class JsonToolsTests {
 
         obj = JsonTools.getValueByPath(jsonStr, "student.age");
         assert obj instanceof Integer;
-        assert (int) JsonTools.getValueByPath(jsonStr, "student.age") == 12;
+        assert (int) obj == 12;
 
         obj = JsonTools.getValueByPath(jsonStr, "values");
         assert obj instanceof List<?>;
@@ -124,8 +125,51 @@ public class JsonToolsTests {
         assert obj instanceof Number : obj;
         obj = JsonTools.getValueByPath(jsonStr, "rating2");
         assert obj instanceof Double : obj;
+    }
 
+    String json = """
+            {
+              "user": {
+                "name": "张三",
+                "pwd": "123456",
+                "info": {
+                  "phone": "1380000",
+                  "email": "a@b.com"
+                }
+              },
+              "list": [
+                {"id":1,"age":20},
+                {"id":2,"age":25}
+              ]
+            }
+            """;
+    /// 只保留这些路径
+    List<String> keep = List.of(
+            "user.name",
+            "user.age",
+            "user.info.phone",
+            "list.0.age"
+    );
 
+    @Test
+    void keepOnlyPaths() {
+        JsonNode root = JsonTools.OBJECT_MAPPER.readTree(json);
+        // 执行过滤
+        JsonNode result = JsonTools.keepOnlyPaths(root, keep);
+        // 输出结果
+        System.out.println(JsonTools.OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(result));
+
+        System.out.println();
+
+        // 执行过滤
+        result = JsonTools.keepOnlyPaths(json, keep);
+        // 输出结果
+        System.out.println(JsonTools.toJson(result));
+
+        System.out.println();
+
+        // 输出结果
+        System.out.println(JsonTools.keepOnlyPathsStr(json, keep));
     }
 
 }

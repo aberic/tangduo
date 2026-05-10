@@ -16,6 +16,7 @@ package cn.aberic.tangduo.index.engine.unity;
 
 import cn.aberic.tangduo.common.ByteTools;
 import cn.aberic.tangduo.common.DateTools;
+import cn.aberic.tangduo.common.JsonTools;
 import cn.aberic.tangduo.common.file.Channel;
 import cn.aberic.tangduo.common.file.Filer;
 import cn.aberic.tangduo.common.file.Reader;
@@ -371,12 +372,12 @@ public class Unity extends IEngine {
      */
     @Override
     public List<byte[]> get(String indexName, long degree, String key) throws IOException {
-        return getOrDelete(getIndexFilepath(degree, indexName).toString(), reDegree(degree), key, false);
+        return getOrRemove(getIndexFilepath(degree, indexName).toString(), reDegree(degree), key, false);
     }
 
     @Override
     public void remove(String indexName, long degree, String key) throws IOException {
-        getOrDelete(getIndexFilepath(degree, indexName).toString(), reDegree(degree), key, true);
+        getOrRemove(getIndexFilepath(degree, indexName).toString(), reDegree(degree), key, true);
     }
 
     /// 从Node中获取/删除数据<p>
@@ -399,7 +400,7 @@ public class Unity extends IEngine {
     /// @return 数据
     ///
     /// @throws IOException 从Node中获取/删除数据过程中可能抛出的异常
-    public List<byte[]> getOrDelete(String indexFilepath, long degree, String key, boolean delete) throws IOException {
+    public List<byte[]> getOrRemove(String indexFilepath, long degree, String key, boolean delete) throws IOException {
         if (Files.notExists(Path.of(indexFilepath))) {
             return new ArrayList<>();
         }
@@ -526,10 +527,10 @@ public class Unity extends IEngine {
                     bytesList.addAll(bytesListFromNode);
                 } else if (bytesList.size() + bytesListFromNode.size() == select.getLimit()) {
                     bytesList.addAll(bytesListFromNode);
-                    return bytesList;
+                    return matchFields(bytesList, select.getHit().getFields());
                 } else {
                     bytesList.addAll(bytesListFromNode.subList(0, select.getLimit() - bytesList.size()));
-                    return bytesList;
+                    return matchFields(bytesList, select.getHit().getFields());
                 }
             }
         } else { // 倒序
@@ -568,16 +569,35 @@ public class Unity extends IEngine {
                     bytesList.addAll(bytesListFromNode);
                 } else if (bytesList.size() + bytesListFromNode.size() == select.getLimit()) {
                     bytesList.addAll(bytesListFromNode);
-                    return bytesList;
+                    return matchFields(bytesList, select.getHit().getFields());
                 } else {
                     for (int i1 = 1; i1 <= select.getLimit() - bytesList.size(); i1++) {
                         bytesList.add(bytesListFromNode.get(bytesListFromNode.size() - i1));
                     }
-                    return bytesList;
+                    return matchFields(bytesList, select.getHit().getFields());
                 }
             }
         }
-        return bytesList;
+        return matchFields(bytesList, select.getHit().getFields());
+    }
+
+    private List<byte[]> matchFields(List<byte[]> bytesList, List<String> fields) {
+        if (CollectionUtils.isEmpty(fields)) {
+            return bytesList;
+        }
+        if (CollectionUtils.isEmpty(bytesList)) {
+            return bytesList;
+        }
+        List<byte[]> matchFieldsBytesList = new ArrayList<>();
+        for (byte[] bytes : bytesList) {
+            String str = ByteTools.toString(bytes);
+            if (JsonTools.isJson(str)) {
+                matchFieldsBytesList.add(ByteTools.fromString(JsonTools.keepOnlyPathsStr(str, fields)));
+            } else {
+                matchFieldsBytesList.add(bytes);
+            }
+        }
+        return matchFieldsBytesList;
     }
 
     /// 负数文件
