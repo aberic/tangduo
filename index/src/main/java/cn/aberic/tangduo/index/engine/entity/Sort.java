@@ -16,9 +16,11 @@ package cn.aberic.tangduo.index.engine.entity;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /// 排序策略
 @AllArgsConstructor
+@NoArgsConstructor
 @Data
 public class Sort {
 

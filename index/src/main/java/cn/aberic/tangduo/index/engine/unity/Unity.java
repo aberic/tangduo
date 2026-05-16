@@ -215,7 +215,11 @@ public class Unity extends IEngine {
 
     @Override
     public void put(IEngine engine, String indexName, Content content) throws IOException {
-        queue.offer(new IndexNameContent((Unity) engine, indexName, content));
+        Unity unity = (Unity) engine;
+        if (!unity.childIndex.nullable && (Objects.isNull(content.getValue()) || content.getValue().length == 0)) {
+            throw new UnexpectedException(String.format("索引%s不允许插入数据为null", indexName));
+        }
+        queue.offer(new IndexNameContent(unity, indexName, content));
     }
 
     /// Node插入数据data<p>

@@ -61,14 +61,20 @@ public class Hit {
         sort.indexName = indexName;
     }
 
-    public void reSet() {
+    public void reSet(String indexName) {
         if (Objects.nonNull(sort) && Objects.nonNull(sort.afterDegree) && Objects.nonNull(sort.param)) {
             if (sort.asc) {
-                area.startDegree = sort.afterDegree;
-                conditions.add(new Condition(sort.param, Condition.Compare.GT, sort.afterDegree));
+                if (indexName.equals(sort.indexName)) {
+                    area.startDegree = sort.afterDegree;
+                } else {
+                    conditions.add(new Condition(sort.param, Condition.Compare.GT, sort.afterDegree));
+                }
             } else {
-                area.endDegree = sort.afterDegree;
-                conditions.add(new Condition(sort.param, Condition.Compare.LT, sort.afterDegree));
+                if (indexName.equals(sort.indexName)) {
+                    area.endDegree = sort.afterDegree;
+                } else {
+                    conditions.add(new Condition(sort.param, Condition.Compare.LT, sort.afterDegree));
+                }
             }
         }
     }

@@ -492,7 +492,16 @@ public class Index {
     ///
     /// @throws IOException 异常
     public List<byte[]> select(Select select) throws IOException {
-        String indexName = select.getIndexName();
+        String indexName = select.getSortIndexName();
+        if (StringUtils.isEmpty(indexName)) {
+            indexName = select.getIndexName();
+        } else {
+            if (!indexMap.containsKey(indexName)) {
+                indexName = select.getIndexName();
+            } else {
+                select.setIndexName(indexName);
+            }
+        }
         if (StringUtils.isEmpty(indexName)) {
             return new ArrayList<>();
         }
@@ -510,12 +519,21 @@ public class Index {
     ///
     /// @throws IOException 异常
     public List<byte[]> delete(Select select) throws IOException {
-        String indexName = select.getIndexName();
+        String indexName = select.getSortIndexName();
+        if (StringUtils.isEmpty(indexName)) {
+            indexName = select.getIndexName();
+        } else {
+            if (!indexMap.containsKey(indexName)) {
+                indexName = select.getIndexName();
+            } else {
+                select.setIndexName(indexName);
+            }
+        }
         if (indexMap.containsKey(indexName)) {
             return indexMap.get(indexName).delete(select);
         } else {
             log.info("untrace delete indexMap.get({}) is null", indexName);
-            return null;
+            return new ArrayList<>();
         }
     }
 

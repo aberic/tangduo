@@ -1,4 +1,15 @@
-### put data kv object batch，无分词
+### create index
+PUT /index HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "unique": true
+}
+
+### put data kv object batch schools，无分词
 PUT /data/batch HTTP/1.1
 Host: {{host}}
 Content-Type: application/json
@@ -118,8 +129,445 @@ Content-Type: application/json
         "name": "City2",
         "zip": 250013
       }
+    },
+    {
+      "index": "schools",
+      "key": "14",
+      "value": {
+        "name": "City2",
+        "zip": 250014
+      }
+    },
+    {
+      "index": "schools",
+      "key": "15",
+      "value": {
+        "name": "City2",
+        "zip": 250015
+      }
+    },
+    {
+      "index": "schools",
+      "key": "16",
+      "value": {
+        "name": "City2",
+        "zip": 250016
+      }
+    },
+    {
+      "index": "schools",
+      "key": "17",
+      "value": {
+        "name": "City2",
+        "zip": 250017
+      }
+    },
+    {
+      "index": "schools",
+      "key": "18",
+      "value": {
+        "name": "City2",
+        "zip": 250018
+      }
+    },
+    {
+      "index": "schools",
+      "key": "19",
+      "value": {
+        "name": "City2",
+        "zip": 250019
+      }
+    },
+    {
+      "index": "schools",
+      "key": "20",
+      "value": {
+        "name": "City2",
+        "zip": 250020
+      }
+    },
+    {
+      "index": "schools",
+      "key": "21",
+      "value": {
+        "name": "City2",
+        "zip": 250021
+      }
+    },
+    {
+      "index": "schools",
+      "key": "22",
+      "value": {
+        "name": "City2",
+        "zip": 250022
+      }
+    },
+    {
+      "index": "schools",
+      "key": "23",
+      "value": {
+        "name": "City2",
+        "zip": 250023
+      }
+    },
+    {
+      "index": "schools",
+      "key": "24",
+      "value": {
+        "name": "City2",
+        "zip": 250024
+      }
+    },
+    {
+      "index": "schools",
+      "key": "25",
+      "value": {
+        "name": "City2",
+        "zip": 250025
+      }
+    },
+    {
+      "index": "schools",
+      "key": "26",
+      "value": {
+        "name": "City2",
+        "zip": 250026
+      }
+    },
+    {
+      "index": "schools",
+      "key": "27",
+      "value": {
+        "name": "City2",
+        "zip": 250027
+      }
+    },
+    {
+      "index": "schools",
+      "key": "28",
+      "value": {
+        "name": "City2",
+        "zip": 250028
+      }
+    },
+    {
+      "index": "schools",
+      "key": "29",
+      "value": {
+        "name": "City2",
+        "zip": 250029
+      }
+    },
+    {
+      "index": "schools",
+      "key": "30",
+      "value": {
+        "name": "City2",
+        "zip": 250030
+      }
     }
   ]
+}
+
+### create index
+PUT /index HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+"database": "test",
+"index": "zip",
+"unique": true
+}
+
+### put data kv object batch zip，无分词
+PUT /data/batch HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "seg": false,
+  "values": [
+    {
+      "index": "zip",
+      "key": "250000",
+      "value": {
+        "name": "City0",
+        "zip": 250000
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250001",
+      "value": {
+        "name": "City0",
+        "zip": 250001
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250002",
+      "value": {
+        "name": "City0",
+        "zip": 250002
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250003",
+      "value": {
+        "name": "City0",
+        "zip": 250003
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250004",
+      "value": {
+        "name": "City0",
+        "zip": 250004
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250005",
+      "value": {
+        "name": "City1",
+        "zip": 250005
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250006",
+      "value": {
+        "name": "City1",
+        "zip": 250006
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250007",
+      "value": {
+        "name": "City1",
+        "zip": 250007
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250008",
+      "value": {
+        "name": "City1",
+        "zip": 250008
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250009",
+      "value": {
+        "name": "City1",
+        "zip": 250009
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250010",
+      "value": {
+        "name": "City2",
+        "zip": 250010
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250011",
+      "value": {
+        "name": "City2",
+        "zip": 250011
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250012",
+      "value": {
+        "name": "City2",
+        "zip": 250012
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250013",
+      "value": {
+        "name": "City2",
+        "zip": 250013
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250014",
+      "value": {
+        "name": "City2",
+        "zip": 250014
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250015",
+      "value": {
+        "name": "City2",
+        "zip": 250015
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250016",
+      "value": {
+        "name": "City2",
+        "zip": 250016
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250017",
+      "value": {
+        "name": "City2",
+        "zip": 250017
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250018",
+      "value": {
+        "name": "City2",
+        "zip": 250018
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250019",
+      "value": {
+        "name": "City2",
+        "zip": 250019
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250020",
+      "value": {
+        "name": "City2",
+        "zip": 250020
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250021",
+      "value": {
+        "name": "City2",
+        "zip": 250021
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250022",
+      "value": {
+        "name": "City2",
+        "zip": 250022
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250023",
+      "value": {
+        "name": "City2",
+        "zip": 250023
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250024",
+      "value": {
+        "name": "City2",
+        "zip": 250024
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250025",
+      "value": {
+        "name": "City2",
+        "zip": 250025
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250026",
+      "value": {
+        "name": "City2",
+        "zip": 250026
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250027",
+      "value": {
+        "name": "City2",
+        "zip": 250027
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250028",
+      "value": {
+        "name": "City2",
+        "zip": 250028
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250029",
+      "value": {
+        "name": "City2",
+        "zip": 250029
+      }
+    },
+    {
+      "index": "zip",
+      "key": "250030",
+      "value": {
+        "name": "City2",
+        "zip": 250030
+      }
+    }
+  ]
+}
+
+### select data sort
+GET /data/select HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "limit": 5,
+  "hit": {
+    "sort": {
+      "param": "zip",
+      "afterDegree": 250015
+    },
+    "conditions": [
+      {
+        "param": "name",
+        "compare": "EQ",
+        "compareValue": "City2"
+      },
+      {
+        "param": "zip",
+        "compare": "GT",
+        "compareValue": 250010
+      }
+    ],
+    "fields": ["zip"]
+  }
 }
 
 ### select data
@@ -130,18 +578,20 @@ Content-Type: application/json
 {
   "database": "test",
   "index": "schools",
-  "conditions": [
-    {
-      "param": "name",
-      "compare": "EQ",
-      "compareValue": "City1"
-    },
-    {
-      "param": "zip",
-      "compare": "LT",
-      "compareValue": 250010
-    }
-  ]
+  "hit": {
+    "conditions": [
+      {
+        "param": "name",
+        "compare": "EQ",
+        "compareValue": "City1"
+      },
+      {
+        "param": "zip",
+        "compare": "LT",
+        "compareValue": 250010
+      }
+    ]
+  }
 }
 
 ### delete data

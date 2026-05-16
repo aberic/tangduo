@@ -771,7 +771,7 @@ public class IndexTests {
         int threadCount = 100; // 10000000 1小时16分钟
         int endIndex = threadCount / 2;
         int startIndex = endIndex - threadCount;
-        log.info("startIndex = {}, count = {}", startIndex, threadCount);
+        log.info("startIndex = {}, endIndex = {}, count = {}", startIndex, endIndex, threadCount);
         CountDownLatch latch = new CountDownLatch(threadCount); // 计数3
 
         try (ThreadPoolExecutor executor = new ThreadPoolExecutor(

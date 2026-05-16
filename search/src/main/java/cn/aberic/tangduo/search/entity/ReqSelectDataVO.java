@@ -20,6 +20,8 @@ import cn.aberic.tangduo.index.engine.entity.Sort;
 import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.Objects;
+
 /// 查询数据请求体
 @Data
 public class ReqSelectDataVO {
@@ -33,7 +35,16 @@ public class ReqSelectDataVO {
     /// 命中策略
     Hit hit;
 
+    public String getIndex() {
+        return CommonTools.indexName(index);
+    }
+
     public Hit reHit() {
+        if (Objects.isNull(hit)) {
+            hit = new Hit();
+            hit.setSort(new Sort(CommonTools.indexName(index)));
+            return hit;
+        }
         if (hit.sortNotNull()) {
             if (StringUtils.isEmpty(hit.getSort().getParam())) {
                 hit.setSortIndexName(CommonTools.indexName(hit.getSort().getIndexName()));
@@ -41,7 +52,7 @@ public class ReqSelectDataVO {
                 hit.setSortIndexName(CommonTools.indexName(hit.getSort().getOriginIndexName()));
             }
         } else {
-            hit.setSort(new Sort(index));
+            hit.setSort(new Sort(CommonTools.indexName(index)));
         }
         return hit;
     }

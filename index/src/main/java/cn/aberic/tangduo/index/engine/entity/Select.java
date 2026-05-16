@@ -19,8 +19,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.util.CollectionUtils;
 
 import java.rmi.UnexpectedException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /// 查询对象
@@ -102,6 +105,7 @@ public class Select {
     /// @param hit          命中策略
     /// @param selectFilter 自定义过滤接口
     public Select(@Nullable String indexName, Integer limit, boolean delete, Hit hit, SelectFilter selectFilter) {
+        this.indexName = indexName;
         this.limit = limit;
         this.delete = delete;
         if (hit.sortIsNull()) {
@@ -111,21 +115,14 @@ public class Select {
             hit.sort = new Sort(indexName);
         }
         this.hit = hit;
-        if (hit.sortNotNull() && Objects.nonNull(hit.sort.afterDegree)) {
-            if (hit.sort.asc) { // 如果是升序，则 afterDegree 是最小值，最大值无限
-                this.hit.area.startDegree = hit.sort.afterDegree;
-            } else { // 如果是降序，则 afterDegree 是最大值，最小值无限
-                this.hit.area.endDegree = hit.sort.afterDegree;
-            }
-        }
         this.selectFilter = selectFilter;
     }
 
-    public String getIndexName() {
+    public String getSortIndexName() {
         if (hit.sortNotNull()) {
             return hit.sort.indexName;
         } else {
-            return indexName;
+            return null;
         }
     }
 
@@ -143,7 +140,7 @@ public class Select {
             return hit.area.startDegree;
         }
         if (hit.sort.asc) {
-            return Objects.isNull(hit.sort.afterDegree) ? hit.area.startDegree : hit.sort.afterDegree;
+            return Objects.nonNull(hit.sort.afterDegree) && indexName.equals(hit.sort.indexName) ? hit.sort.afterDegree : hit.area.startDegree;
         }
         return hit.area.startDegree;
     }
@@ -155,7 +152,7 @@ public class Select {
         if (hit.sort.asc) {
             return hit.area.endDegree;
         }
-        return Objects.isNull(hit.sort.afterDegree) ? hit.area.endDegree : hit.sort.afterDegree;
+        return Objects.nonNull(hit.sort.afterDegree) && indexName.equals(hit.sort.indexName) ? hit.sort.afterDegree : hit.area.endDegree;
     }
 
     public boolean isIncludeMin() {
@@ -174,7 +171,16 @@ public class Select {
     }
 
     public void reHit() {
-        hit.reSet();
+        hit.reSet(indexName);
+    }
+
+    public void reSetFields() {
+        if (CollectionUtils.isEmpty(hit.fields)) {
+            return;
+        }
+        List<String> temp = new ArrayList<>(hit.fields);
+        temp.replaceAll(s -> "value." + s);
+        hit.setFields(temp);
     }
 
     /// 新增条件

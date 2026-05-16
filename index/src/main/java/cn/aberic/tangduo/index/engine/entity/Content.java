@@ -60,10 +60,11 @@ public class Content {
     AtomicBoolean isNotified = new AtomicBoolean(false);
 
     /// 构造方法
+    ///
     /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-    /// @param degree 主键（-9223372036854775807 —— 9223372036854775808）
-    /// @param key 原始key
-    /// @param value 数据
+    /// @param degree    主键（-9223372036854775807 —— 9223372036854775808）
+    /// @param key       原始key
+    /// @param value     数据
     public Content(String indexName, long degree, String key, byte[] value) {
         this.indexName = indexName;
         this.degree = degree;
@@ -73,11 +74,12 @@ public class Content {
     }
 
     /// 构造方法
+    ///
     /// @param transaction 事务
-    /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-    /// @param degree 主键（-9223372036854775807 —— 9223372036854775808）
-    /// @param key 原始key
-    /// @param value 数据
+    /// @param indexName   索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param degree      主键（-9223372036854775807 —— 9223372036854775808）
+    /// @param key         原始key
+    /// @param value       数据
     public Content(Transaction transaction, String indexName, long degree, String key, byte[] value) {
         this.transaction = transaction;
         this.indexName = indexName;
@@ -88,15 +90,18 @@ public class Content {
     }
 
     /// 添加写入对象项
+    ///
     /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-    /// @param degree 主键（-9223372036854775807 —— 9223372036854775808）
-    /// @param key 原始key
+    /// @param degree    主键（-9223372036854775807 —— 9223372036854775808）
+    /// @param key       原始key
     public void addItem(String indexName, long degree, String key) {
         items.add(new Item(indexName, degree, key));
     }
 
     /// 获取主键
+    ///
     /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    ///
     /// @return 主键
     public long getDegree(String indexName) {
         if (this.indexName.equals(indexName)) {
@@ -106,7 +111,9 @@ public class Content {
     }
 
     /// 获取原始key
+    ///
     /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    ///
     /// @return 原始key
     public String getKey(String indexName) {
         if (this.indexName.equals(indexName)) {
@@ -116,7 +123,9 @@ public class Content {
     }
 
     /// 获取锁
+    ///
     /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    ///
     /// @return 锁
     public Lock getLock(String indexName) {
         if (this.indexName.equals(indexName)) {
@@ -126,7 +135,9 @@ public class Content {
     }
 
     /// 获取是否通知
+    ///
     /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    ///
     /// @return 是否通知
     public AtomicBoolean getIsNotified(String indexName) {
         if (this.indexName.equals(indexName)) {
@@ -136,7 +147,9 @@ public class Content {
     }
 
     /// 获取条件
+    ///
     /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    ///
     /// @return 条件
     public Condition getCondition(String indexName) {
         if (this.indexName.equals(indexName)) {
@@ -147,7 +160,7 @@ public class Content {
 
     public String toString() {
         return String.format("WriteDataFileVersionAndDatumSeek - transactionId = %s, indexName = %s, degree = %s, key = %s, dataFileVersion = %s, dataSeek = %s",
-                transaction.getNumber(), indexName, degree, key,
+                Objects.isNull(transaction) ? -1 : transaction.getNumber(), indexName, degree, key,
                 ByteTools.toInt(Objects.isNull(dataFileVersionBytes) ? new byte[4] : dataFileVersionBytes),
                 ByteTools.toLong(Objects.isNull(dataSeekBytes) ? new byte[8] : dataSeekBytes));
     }
@@ -167,9 +180,10 @@ public class Content {
         AtomicBoolean isNotified = new AtomicBoolean(false);
 
         /// 构造方法
+        ///
         /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-        /// @param degree 主键（-9223372036854775807 —— 9223372036854775808）
-        /// @param key 原始key
+        /// @param degree    主键（-9223372036854775807 —— 9223372036854775808）
+        /// @param key       原始key
         public Item(String indexName, long degree, String key) {
             this.indexName = indexName;
             this.degree = degree;

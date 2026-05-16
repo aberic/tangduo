@@ -17,7 +17,6 @@ package cn.aberic.tangduo.search.controller;
 import cn.aberic.tangduo.common.SHA256Tools;
 import cn.aberic.tangduo.common.http.Response;
 import cn.aberic.tangduo.db.DB;
-import cn.aberic.tangduo.db.common.CommonTools;
 import cn.aberic.tangduo.db.common.KeyHashTools;
 import cn.aberic.tangduo.db.entity.*;
 import cn.aberic.tangduo.index.engine.entity.Select;
@@ -114,7 +113,7 @@ public class DataController {
         log.debug("SELECT data 从 {}/{} 中select数据", vo.getDatabase(), vo.getIndex());
         try {
             DB db = DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize);
-            List<DocSelectResponseVO> list = db.select(vo.getDatabase(), new Select(null, vo.getLimit(), false, vo.reHit(), null));
+            List<DocSelectResponseVO> list = db.select(vo.getDatabase(), new Select(vo.getIndex(), vo.getLimit(), false, vo.reHit(), null));
             return Response.success(list);
         } catch (Exception e) {
             return Response.failed(e);

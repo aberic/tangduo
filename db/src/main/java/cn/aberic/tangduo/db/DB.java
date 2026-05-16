@@ -176,7 +176,10 @@ public class DB {
     ///
     /// @return 索引名称列表
     public List<String> indexList(String dbName) {
-        return dbMap.get(dbName).index.indexList();
+        if (dbMap.containsKey(dbName)) {
+            return dbMap.get(dbName).index.indexList();
+        }
+        return new ArrayList<>();
     }
 
     /// 创建数据库
@@ -403,7 +406,7 @@ public class DB {
             if (dbName.equals(DATABASE_NAME_DEFAULT)) {
                 try {
                     createDB(DATABASE_NAME_DEFAULT);
-                    createIndex(DATABASE_NAME_DEFAULT, IEngine.UNITY, new Index.Info(1, INDEX_NAME_DEFAULT, false, false, false));
+                    createIndex(DATABASE_NAME_DEFAULT, IEngine.UNITY, new Index.Info(1, INDEX_NAME_DEFAULT, false, true, false));
                     segIndex = dbMap.get(dbName);
                 } catch (InstanceAlreadyExistsException | NoSuchFieldException | NoSuchMethodException e) {
                     segIndex = dbMap.get(dbName);
@@ -525,7 +528,7 @@ public class DB {
                 if (dbName.equals(DATABASE_NAME_DEFAULT)) {
                     try {
                         createDB(DATABASE_NAME_DEFAULT);
-                        createIndex(DATABASE_NAME_DEFAULT, IEngine.UNITY, new Index.Info(1, INDEX_NAME_DEFAULT, false, false, false));
+                        createIndex(DATABASE_NAME_DEFAULT, IEngine.UNITY, new Index.Info(1, INDEX_NAME_DEFAULT, false, true, false));
                         segIndex = dbMap.get(dbName);
                     } catch (InstanceAlreadyExistsException | NoSuchFieldException | NoSuchMethodException e) {
                         segIndex = dbMap.get(dbName);
@@ -875,7 +878,17 @@ public class DB {
             }
         }
         List<DocSearchResponseVO> docItems = Bm25Tools.rank(valueWithSegMap.values().stream().toList(), query, segIndex.seg);
-        return docItems.subList(0, Math.min(selectMaxCount, docItems.size()));
+        return docItems.stream().filter(distinctById(DocSearchResponseVO::getDigests)).collect(Collectors.toList()).subList(0, Math.min(selectMaxCount, docItems.size()));
+    }
+
+    /// 去重
+    ///
+    /// @param idExtractor 提取器
+    ///
+    /// @return 去重后的 Predicate
+    private static <T> Predicate<T> distinctById(Function<? super T, ?> idExtractor) {
+        Set<Object> seen = ConcurrentHashMap.newKeySet();
+        return t -> seen.add(idExtractor.apply(t));
     }
 
     /// 过滤文档
@@ -985,17 +998,7 @@ public class DB {
                 } catch (JsonParseException ignore) {}
             });
         }
-        return voList.stream().filter(distinctById(DocSelectResponseVO::getDigests)).collect(Collectors.toList()).subList(0, Math.min(select.getLimit(), voList.size()));
-    }
-
-    /// 去重
-    ///
-    /// @param idExtractor 提取器
-    ///
-    /// @return 去重后的 Predicate
-    private static <T> Predicate<T> distinctById(Function<? super T, ?> idExtractor) {
-        Set<Object> seen = ConcurrentHashMap.newKeySet();
-        return t -> seen.add(idExtractor.apply(t));
+        return voList.subList(0, Math.min(select.getLimit(), voList.size()));
     }
 
     /// 查询文档字节数组列表
@@ -1015,6 +1018,7 @@ public class DB {
         if (Objects.isNull(select.getSelectFilter())) {
             select.setSelectFilter(this::doFilter);
         }
+        select.reSetFields();
         return index.select(select);
     }
 
@@ -1068,7 +1072,7 @@ public class DB {
                 } catch (JsonParseException ignore) {}
             });
         }
-        return voList.stream().filter(distinctById(DocSelectResponseVO::getDigests)).collect(Collectors.toList()).subList(0, Math.min(select.getLimit(), voList.size()));
+        return voList.subList(0, Math.min(select.getLimit(), voList.size()));
     }
 
     /// 删除文档
