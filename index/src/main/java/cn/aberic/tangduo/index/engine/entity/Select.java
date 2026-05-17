@@ -170,7 +170,7 @@ public class Select {
         return hit.sort.afterDegree;
     }
 
-    public void reHit() {
+    public void reHit() throws UnexpectedException {
         hit.reSet(indexName);
     }
 

@@ -61,7 +61,7 @@ public class Hit {
         sort.indexName = indexName;
     }
 
-    public void reSet(String indexName) {
+    public void reSet(String indexName) throws UnexpectedException {
         if (Objects.nonNull(sort) && Objects.nonNull(sort.afterDegree) && Objects.nonNull(sort.param)) {
             if (sort.asc) {
                 if (indexName.equals(sort.indexName)) {
@@ -77,6 +77,7 @@ public class Hit {
                 }
             }
         }
+        conditions = Condition.Utils.simplifyConditions(conditions);
     }
 
     /// 新增条件

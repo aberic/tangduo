@@ -269,6 +269,87 @@ Content-Type: application/json
   ]
 }
 
+### select data sort
+GET /data/select HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "limit": 5,
+  "hit": {
+    "sort": {
+      "param": "zip",
+      "afterDegree": 250015
+    },
+    "conditions": [
+      {
+        "param": "name",
+        "compare": "EQ",
+        "compareValue": "City2"
+      },
+      {
+        "param": "zip",
+        "compare": "GT",
+        "compareValue": 250010
+      }
+    ],
+    "fields": ["zip"]
+  }
+}
+
+### select data
+GET /data/select HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "hit": {
+    "conditions": [
+      {
+        "param": "name",
+        "compare": "EQ",
+        "compareValue": "City1"
+      },
+      {
+        "param": "zip",
+        "compare": "LT",
+        "compareValue": 250010
+      }
+    ]
+  }
+}
+
+### delete data
+DELETE /data/delete HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "conditions": [
+    {
+      "param": "name",
+      "compare": "EQ",
+      "compareValue": "City1"
+    },
+    {
+      "param": "zip",
+      "compare": "LT",
+      "compareValue": 250009
+    },
+    {
+      "param": "zip",
+      "compare": "GT",
+      "compareValue": 250005
+    }
+  ]
+}
+
 ### create index
 PUT /index HTTP/1.1
 Host: {{host}}
@@ -540,14 +621,14 @@ Content-Type: application/json
   ]
 }
 
-### select data sort
+### select data sort search_after
 GET /data/select HTTP/1.1
 Host: {{host}}
 Content-Type: application/json
 
 {
   "database": "test",
-  "index": "schools",
+  "index": "zip",
   "limit": 5,
   "hit": {
     "sort": {
@@ -568,55 +649,4 @@ Content-Type: application/json
     ],
     "fields": ["zip"]
   }
-}
-
-### select data
-GET /data/select HTTP/1.1
-Host: {{host}}
-Content-Type: application/json
-
-{
-  "database": "test",
-  "index": "schools",
-  "hit": {
-    "conditions": [
-      {
-        "param": "name",
-        "compare": "EQ",
-        "compareValue": "City1"
-      },
-      {
-        "param": "zip",
-        "compare": "LT",
-        "compareValue": 250010
-      }
-    ]
-  }
-}
-
-### delete data
-DELETE /data/delete HTTP/1.1
-Host: {{host}}
-Content-Type: application/json
-
-{
-  "database": "test",
-  "index": "schools",
-  "conditions": [
-    {
-      "param": "name",
-      "compare": "EQ",
-      "compareValue": "City1"
-    },
-    {
-      "param": "zip",
-      "compare": "LT",
-      "compareValue": 250009
-    },
-    {
-      "param": "zip",
-      "compare": "GT",
-      "compareValue": 250005
-    }
-  ]
 }
