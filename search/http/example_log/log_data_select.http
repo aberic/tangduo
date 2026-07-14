@@ -18,7 +18,7 @@ Host: {{host}}
 Content-Type: application/json
 
 {
-  "query": "体验生活不容易"
+  "query": "设计"
 }
 
 ### get data kv object
@@ -27,7 +27,9 @@ Host: {{host}}
 Content-Type: application/json
 
 {
-  "key": "b5d286f11a114726aa7980a3fbdd97c8"
+  "database": "default",
+  "index": "32",
+  "key": "3c0657a73b194915a6ac1b393efd72dd"
 }
 
 ### example_log select data
@@ -42,7 +44,7 @@ Content-Type: application/json
       {
         "param": "traceId",
         "compare": "EQ",
-        "compareValue": "b5d286f11a114726aa7980a3fbdd97c8"
+        "compareValue": "3c0657a73b194915a6ac1b393efd72dd"
       }
     ]
   }

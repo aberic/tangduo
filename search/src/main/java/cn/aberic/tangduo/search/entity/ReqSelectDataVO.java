@@ -30,8 +30,10 @@ public class ReqSelectDataVO {
     String database;
     /// 索引名（全名组合确保唯一性，如：库名+表名+索引名）
     String index;
-    /// 限制返回数量
-    Integer limit = 10;
+    /// 跳过指定条数，默认0
+    int from = 0;
+    /// 返回数量
+    int size = 10;
     /// 命中策略
     Hit hit;
 

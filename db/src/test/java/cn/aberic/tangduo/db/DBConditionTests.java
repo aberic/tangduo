@@ -203,7 +203,7 @@ public class DBConditionTests {
 
     void afterDegreeSelect(DB db, String dbName, String indexName, long afterDegree, boolean asc, List<String> fields) throws IOException {
         Select select = new Select();
-        select.setLimit(10);
+        select.setSize(10);
         Hit hit = new Hit();
         hit.setSort(new Sort(indexName, "user.age", afterDegree, asc));
         hit.setFields(fields);

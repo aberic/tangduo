@@ -86,6 +86,15 @@ public class DataController {
     @GetMapping()
     public Response getData(@RequestBody ReqGetDataVO vo) {
         log.debug("GET data 从 {}/{} 中读取数据，key={},degree={}", vo.getDatabase(), vo.getIndex(), vo.getKey(), KeyHashTools.toLongKey(vo.getKey()));
+        if (StringUtils.isEmpty(vo.getDatabase())) {
+            return Response.failed(Response.Status.None, "数据库不能为空");
+        }
+        if (StringUtils.isEmpty(vo.getIndex())) {
+            return Response.failed(Response.Status.None, "索引不能为空");
+        }
+        if (StringUtils.isEmpty(vo.getKey())) {
+            return Response.failed(Response.Status.None, "key不能为空");
+        }
         try {
             DB db = DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize);
             return Response.success(db.get(vo.getDatabase(), vo.getIndex(), null, vo.getKey()));
@@ -113,7 +122,7 @@ public class DataController {
         log.debug("SELECT data 从 {}/{} 中select数据", vo.getDatabase(), vo.getIndex());
         try {
             DB db = DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize);
-            List<DocSelectResponseVO> list = db.select(vo.getDatabase(), new Select(vo.getIndex(), vo.getLimit(), false, vo.reHit(), null));
+            List<DocSelectResponseVO> list = db.select(vo.getDatabase(), new Select(vo.getIndex(), vo.getFrom(), vo.getSize(), false, vo.reHit(), null));
             return Response.success(list);
         } catch (Exception e) {
             return Response.failed(e);
@@ -140,7 +149,7 @@ public class DataController {
         log.debug("DELETE data 从 {}/{} 中delete数据", vo.getDatabase(), vo.getIndex());
         try {
             DB db = DB.getInstance(rootPath, dataFileMaxSize, searchMaxCount, batchMaxSize);
-            List<DocSelectResponseVO> list = db.select(vo.getDatabase(), new Select(null, vo.getLimit(), true, vo.reHit(), null));
+            List<DocSelectResponseVO> list = db.delete(vo.getDatabase(), new Select(null, vo.getFrom(), vo.getSize(), true, vo.reHit(), null));
             ChangeLog.append(rootPath, "data/delete", vo);
             return Response.success(list);
         } catch (Exception e) {

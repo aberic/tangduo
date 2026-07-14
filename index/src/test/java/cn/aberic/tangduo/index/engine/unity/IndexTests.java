@@ -625,7 +625,7 @@ public class IndexTests {
         Index index = new Index(rootpath, DATA_FILE_DEFAULT_SIZE);
 
         Select select = new Select();
-        select.setLimit(15);
+        select.setSize(15);
         select.setHit(new Hit(indexName, false));
         List<byte[]> bytesList = index.select(select);
         System.out.println("list size = " + bytesList.size());
@@ -814,7 +814,7 @@ public class IndexTests {
 
     void afterDegreeSelect(Index index, String indexName, long afterDegree, boolean asc, List<String> fields) throws IOException {
         Select select = new Select();
-        select.setLimit(10);
+        select.setSize(10);
         Hit hit = new Hit();
         hit.setSort(new Sort(indexName, "user.age", afterDegree, asc));
         hit.setFields(fields);

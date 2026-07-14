@@ -830,7 +830,7 @@ public class DB {
     /// @throws IOException 异常
     public List<DocSearchResponseVO> search(String dbName, String query) throws IOException {
         Select select = new Select();
-        select.setLimit(selectMaxCount);
+        select.setSize(selectMaxCount);
         dbName = StringUtils.isEmpty(dbName) ? DATABASE_NAME_DEFAULT : dbName;
         SegIndex segIndex = dbMap.get(dbName);
         if (segIndex == null) {
@@ -998,7 +998,7 @@ public class DB {
                 } catch (JsonParseException ignore) {}
             });
         }
-        return voList.subList(0, Math.min(select.getLimit(), voList.size()));
+        return voList.subList(0, Math.min(select.getSize(), voList.size()));
     }
 
     /// 查询文档字节数组列表
@@ -1072,7 +1072,7 @@ public class DB {
                 } catch (JsonParseException ignore) {}
             });
         }
-        return voList.subList(0, Math.min(select.getLimit(), voList.size()));
+        return voList.subList(0, Math.min(select.getSize(), voList.size()));
     }
 
     /// 删除文档

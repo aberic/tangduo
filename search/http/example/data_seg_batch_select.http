@@ -317,7 +317,32 @@ Content-Type: application/json
       {
         "param": "zip",
         "compare": "LT",
-        "compareValue": 250010
+        "compareValue": 250015
+      }
+    ]
+  }
+}
+
+### select data
+GET /data/select HTTP/1.1
+Host: {{host}}
+Content-Type: application/json
+
+{
+  "database": "test",
+  "index": "schools",
+  "from": 1,
+  "hit": {
+    "conditions": [
+      {
+        "param": "name",
+        "compare": "EQ",
+        "compareValue": "City1"
+      },
+      {
+        "param": "zip",
+        "compare": "LT",
+        "compareValue": 250015
       }
     ]
   }
@@ -331,23 +356,25 @@ Content-Type: application/json
 {
   "database": "test",
   "index": "schools",
-  "conditions": [
-    {
-      "param": "name",
-      "compare": "EQ",
-      "compareValue": "City1"
-    },
-    {
-      "param": "zip",
-      "compare": "LT",
-      "compareValue": 250009
-    },
-    {
-      "param": "zip",
-      "compare": "GT",
-      "compareValue": 250005
-    }
-  ]
+  "hit": {
+    "conditions": [
+      {
+        "param": "name",
+        "compare": "EQ",
+        "compareValue": "City1"
+      },
+      {
+        "param": "zip",
+        "compare": "LT",
+        "compareValue": 250009
+      },
+      {
+        "param": "zip",
+        "compare": "GT",
+        "compareValue": 250005
+      }
+    ]
+  }
 }
 
 ### create index
