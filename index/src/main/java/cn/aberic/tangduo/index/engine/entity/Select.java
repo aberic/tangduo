@@ -33,8 +33,10 @@ public class Select {
 
     /// 处理后的索引名（全名组合确保唯一性，如：库名+表名+索引名）
     String indexName;
-    /// 限定取出数量
-    Integer limit = Integer.MAX_VALUE;
+    /// 跳过指定条数，默认0
+    int from = 0;
+    /// 每页返回多少条
+    int size = Integer.MAX_VALUE;
     /// 是否删除操作
     boolean delete = false;
     /// 命中策略
@@ -45,10 +47,10 @@ public class Select {
     /// 构造方法，db用
     ///
     /// @param indexName 索引名（全名组合确保唯一性，如：库名+表名+索引名）
-    /// @param limit     查询数量
-    public Select(String indexName, Integer limit) {
+    /// @param size      查询数量
+    public Select(String indexName, Integer size) {
         this.indexName = indexName;
-        this.limit = limit;
+        this.size = size;
     }
 
     /// 构造方法，db用
@@ -85,11 +87,11 @@ public class Select {
     /// @param degreeMax  最大主键（-9223372036854775807 —— 9223372036854775808）
     /// @param includeMin 是否包含最小主键
     /// @param includeMax 是否包含最大主键
-    /// @param limit      查询数量
+    /// @param size       查询数量
     /// @param asc        是否升序排序
-    public Select(String indexName, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, int limit, boolean asc) {
+    public Select(String indexName, long degreeMin, long degreeMax, boolean includeMin, boolean includeMax, int size, boolean asc) {
         this.indexName = indexName;
-        this.limit = limit;
+        this.size = size;
         hit = new Hit(indexName, asc);
         hit.area.startDegree = degreeMin;
         hit.area.endDegree = degreeMax;
@@ -100,13 +102,26 @@ public class Select {
     /// 构造方法
     ///
     /// @param indexName    索引名（全名组合确保唯一性，如：库名+表名+索引名）
-    /// @param limit        查询数量
+    /// @param size         每页返回多少条
     /// @param delete       是否删除操作
     /// @param hit          命中策略
     /// @param selectFilter 自定义过滤接口
-    public Select(@Nullable String indexName, Integer limit, boolean delete, Hit hit, SelectFilter selectFilter) {
+    public Select(@Nullable String indexName, int size, boolean delete, Hit hit, SelectFilter selectFilter) {
+        this(indexName, 0, size, delete, hit, selectFilter);
+    }
+
+    /// 构造方法
+    ///
+    /// @param indexName    索引名（全名组合确保唯一性，如：库名+表名+索引名）
+    /// @param from         跳过指定条数，默认0
+    /// @param size         每页返回多少条
+    /// @param delete       是否删除操作
+    /// @param hit          命中策略
+    /// @param selectFilter 自定义过滤接口
+    public Select(@Nullable String indexName, int from, int size, boolean delete, Hit hit, SelectFilter selectFilter) {
         this.indexName = indexName;
-        this.limit = limit;
+        this.from = from;
+        this.size = size;
         this.delete = delete;
         if (hit.sortIsNull()) {
             if (StringUtils.isEmpty(indexName)) {
