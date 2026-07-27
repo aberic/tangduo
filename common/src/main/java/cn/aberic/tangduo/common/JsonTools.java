@@ -122,7 +122,7 @@ public final class JsonTools {
      *
      * @return 读到的值
      */
-    public static Object getValueByPath(String json, String path) throws Exception {
+    public static Object getValueByPath(String json, String path) {
         JsonNode root = OBJECT_MAPPER.readTree(json);
         String[] keys = path.split("\\.");
 

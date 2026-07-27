@@ -862,6 +862,7 @@ public class IndexTests {
                         case GT -> compareNumber > 0;
                         case LE -> compareNumber < 0 || compareNumber == 0;
                         case LT -> compareNumber < 0;
+                        default -> false;
                     };
                 } else {
                     pass = false;

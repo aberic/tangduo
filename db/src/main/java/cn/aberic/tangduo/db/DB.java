@@ -24,7 +24,10 @@ import cn.aberic.tangduo.index.Index;
 import cn.aberic.tangduo.index.engine.Common;
 import cn.aberic.tangduo.index.engine.IEngine;
 import cn.aberic.tangduo.index.engine.Transaction;
-import cn.aberic.tangduo.index.engine.entity.*;
+import cn.aberic.tangduo.index.engine.entity.Condition;
+import cn.aberic.tangduo.index.engine.entity.Content;
+import cn.aberic.tangduo.index.engine.entity.Hit;
+import cn.aberic.tangduo.index.engine.entity.Select;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
@@ -917,22 +920,44 @@ public class DB {
                 }
                 case List<?> ignored -> {}
                 case Map<?, ?> ignored -> {}
-                case null, default -> {
+                case null -> {}
+                default -> {
                     return false;
                 }
             }
             for (Condition condition : hit.getConditions()) {
-                Object obj;
-                try {
-                    obj = JsonTools.getValueByPath(JsonTools.toJson(docItem.getValue()), condition.getParam());
-                } catch (Exception ignore) {
-                    return false;
-                }
+                Object obj = JsonTools.getValueByPath(JsonTools.toJson(docItem.getValue()), condition.getParam());
                 boolean pass;
                 if (obj instanceof String) {
+                    String originStr = obj.toString();
+                    String compareValue = condition.getCompareValue().toString();
                     pass = switch (condition.getCompare()) {
-                        case EQ -> obj.equals(condition.getCompareValue());
-                        case NE -> !obj.equals(condition.getCompareValue());
+                        case EQ -> originStr.equals(compareValue);
+                        case NE -> !originStr.equals(compareValue);
+                        case LIKE -> compareValue.contains(originStr);
+                        case NLIKE -> !compareValue.contains(originStr);
+                        case IN -> {
+                            Collection<?> collection = (Collection<?>) condition.getCompareValue();
+                            boolean in = false;
+                            for (Object o : collection) {
+                                if (obj.equals(o)) {
+                                    in = true;
+                                    break;
+                                }
+                            }
+                            yield in;
+                        }
+                        case NIN -> {
+                            Collection<?> collection = (Collection<?>) condition.getCompareValue();
+                            boolean in = false;
+                            for (Object o : collection) {
+                                if (obj.equals(o)) {
+                                    in = true;
+                                    break;
+                                }
+                            }
+                            yield !in;
+                        }
                         default -> false;
                     };
                 } else if (obj instanceof Number) {
@@ -944,7 +969,32 @@ public class DB {
                         case GT -> compareNumber > 0;
                         case LE -> compareNumber < 0 || compareNumber == 0;
                         case LT -> compareNumber < 0;
+                        case IN -> {
+                            Collection<?> collection = (Collection<?>) condition.getCompareValue();
+                            boolean in = false;
+                            for (Object o : collection) {
+                                if (obj == o) {
+                                    in = true;
+                                    break;
+                                }
+                            }
+                            yield in;
+                        }
+                        case NIN -> {
+                            Collection<?> collection = (Collection<?>) condition.getCompareValue();
+                            boolean in = false;
+                            for (Object o : collection) {
+                                if (obj == o) {
+                                    in = true;
+                                    break;
+                                }
+                            }
+                            yield !in;
+                        }
+                        default -> false;
                     };
+                } else if (Objects.isNull(obj)) {
+                    pass = condition.getCompare().equals(Condition.Compare.IS_NULL);
                 } else {
                     pass = false;
                 }
