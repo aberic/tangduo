@@ -62,6 +62,9 @@ public class Hit {
     }
 
     public void reSet(String indexName) throws UnexpectedException {
+        for (Condition condition : conditions) {
+            condition.validateValue(); // 校验compareValue的类型是否匹配当前枚举
+        }
         if (Objects.nonNull(sort) && Objects.nonNull(sort.afterDegree) && Objects.nonNull(sort.param)) {
             if (sort.asc) {
                 if (indexName.equals(sort.indexName)) {

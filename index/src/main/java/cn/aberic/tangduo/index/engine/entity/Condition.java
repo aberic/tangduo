@@ -38,6 +38,11 @@ public class Condition {
     /// 要比较的值，大于或等于当前Object的内容
     Object compareValue;
 
+    // 校验compareValue的类型是否匹配当前枚举
+    public void validateValue() throws IllegalArgumentException {
+        compare.validateValue(compareValue);
+    }
+
     /// 条件枚举
     public enum Compare {
         /// 大于
@@ -51,7 +56,19 @@ public class Condition {
         /// 等于
         EQ("eq"),
         /// 不等
-        NE("ne");
+        NE("ne"),
+        /// 包含（在集合中），条件的compareValue必须是Collection类型（如List、Set）
+        IN("in"),
+        /// 不包含（不在集合中），条件的compareValue必须是Collection类型（如List、Set）
+        NIN("nin"),
+        /// 模糊匹配，条件的compareValue必须是字符串类型
+        LIKE("like"),
+        /// 不模糊匹配，条件的compareValue必须是字符串类型
+        NLIKE("nlike"),
+        /// 为空，条件无需设置compareValue（必须为null）
+        IS_NULL("isnull"),
+        /// 不为空，条件无需设置compareValue（必须为null）
+        NOT_NULL("notnull");
 
 
         // 成员变量
@@ -76,6 +93,33 @@ public class Condition {
                 }
             }
             throw new UnexpectedException(type);
+        }
+
+        // 校验compareValue的类型是否匹配当前枚举
+        private void validateValue(Object value) throws IllegalArgumentException {
+            switch (this) {
+                case IN:
+                case NIN:
+                    if (!(value instanceof Collection)) {
+                        throw new IllegalArgumentException(this.type + " 条件的compareValue必须是Collection类型（如List、Set）");
+                    }
+                    break;
+                case LIKE:
+                case NLIKE:
+                    if (value != null && !(value instanceof String)) {
+                        throw new IllegalArgumentException(this.type + " 条件的compareValue必须是字符串类型");
+                    }
+                    break;
+                case IS_NULL:
+                case NOT_NULL:
+                    if (value != null) {
+                        throw new IllegalArgumentException(this.type + " 条件无需设置compareValue（必须为null）");
+                    }
+                    break;
+                // 常规比较类型无需强制校验，兼容任意Object
+                default:
+                    break;
+            }
         }
     }
 
@@ -148,7 +192,7 @@ public class Condition {
             // 步骤3：处理EQ条件（原有冲突校验）
             List<Condition> processedEqConditions = processEqConditions(eqConditions, param);
             boolean hasEq = !processedEqConditions.isEmpty();
-            BigDecimal eqValue = hasEq ? getBigDecimalValue(processedEqConditions.get(0).getCompareValue()) : null;
+            BigDecimal eqValue = hasEq ? getBigDecimalValue(processedEqConditions.getFirst().getCompareValue()) : null;
 
             // 步骤4：精简区间条件（GT/GE/LT/LE）
             Condition simplifiedGtGe = simplifyGtGeConditions(gtGeConditions);
@@ -271,7 +315,7 @@ public class Condition {
             boolean isEqInRange = isValueInRange(eqValue, gtGeCondition, ltLeCondition);
             if (!isEqInRange) {
                 throw new UnexpectedException(String.format(
-                        "param=%s的EQ值=%s 超出区间条件范围[%s:%s, %s:%s]，条件矛盾",
+                        "param=%s的EQ值=%s 超出区间条件范围[%s, %s]，条件矛盾",
                         param, eqValue,
                         gtGeCondition != null ? gtGeCondition.getCompare().name() + ":" + gtGeCondition.getCompareValue() : "无下限",
                         ltLeCondition != null ? ltLeCondition.getCompare().name() + ":" + ltLeCondition.getCompareValue() : "无上限"
