@@ -33,16 +33,16 @@ import java.io.IOException;
 public class IndexController {
 
     /// 数据库根路径
-    @Value("${custom.db.DB_ROOT_PATH}")
+    @Value("${tangduo.db.DB_ROOT_PATH}")
     String rootPath;
     /// 数据文件大小阈值，单位byte
-    @Value("${custom.db.DB_DATA_FILE_MAX_SIZE}")
+    @Value("${tangduo.db.DB_DATA_FILE_MAX_SIZE}")
     long dataFileMaxSize;
     /// 单批次最大数量
-    @Value("${custom.index.INDEX_BATCH_MAX_SIZE}")
+    @Value("${tangduo.index.INDEX_BATCH_MAX_SIZE}")
     int batchMaxSize;
     /// 每条索引检索的最大数据量
-    @Value("${custom.db.DB_SEARCH_MAX_COUNT}")
+    @Value("${tangduo.db.DB_SEARCH_MAX_COUNT}")
     int searchMaxCount;
 
     /// 创建索引

@@ -211,8 +211,6 @@ public class Unity extends IEngine {
 
     record IndexNameContent(Unity unity, String indexName, Content content) {}
 
-    ;
-
     @Override
     public void put(IEngine engine, String indexName, Content content) throws IOException {
         Unity unity = (Unity) engine;
@@ -466,9 +464,12 @@ public class Unity extends IEngine {
         int searchSize = select.getFrom() + size;
         select.setSize(searchSize);
         List<byte[]> resList = selectOrDelete(select);
+        if (resList.isEmpty()) {
+             return new ArrayList<>();
+        }
         int fromIndex = select.getFrom();
         int toIndex = resList.size();
-        return selectOrDelete(select).subList(fromIndex, toIndex);
+        return resList.subList(fromIndex, toIndex);
     }
 
     /// 从Node中获取/删除数据
