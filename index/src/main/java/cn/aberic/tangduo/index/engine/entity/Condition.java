@@ -168,7 +168,7 @@ public class Condition {
             List<Condition> eqConditions = new ArrayList<>();
             List<Condition> neConditions = new ArrayList<>();
 
-            String param = sameParamConditions.get(0).getParam();
+            String param = sameParamConditions.getFirst().getParam();
             for (Condition condition : sameParamConditions) {
                 Condition.Compare compare = condition.getCompare();
                 switch (compare) {
@@ -207,7 +207,7 @@ public class Condition {
             }
 
             // 步骤6：处理NE条件（无EQ时，校验NE与区间的关系）
-            List<Condition> processedNeConditions = new ArrayList<>();
+            List<Condition> processedNeConditions;
             if (!hasEq && hasRange) {
                 processedNeConditions = processNeConditions(neConditions, simplifiedGtGe, simplifiedLtLe, param);
             } else {
@@ -354,7 +354,7 @@ public class Condition {
             }
 
             // 所有EQ值相同，保留一个
-            return Collections.singletonList(eqConditions.get(0));
+            return Collections.singletonList(eqConditions.getFirst());
         }
 
         /**
@@ -365,7 +365,7 @@ public class Condition {
                 return null;
             }
             if (gtGeConditions.size() == 1) {
-                return gtGeConditions.get(0);
+                return gtGeConditions.getFirst();
             }
 
             Map<BigDecimal, Condition> valueConditionMap = new HashMap<>();
@@ -380,7 +380,7 @@ public class Condition {
             BigDecimal maxValue = Collections.max(valueConditionMap.keySet());
             List<Condition> sameMax = gtGeConditions.stream()
                     .filter(c -> getBigDecimalValue(c.getCompareValue()).equals(maxValue))
-                    .collect(Collectors.toList());
+                    .toList();
 
             // 同值优先保留GE（更严格）
             return sameMax.stream()
@@ -397,7 +397,7 @@ public class Condition {
                 return null;
             }
             if (ltLeConditions.size() == 1) {
-                return ltLeConditions.get(0);
+                return ltLeConditions.getFirst();
             }
 
             Map<BigDecimal, Condition> valueConditionMap = new HashMap<>();
@@ -412,7 +412,7 @@ public class Condition {
             BigDecimal minValue = Collections.min(valueConditionMap.keySet());
             List<Condition> sameMin = ltLeConditions.stream()
                     .filter(c -> getBigDecimalValue(c.getCompareValue()).equals(minValue))
-                    .collect(Collectors.toList());
+                    .toList();
 
             // 同值优先保留LE（更严格）
             return sameMin.stream()
